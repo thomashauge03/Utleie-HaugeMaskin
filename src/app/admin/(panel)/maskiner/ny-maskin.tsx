@@ -1,12 +1,10 @@
 'use client'
 
 import { useActionState, useEffect, useRef, useState } from 'react'
+import { ETIKETT, FELT, KNAPP_SEKUNDÆR } from '@/components/ui'
 import { opprettMaskin, type MaskinTilstand } from './actions'
 
 const start: MaskinTilstand = {}
-
-const felt =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:focus:border-slate-400'
 
 export function NyMaskin() {
   const [åpen, settÅpen] = useState(false)
@@ -19,16 +17,16 @@ export function NyMaskin() {
 
   if (!åpen) {
     return (
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <button
           type="button"
           onClick={() => settÅpen(true)}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+          className="hm-trykk hm-kant-skygge-sm inline-flex min-h-[2.75rem] items-center border-2 border-[var(--kant-sterk)] bg-hm-red px-4 text-sm font-bold tracking-wide text-white uppercase hover:bg-hm-red-hover"
         >
-          Ny maskin
+          + Ny maskin
         </button>
         {tilstand.ok && (
-          <p className="text-sm text-green-700 dark:text-green-400">{tilstand.ok}</p>
+          <p className="text-sm font-semibold text-hm-green">{tilstand.ok}</p>
         )}
       </div>
     )
@@ -38,69 +36,83 @@ export function NyMaskin() {
     <form
       ref={skjema}
       action={handling}
-      className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+      className="border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-5"
     >
-      <div className="grid gap-3 sm:grid-cols-2">
+      <h2 className="hm-display mb-4 text-xl">Ny maskin</h2>
+
+      <div className="grid gap-4 sm:grid-cols-2">
         <label className="sm:col-span-2">
-          <span className="mb-1 block text-sm font-medium">Navn</span>
-          <input name="navn" required placeholder="Wacker hoppetusse BS60-4" className={felt} />
+          <span className={ETIKETT}>Navn</span>
+          <input
+            name="navn"
+            required
+            placeholder="Wacker hoppetusse BS60-4"
+            className={FELT}
+          />
         </label>
 
         <label>
-          <span className="mb-1 block text-sm font-medium">Kategori</span>
-          <input name="kategori" placeholder="Komprimering" className={felt} />
+          <span className={ETIKETT}>Kategori</span>
+          <input name="kategori" placeholder="Komprimering" className={FELT} />
         </label>
 
         <label>
-          <span className="mb-1 block text-sm font-medium">Internnummer</span>
-          <input name="internnummer" placeholder="HM-14" className={felt} />
+          <span className={ETIKETT}>Internnummer</span>
+          <input name="internnummer" placeholder="HM-14" className={FELT} />
         </label>
 
         <label>
-          <span className="mb-1 block text-sm font-medium">Døgnpris (kr)</span>
-          <input name="dogn_pris" inputMode="decimal" placeholder="850" className={felt} />
+          <span className={ETIKETT}>Døgnpris (kr)</span>
+          <input name="dogn_pris" inputMode="decimal" placeholder="850" className={FELT} />
         </label>
 
-        <label className="flex items-end gap-2 pb-2">
+        <label className="flex min-h-[2.75rem] items-center gap-3 self-end">
           <input
             type="checkbox"
             name="vis_pris"
             defaultChecked
-            className="size-4 rounded border-slate-300 dark:border-slate-700"
+            className="size-5 accent-[var(--color-hm-red)]"
           />
-          <span className="text-sm">Vis prisen for kunden</span>
+          <span className="text-sm font-semibold">Vis prisen for kunden</span>
         </label>
 
         <label className="sm:col-span-2">
-          <span className="mb-1 block text-sm font-medium">Notat</span>
-          <input name="notat" placeholder="Serienummer, service-intervall …" className={felt} />
+          <span className={ETIKETT}>Notat</span>
+          <input
+            name="notat"
+            placeholder="Serienummer, serviceintervall …"
+            className={FELT}
+          />
         </label>
       </div>
 
       {tilstand.feil && (
-        <p role="alert" className="mt-3 text-sm text-red-600 dark:text-red-400">
+        <p
+          role="alert"
+          className="mt-4 border-l-4 border-hm-red bg-hm-red/10 p-3 text-sm font-semibold text-hm-red-ink"
+        >
           {tilstand.feil}
         </p>
       )}
+      {tilstand.ok && (
+        <p className="mt-4 text-sm font-semibold text-hm-green">{tilstand.ok}</p>
+      )}
 
-      <div className="mt-4 flex items-center gap-3">
+      <div className="mt-5 flex flex-wrap items-center gap-3">
         <button
           type="submit"
           disabled={venter}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+          className="hm-trykk hm-kant-skygge-sm inline-flex min-h-[2.75rem] items-center border-2 border-[var(--kant-sterk)] bg-hm-red px-5 text-sm font-bold tracking-wide text-white uppercase hover:bg-hm-red-hover disabled:opacity-50"
         >
           {venter ? 'Lagrer …' : 'Lagre maskin'}
         </button>
         <button
           type="button"
           onClick={() => settÅpen(false)}
-          className="text-sm text-slate-600 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+          className={KNAPP_SEKUNDÆR}
         >
           Lukk
         </button>
-        {tilstand.ok && (
-          <p className="text-sm text-green-700 dark:text-green-400">{tilstand.ok}</p>
-        )}
       </div>
     </form>
   )

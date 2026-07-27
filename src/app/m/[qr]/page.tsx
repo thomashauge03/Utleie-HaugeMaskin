@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { hentEnhetsId } from '@/lib/enhet'
 import type { Leie, Maskin } from '@/lib/types'
+import { HMLogo } from '@/components/hm-logo'
+import { KNAPP_PRIMÆR, Merke } from '@/components/ui'
 import { LeieSkjema } from './leie-skjema'
 
 export const dynamic = 'force-dynamic'
@@ -18,7 +20,7 @@ export async function generateMetadata(
     .eq('qr_kode', qr)
     .maybeSingle()
 
-  return { title: data?.navn ? `${data.navn} – Utleie` : 'Utleie' }
+  return { title: data?.navn ? `${data.navn} – HM Utleie` : 'HM Utleie' }
 }
 
 export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
@@ -34,7 +36,6 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
   if (!data) notFound()
   const maskin = data as Maskin
 
-  // Finnes det en pågående leie på denne maskinen?
   const { data: aktivRad } = await supabaseAdmin
     .from('leier')
     .select('*')
@@ -45,82 +46,98 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
   const aktiv = aktivRad as Leie | null
   const enhetsId = await hentEnhetsId()
   const erMin = Boolean(aktiv && enhetsId && aktiv.enhets_id === enhetsId)
+  const utilgjengelig = maskin.status === 'service' || maskin.status === 'utrangert'
 
   return (
-    <main className="mx-auto w-full max-w-md px-5 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">{maskin.navn}</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          {[maskin.kategori, maskin.internnummer].filter(Boolean).join(' · ') ||
-            maskin.qr_kode}
-        </p>
-        {maskin.vis_pris && maskin.dogn_pris !== null && (
-          <p className="mt-3 text-lg font-medium">
-            {maskin.dogn_pris.toLocaleString('nb-NO')} kr
-            <span className="text-sm font-normal text-slate-500 dark:text-slate-400">
-              {' '}
-              per døgn
+    <>
+      {/* ── Maskinkort ────────────────────────────────────── */}
+      <header className="relative overflow-hidden bg-hm-black px-5 pt-6 pb-8 text-white">
+        <div
+          aria-hidden="true"
+          className="absolute -top-10 -right-16 h-[160%] w-40 skew-x-[-18deg] bg-hm-red/90"
+        />
+        <div className="relative mx-auto max-w-md">
+          <div className="flex items-start justify-between gap-4">
+            <HMLogo størrelse="sm" />
+            <span className="hm-tall font-mono text-xs tracking-widest text-white/50">
+              {maskin.qr_kode}
             </span>
-          </p>
-        )}
+          </div>
+
+          <h1 className="hm-display mt-6 text-3xl">{maskin.navn}</h1>
+
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {utilgjengelig ? (
+              <Merke type="nøytral">Ute av drift</Merke>
+            ) : aktiv ? (
+              <Merke type="gul">{erMin ? 'Du leier denne' : 'Utleid'}</Merke>
+            ) : (
+              <Merke type="grønn">Ledig nå</Merke>
+            )}
+            {maskin.kategori && (
+              <span className="text-sm text-white/60">{maskin.kategori}</span>
+            )}
+          </div>
+
+          {maskin.vis_pris && maskin.dogn_pris !== null && (
+            <p className="mt-6 flex items-baseline gap-2">
+              <span className="hm-display hm-tall text-5xl">
+                {maskin.dogn_pris.toLocaleString('nb-NO')}
+              </span>
+              <span className="text-sm font-semibold tracking-widest text-white/60 uppercase">
+                kr / døgn
+              </span>
+            </p>
+          )}
+        </div>
       </header>
 
-      {maskin.status === 'service' || maskin.status === 'utrangert' ? (
-        <Melding tittel="Ikke tilgjengelig">
-          Denne maskinen er ute av drift for øyeblikket. Ta kontakt med utleier.
-        </Melding>
-      ) : erMin && aktiv ? (
-        <div className="space-y-4">
-          <Melding tittel="Du leier denne nå" grønn>
-            Startet {formatterDato(aktiv.start_tid)}. Forventet levering{' '}
-            {formatterDato(aktiv.planlagt_slutt)}.
-          </Melding>
-          <Link
-            href={`/leie/${aktiv.referanse}`}
-            className="block rounded-xl bg-slate-900 px-4 py-3 text-center font-medium text-white dark:bg-slate-100 dark:text-slate-900"
-          >
-            Se leien og lever tilbake
-          </Link>
-        </div>
-      ) : aktiv ? (
-        <Melding tittel="Utleid">
-          Maskinen er utleid til {formatterDato(aktiv.planlagt_slutt)}. Ta kontakt
-          med utleier hvis du trenger den.
-        </Melding>
-      ) : (
-        <LeieSkjema maskinId={maskin.id} maskinNavn={maskin.navn} />
-      )}
-    </main>
+      <main className="mx-auto w-full max-w-md flex-1 px-5 py-7">
+        {utilgjengelig ? (
+          <Beskjed tittel="Ikke tilgjengelig">
+            Denne maskinen er ute av drift. Ta kontakt med utleier.
+          </Beskjed>
+        ) : erMin && aktiv ? (
+          <div className="space-y-5">
+            <Beskjed tittel="Leien din er i gang">
+              Startet {dato(aktiv.start_tid)}. Forventet levering{' '}
+              {dato(aktiv.planlagt_slutt)}.
+            </Beskjed>
+            <Link href={`/leie/${aktiv.referanse}`} className={KNAPP_PRIMÆR}>
+              Se leien og lever
+            </Link>
+          </div>
+        ) : aktiv ? (
+          <Beskjed tittel="Maskinen er utleid">
+            Den er ventet tilbake {dato(aktiv.planlagt_slutt)}. Ta kontakt med
+            utleier hvis du trenger den før det.
+          </Beskjed>
+        ) : (
+          <LeieSkjema maskinId={maskin.id} maskinNavn={maskin.navn} />
+        )}
+      </main>
+    </>
   )
 }
 
-function Melding({
+function Beskjed({
   tittel,
   children,
-  grønn,
 }: {
   tittel: string
   children: React.ReactNode
-  grønn?: boolean
 }) {
   return (
-    <div
-      className={`rounded-xl border p-4 ${
-        grønn
-          ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/40'
-          : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900'
-      }`}
-    >
-      <p className="font-medium">{tittel}</p>
-      <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{children}</p>
+    <div className="border-l-4 border-hm-red bg-[var(--flate-2)] p-4">
+      <p className="hm-display text-lg">{tittel}</p>
+      <p className="mt-1 text-sm text-[var(--blekk-svak)]">{children}</p>
     </div>
   )
 }
 
-function formatterDato(iso: string) {
-  return new Date(iso).toLocaleDateString('nb-NO', {
+const dato = (iso: string) =>
+  new Date(iso).toLocaleDateString('nb-NO', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   })
-}

@@ -1,46 +1,49 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Geist, Geist_Mono, Barlow_Condensed } from 'next/font/google'
 import './globals.css'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
   subsets: ['latin'],
+  display: 'swap',
 })
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
+  display: 'swap',
+})
+
+// Kondensert og industriell – samme familie av former som logoen.
+const barlow = Barlow_Condensed({
+  variable: '--font-barlow',
+  subsets: ['latin'],
+  weight: ['600', '700'],
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
-  title: {
-    default: 'Utleie',
-    template: '%s',
-  },
-  description: 'Utleie av anleggsmaskiner. Skann QR-koden på maskinen for å leie.',
+  title: { default: 'HM Utleie', template: '%s' },
+  description:
+    'Hauge Maskin utleie. Skann QR-koden på maskinen for å leie – uten innlogging.',
   robots: { index: false, follow: false },
 }
 
-// Hindrer at iOS zoomer inn når kunden trykker i et skjemafelt.
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
+  themeColor: '#0b0b0c',
 }
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
       lang="nb"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${barlow.variable} h-full`}
     >
-      <body className="flex min-h-full flex-col bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-        {children}
-      </body>
+      <body className="flex min-h-full flex-col">{children}</body>
     </html>
   )
 }

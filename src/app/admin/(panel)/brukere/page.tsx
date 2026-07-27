@@ -1,10 +1,11 @@
 import type { Metadata } from 'next'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
+import { KNAPP_LITEN, Merke, Seksjonstittel } from '@/components/ui'
 import { NyBruker } from './ny-bruker'
 import { settAktiv } from './actions'
 
-export const metadata: Metadata = { title: 'Brukere – Utleie' }
+export const metadata: Metadata = { title: 'Brukere – HM Utleie' }
 export const dynamic = 'force-dynamic'
 
 type AdminRad = {
@@ -23,55 +24,47 @@ export default async function BrukereSide() {
   const brukere = (data ?? []) as AdminRad[]
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Brukere</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Alle admin-brukere har lik tilgang. Historikken viser hvem som
-          godkjente hva.
-        </p>
-      </div>
+    <div className="space-y-7">
+      <Seksjonstittel under="Alle har lik tilgang. Historikken viser hvem som godkjente hva.">
+        Brukere
+      </Seksjonstittel>
 
       <NyBruker />
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <div className="overflow-x-auto border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)]">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 text-left text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          <thead className="bg-hm-black text-white">
             <tr>
-              <th className="px-4 py-3 font-medium">Navn</th>
-              <th className="px-4 py-3 font-medium">E-post</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium"></th>
+              <Th>Navn</Th>
+              <Th>E-post</Th>
+              <Th>Status</Th>
+              <Th>{''}</Th>
             </tr>
           </thead>
           <tbody>
             {brukere.map((b) => (
               <tr
                 key={b.id}
-                className="border-b border-slate-100 last:border-0 dark:border-slate-800"
+                className="border-b-2 border-[var(--kant)] last:border-0"
               >
-                <td className="px-4 py-3 font-medium">
+                <td className="px-4 py-3 font-semibold">
                   {b.navn}
                   {b.id === meg.id && (
-                    <span className="ml-2 text-xs font-normal text-slate-500">(deg)</span>
+                    <span className="ml-2 text-xs font-normal text-[var(--blekk-svak)]">
+                      (deg)
+                    </span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{b.epost}</td>
+                <td className="px-4 py-3 text-[var(--blekk-svak)]">{b.epost}</td>
                 <td className="px-4 py-3">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                      b.aktiv
-                        ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300'
-                        : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                    }`}
-                  >
+                  <Merke type={b.aktiv ? 'grønn' : 'nøytral'}>
                     {b.aktiv ? 'Aktiv' : 'Deaktivert'}
-                  </span>
+                  </Merke>
                 </td>
                 <td className="px-4 py-3 text-right">
                   {b.id !== meg.id && (
                     <form action={settAktiv.bind(null, b.id, !b.aktiv)}>
-                      <button className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
+                      <button className={KNAPP_LITEN}>
                         {b.aktiv ? 'Deaktiver' : 'Aktiver'}
                       </button>
                     </form>
@@ -83,10 +76,18 @@ export default async function BrukereSide() {
         </table>
       </div>
 
-      <p className="text-xs text-slate-500 dark:text-slate-400">
-        Brukere deaktiveres, ikke slettes – da beholder historikken navnet på
+      <p className="text-xs text-[var(--blekk-svak)]">
+        Brukere deaktiveres, ikke slettes — da beholder historikken navnet på
         den som godkjente en leie.
       </p>
     </div>
+  )
+}
+
+function Th({ children }: { children: React.ReactNode }) {
+  return (
+    <th className="px-4 py-2.5 text-left text-[11px] font-bold tracking-widest uppercase">
+      {children}
+    </th>
   )
 }

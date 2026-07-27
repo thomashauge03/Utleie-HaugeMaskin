@@ -3,10 +3,11 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { hentEnhetsId } from '@/lib/enhet'
+import { HMLogo } from '@/components/hm-logo'
 import { FinnSkjema } from './finn-skjema'
 
 export const dynamic = 'force-dynamic'
-export const metadata: Metadata = { title: 'Lever tilbake – Utleie' }
+export const metadata: Metadata = { title: 'Lever tilbake – HM Utleie' }
 
 /**
  * Felles retursiden. Én QR-kode for hele anlegget, hengt opp der
@@ -30,46 +31,55 @@ export default async function FellesReturSide() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-md px-5 py-8">
-      <h1 className="text-2xl font-semibold tracking-tight">Lever tilbake</h1>
+    <>
+      <header className="relative overflow-hidden bg-hm-black px-5 pt-6 pb-8 text-white">
+        <div
+          aria-hidden="true"
+          className="absolute -top-10 -right-16 h-[160%] w-40 skew-x-[-18deg] bg-hm-red/90"
+        />
+        <div className="relative mx-auto max-w-md">
+          <HMLogo størrelse="sm" />
+          <h1 className="hm-display mt-6 text-3xl">Lever tilbake</h1>
+        </div>
+      </header>
 
-      {leier && leier.length > 1 ? (
-        <>
-          <p className="mt-2 mb-6 text-sm text-slate-600 dark:text-slate-400">
-            Du har {leier.length} maskiner ute. Velg hvilken du leverer:
-          </p>
-          <div className="space-y-3">
-            {leier.map((l) => (
-              <Link
-                key={l.referanse}
-                href={`/leie/${l.referanse}/retur`}
-                className="block rounded-xl border border-slate-200 p-4 transition hover:border-slate-400 dark:border-slate-800 dark:hover:border-slate-600"
-              >
-                <span className="block font-medium">
-                  {(l.maskiner as unknown as { navn: string }).navn}
-                </span>
-                <span className="block text-sm text-slate-500 dark:text-slate-400">
-                  Leid siden{' '}
-                  {new Date(l.start_tid).toLocaleDateString('nb-NO', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                  })}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </>
-      ) : (
-        <>
-          <p className="mt-2 mb-6 text-sm text-slate-600 dark:text-slate-400">
-            Vi fant ingen aktiv leie på denne telefonen. Har du byttet telefon
-            eller slettet nettleserdata, kan du finne leien med mobilnummeret
-            ditt.
-          </p>
-          <FinnSkjema />
-        </>
-      )}
-    </main>
+      <main className="mx-auto w-full max-w-md flex-1 px-5 py-7">
+        {leier && leier.length > 1 ? (
+          <>
+            <p className="mb-5 text-sm text-[var(--blekk-svak)]">
+              Du har {leier.length} maskiner ute. Velg hvilken du leverer:
+            </p>
+            <div className="space-y-3">
+              {leier.map((l) => (
+                <Link
+                  key={l.referanse}
+                  href={`/leie/${l.referanse}/retur`}
+                  className="hm-trykk hm-kant-skygge-sm block border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-4"
+                >
+                  <span className="hm-display block text-lg">
+                    {(l.maskiner as unknown as { navn: string }).navn}
+                  </span>
+                  <span className="mt-0.5 block text-sm text-[var(--blekk-svak)]">
+                    Leid siden{' '}
+                    {new Date(l.start_tid).toLocaleDateString('nb-NO')}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="mb-6 border-l-4 border-hm-amber bg-[var(--flate-2)] p-4">
+              <p className="hm-display text-lg">Fant ingen leie på denne telefonen</p>
+              <p className="mt-1 text-sm text-[var(--blekk-svak)]">
+                Har du byttet telefon eller slettet nettleserdata, finner du
+                leien med mobilnummeret ditt.
+              </p>
+            </div>
+            <FinnSkjema />
+          </>
+        )}
+      </main>
+    </>
   )
 }

@@ -5,18 +5,18 @@ export const metadata: Metadata = { title: 'Leievilkår – Utleie' }
 export default function VilkarSide() {
   return (
     <main className="mx-auto w-full max-w-2xl px-5 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">Leievilkår</h1>
+      <h1 className="hm-display text-3xl">Leievilkår</h1>
 
-      <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/40">
-        <p className="font-medium">Utkast – må gjennomgås før bruk</p>
-        <p className="mt-1 text-slate-600 dark:text-slate-400">
+      <div className="mt-6 border-l-4 border-hm-amber bg-[var(--flate-2)] p-4 text-sm">
+        <p className="hm-display text-lg">Utkast – må gjennomgås før bruk</p>
+        <p className="mt-1 text-[var(--blekk-svak)]">
           Teksten under er et utgangspunkt, ikke juridisk kvalitetssikrede
           vilkår. Den bør gjennomgås av noen med ansvar for firmaets avtaler
           før systemet tas i bruk mot kunder.
         </p>
       </div>
 
-      <div className="mt-8 space-y-6 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+      <div className="mt-8 max-w-[68ch] space-y-6 text-sm leading-relaxed">
         <Avsnitt tittel="1. Leieforholdet">
           Leien starter når du bekrefter i appen, og løper til maskinen er
           levert tilbake og innleveringen er bekreftet av utleier. Du er
@@ -65,7 +65,7 @@ export default function VilkarSide() {
 function Avsnitt({ tittel, children }: { tittel: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="mb-1 font-medium text-slate-900 dark:text-slate-100">{tittel}</h2>
+      <h2 className="hm-display mb-1.5 text-lg">{tittel}</h2>
       <p>{children}</p>
     </section>
   )

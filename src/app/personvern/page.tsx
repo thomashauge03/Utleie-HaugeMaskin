@@ -5,17 +5,17 @@ export const metadata: Metadata = { title: 'Personvern – Utleie' }
 export default function PersonvernSide() {
   return (
     <main className="mx-auto w-full max-w-2xl px-5 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">Personvernerklæring</h1>
+      <h1 className="hm-display text-3xl">Personvernerklæring</h1>
 
-      <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/40">
-        <p className="font-medium">Utkast – firmanavn og kontaktinfo mangler</p>
-        <p className="mt-1 text-slate-600 dark:text-slate-400">
+      <div className="mt-6 border-l-4 border-hm-amber bg-[var(--flate-2)] p-4 text-sm">
+        <p className="hm-display text-lg">Utkast – firmanavn og kontaktinfo mangler</p>
+        <p className="mt-1 text-[var(--blekk-svak)]">
           Erklæringen må fylles ut med firmaets navn, organisasjonsnummer og
           kontaktadresse før systemet tas i bruk mot kunder.
         </p>
       </div>
 
-      <div className="mt-8 space-y-6 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+      <div className="mt-8 max-w-[68ch] space-y-6 text-sm leading-relaxed">
         <Avsnitt tittel="Hvem er behandlingsansvarlig">
           [Firmanavn AS, org.nr. ..., adresse, kontakt-e-post] er ansvarlig for
           behandlingen av personopplysningene som samles inn gjennom denne
@@ -70,7 +70,7 @@ export default function PersonvernSide() {
 function Avsnitt({ tittel, children }: { tittel: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="mb-1 font-medium text-slate-900 dark:text-slate-100">{tittel}</h2>
+      <h2 className="hm-display mb-1.5 text-lg">{tittel}</h2>
       <div>{children}</div>
     </section>
   )

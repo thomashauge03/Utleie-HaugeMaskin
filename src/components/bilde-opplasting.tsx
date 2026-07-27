@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import imageCompression from 'browser-image-compression'
 import { lagNettleserKlient } from '@/lib/supabase/client'
+import { ETIKETT } from '@/components/ui'
 
 type Status = 'tom' | 'jobber' | 'ferdig' | 'feil'
 
@@ -16,7 +17,7 @@ type Props = {
  * Tar bilde med telefonkameraet, komprimerer det, og laster det opp
  * direkte til Supabase Storage.
  *
- * Stien legges i et skjult felt slik at server action bare får en
+ * Stien legges i et skjult felt, slik at server action bare får en
  * filsti å forholde seg til – aldri selve fila. Se docs/TEKNISK-PLAN.md
  * pkt. 9 om hvorfor opplastingen går utenom serveren.
  */
@@ -79,9 +80,9 @@ export function BildeOpplasting({ type, etikett, hjelpetekst }: Props) {
 
   return (
     <div>
-      <span className="mb-1 block text-sm font-medium">{etikett}</span>
+      <span className={ETIKETT}>{etikett}</span>
       {hjelpetekst && (
-        <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">{hjelpetekst}</p>
+        <p className="mb-3 text-sm text-[var(--blekk-svak)]">{hjelpetekst}</p>
       )}
 
       {/* Server action leser kun disse. Fila går aldri via serveren. */}
@@ -103,41 +104,68 @@ export function BildeOpplasting({ type, etikett, hjelpetekst }: Props) {
       />
 
       {status === 'ferdig' && forhåndsvisning ? (
-        <div className="space-y-2">
-          {/* Lokal blob-URL – next/image gir ingenting her. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={forhåndsvisning}
-            alt="Bildet du tok"
-            className="max-h-56 w-full rounded-lg border border-slate-200 object-cover dark:border-slate-700"
-          />
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-green-700 dark:text-green-400">✓ Bilde lagret</span>
-            <button
-              type="button"
-              onClick={() => filvelger.current?.click()}
-              className="text-slate-600 underline underline-offset-4 dark:text-slate-400"
-            >
-              Ta nytt
-            </button>
+        <div>
+          <div className="relative border-2 border-[var(--kant-sterk)]">
+            {/* Lokal blob-URL – next/image gir ingenting her. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={forhåndsvisning}
+              alt="Bildet du tok av maskinen"
+              className="block max-h-64 w-full object-cover"
+            />
+            <span className="absolute top-0 left-0 bg-hm-green px-2 py-1 text-[11px] font-bold tracking-wider text-white uppercase">
+              ✓ Lagret
+            </span>
           </div>
+          <button
+            type="button"
+            onClick={() => filvelger.current?.click()}
+            className="mt-2 text-sm font-semibold text-hm-red-ink underline underline-offset-4"
+          >
+            Ta nytt bilde
+          </button>
         </div>
       ) : (
         <button
           type="button"
           disabled={status === 'jobber'}
           onClick={() => filvelger.current?.click()}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 px-4 py-8 text-sm font-medium transition hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:hover:border-slate-600 dark:hover:bg-slate-900"
+          className="hm-trykk flex min-h-[7rem] w-full flex-col items-center justify-center gap-2 border-2 border-dashed border-[var(--kant-sterk)] bg-[var(--flate-2)] px-4 py-6 disabled:opacity-60"
         >
-          {status === 'jobber' ? 'Laster opp …' : '📷 Ta bilde'}
+          <Kamera />
+          <span className="hm-display text-lg">
+            {status === 'jobber' ? 'Laster opp …' : 'Ta bilde'}
+          </span>
         </button>
       )}
 
       {status === 'feil' && (
-        <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">
-          {feilmelding}. Prøv igjen.
+        <p
+          role="alert"
+          className="mt-2 border-l-4 border-hm-red bg-hm-red/10 p-3 text-sm font-semibold text-hm-red-ink"
+        >
+          {feilmelding}. Trykk for å prøve igjen.
         </p>
       )}
     </div>
+  )
+}
+
+function Kamera() {
+  return (
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </svg>
   )
 }

@@ -1,18 +1,11 @@
 import Link from 'next/link'
 import { krevAdmin } from '@/lib/auth'
+import { HMLogo } from '@/components/hm-logo'
 import { loggUt } from '../logg-inn/actions'
+import { PanelMeny } from './meny'
 
 // Alt i adminpanelet viser levende utleiestatus og skal aldri caches.
 export const dynamic = 'force-dynamic'
-
-const lenker = [
-  { href: '/admin', tekst: 'Oversikt' },
-  { href: '/admin/kalender', tekst: 'Kalender' },
-  { href: '/admin/leier', tekst: 'Leier' },
-  { href: '/admin/maskiner', tekst: 'Maskiner' },
-  { href: '/admin/kunder', tekst: 'Kunder' },
-  { href: '/admin/brukere', tekst: 'Brukere' },
-]
 
 export default async function PanelLayout({
   children,
@@ -22,40 +15,35 @@ export default async function PanelLayout({
   const admin = await krevAdmin()
 
   return (
-    <div className="min-h-dvh bg-slate-50 dark:bg-slate-950">
-      <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
-          <Link href="/admin" className="font-semibold tracking-tight">
-            Utleie
+    <div className="flex min-h-dvh flex-col bg-[var(--flate-2)]">
+      <header className="bg-hm-black text-white">
+        <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
+          <Link href="/admin" aria-label="Til oversikten">
+            <HMLogo størrelse="sm" />
           </Link>
+          <span className="hidden text-xs font-bold tracking-widest text-white/40 uppercase sm:block">
+            Utleie
+          </span>
 
-          <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-            {lenker.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="text-slate-600 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-              >
-                {l.tekst}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="ml-auto flex items-center gap-3 text-sm">
-            <span className="text-slate-500 dark:text-slate-400">{admin.navn}</span>
+          <div className="ml-auto flex items-center gap-4">
+            <span className="hidden text-sm text-white/60 sm:block">
+              {admin.navn}
+            </span>
             <form action={loggUt}>
               <button
                 type="submit"
-                className="text-slate-600 underline-offset-4 transition hover:text-slate-900 hover:underline dark:text-slate-400 dark:hover:text-slate-100"
+                className="border-2 border-white/25 px-3 py-1.5 text-xs font-bold tracking-wider text-white/80 uppercase transition-colors hover:border-white hover:text-white"
               >
                 Logg ut
               </button>
             </form>
           </div>
         </div>
+
+        <PanelMeny />
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
     </div>
   )
 }

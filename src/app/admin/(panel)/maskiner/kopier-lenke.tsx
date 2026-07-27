@@ -1,8 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import { KNAPP_LITEN } from '@/components/ui'
 
-export function KopierLenke({ url, etikett = 'Kopier lenke' }: { url: string; etikett?: string }) {
+export function KopierLenke({
+  url,
+  etikett = 'Kopier lenke',
+}: {
+  url: string
+  etikett?: string
+}) {
   const [kopiert, settKopiert] = useState(false)
 
   async function kopier() {
@@ -22,7 +29,7 @@ export function KopierLenke({ url, etikett = 'Kopier lenke' }: { url: string; et
       type="button"
       onClick={kopier}
       title={url}
-      className="rounded-md border border-slate-300 px-2 py-1 text-xs whitespace-nowrap transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+      className={`${KNAPP_LITEN} whitespace-nowrap ${kopiert ? 'border-hm-green text-hm-green' : ''}`}
     >
       {kopiert ? '✓ Kopiert' : etikett}
     </button>

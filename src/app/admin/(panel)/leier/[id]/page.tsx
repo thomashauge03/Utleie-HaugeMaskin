@@ -6,11 +6,19 @@ import { lagServerKlient } from '@/lib/supabase/server'
 import { signertBildeUrl, beregnDogn } from '@/lib/bilder'
 import { visTelefon } from '@/lib/telefon'
 import { LEIE_STATUS_TEKST, type Bilde, type Kunde, type Leie, type Maskin } from '@/lib/types'
+import { KNAPP_SEKUNDÆR, Kort, KortTittel, Merke } from '@/components/ui'
 import { GodkjennSkjema } from './godkjenn-skjema'
 import { settFakturert } from './actions'
 
-export const metadata: Metadata = { title: 'Leie – Utleie' }
+export const metadata: Metadata = { title: 'Leie – HM Utleie' }
 export const dynamic = 'force-dynamic'
+
+const merkeType = {
+  aktiv: 'grønn',
+  venter_godkjenning: 'gul',
+  avsluttet: 'nøytral',
+  avvist: 'rød',
+} as const
 
 export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]'>) {
   await krevAdmin()
@@ -67,16 +75,22 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
       <div>
         <Link
           href="/admin/leier"
-          className="text-sm text-slate-500 underline underline-offset-4 dark:text-slate-400"
+          className="inline-flex min-h-[2.75rem] items-center text-sm font-semibold text-[var(--blekk-svak)] underline underline-offset-4"
         >
           ← Alle leier
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+        <span className="hm-skrastrek mt-2 mb-3 block" aria-hidden="true" />
+        <h1 className="hm-display text-3xl">
           {leie.maskiner?.navn ?? 'Ukjent maskin'}
         </h1>
-        <p className="mt-1 font-mono text-sm text-slate-500 dark:text-slate-400">
-          {leie.referanse} · {LEIE_STATUS_TEKST[leie.status]}
-        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <span className="hm-tall font-mono text-sm text-[var(--blekk-svak)]">
+            {leie.referanse}
+          </span>
+          <Merke type={merkeType[leie.status]}>
+            {LEIE_STATUS_TEKST[leie.status]}
+          </Merke>
+        </div>
       </div>
 
       {leie.status === 'venter_godkjenning' && (
@@ -87,51 +101,108 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
         />
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Kort tittel="Kunde">
-          {leie.kunder ? (
-            <dl className="space-y-2 text-sm">
-              <Rad navn="Navn" verdi={leie.kunder.navn} />
-              <Rad navn="Mobil" verdi={visTelefon(leie.kunder.telefon)} />
-              <Rad navn="E-post" verdi={leie.kunder.epost} />
-              <Rad navn="Adresse" verdi={leie.kunder.adresse} />
-              {leie.kunder.status === 'ny' && (
-                <p className="rounded-lg bg-amber-100 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-300">
-                  Ny kunde – ikke tidligere registrert
-                </p>
-              )}
-            </dl>
+      <Kort>
+        <KortTittel>Bilder</KortTittel>
+        <div className="p-5">
+          {medUrl.length === 0 ? (
+            <p className="text-sm text-[var(--blekk-svak)]">Ingen bilder ennå.</p>
           ) : (
-            <p className="text-sm text-slate-500">Ingen kunde knyttet.</p>
+            <div className="grid gap-5 sm:grid-cols-2">
+              {medUrl.map((b) => (
+                <figure key={b.id}>
+                  <div className="relative border-2 border-[var(--kant-sterk)]">
+                    {b.url ? (
+                      /* Signert URL som utløper – next/image ville cachet den feil. */
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={b.url}
+                        alt={b.type === 'henting' ? 'Maskinen ved henting' : 'Maskinen ved levering'}
+                        className="block w-full"
+                      />
+                    ) : (
+                      <div className="p-8 text-center text-sm text-[var(--blekk-svak)]">
+                        Kunne ikke hente bildet
+                      </div>
+                    )}
+                    <figcaption className="absolute top-0 left-0 bg-hm-black px-2 py-1 text-[11px] font-bold tracking-wider text-white uppercase">
+                      {b.type === 'henting' ? 'Henting' : 'Levering'}
+                    </figcaption>
+                  </div>
+                  <p className="mt-2 text-xs text-[var(--blekk-svak)]">
+                    {tid(b.mottatt_tid)}
+                    {b.lat !== null && b.lng !== null && (
+                      <>
+                        {' · '}
+                        <a
+                          href={`https://www.google.com/maps?q=${b.lat},${b.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold underline underline-offset-2"
+                        >
+                          Se posisjon
+                        </a>
+                      </>
+                    )}
+                  </p>
+                </figure>
+              ))}
+            </div>
           )}
+        </div>
+      </Kort>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Kort>
+          <KortTittel>Kunde</KortTittel>
+          <div className="p-5">
+            {leie.kunder ? (
+              <dl className="space-y-2.5 text-sm">
+                <Rad navn="Navn" verdi={leie.kunder.navn} />
+                <Rad navn="Mobil" verdi={visTelefon(leie.kunder.telefon)} />
+                <Rad navn="E-post" verdi={leie.kunder.epost} />
+                <Rad navn="Adresse" verdi={leie.kunder.adresse} />
+                {leie.kunder.status === 'ny' && (
+                  <p className="mt-3 border-l-4 border-hm-amber bg-[var(--flate-2)] p-3 text-xs">
+                    Ny kunde — ikke registrert hos dere fra før
+                  </p>
+                )}
+              </dl>
+            ) : (
+              <p className="text-sm text-[var(--blekk-svak)]">Ingen kunde knyttet.</p>
+            )}
+          </div>
         </Kort>
 
-        <Kort tittel="Leieperiode">
-          <dl className="space-y-2 text-sm">
-            <Rad navn="Startet" verdi={tid(leie.start_tid)} />
-            <Rad navn="Forventet levering" verdi={dato(leie.planlagt_slutt)} />
-            <Rad navn="Levert" verdi={leie.slutt_tid ? tid(leie.slutt_tid) : '–'} />
-            <Rad
-              navn="Døgn"
-              verdi={leie.antall_dogn ?? `${foreslattDogn} (forslag)`}
-            />
-            <Rad
-              navn="Beløp"
-              verdi={
-                leie.belop
-                  ? `${leie.belop.toLocaleString('nb-NO')} kr${leie.manuelt_justert ? ' (justert)' : ''}`
-                  : foreslattBelop
-                    ? `${foreslattBelop.toLocaleString('nb-NO')} kr (forslag)`
-                    : '–'
-              }
-            />
-          </dl>
+        <Kort>
+          <KortTittel>Leieperiode</KortTittel>
+          <div className="p-5">
+            <dl className="space-y-2.5 text-sm">
+              <Rad navn="Startet" verdi={tid(leie.start_tid)} />
+              <Rad navn="Forventet levering" verdi={dato(leie.planlagt_slutt)} />
+              <Rad navn="Levert" verdi={leie.slutt_tid ? tid(leie.slutt_tid) : '–'} />
+              <Rad
+                navn="Døgn"
+                verdi={leie.antall_dogn ?? `${foreslattDogn} (forslag)`}
+              />
+              <Rad
+                navn="Beløp"
+                verdi={
+                  leie.belop
+                    ? `${leie.belop.toLocaleString('nb-NO')} kr${leie.manuelt_justert ? ' (justert)' : ''}`
+                    : foreslattBelop
+                      ? `${foreslattBelop.toLocaleString('nb-NO')} kr (forslag)`
+                      : '–'
+                }
+              />
+            </dl>
+          </div>
         </Kort>
       </div>
 
       {(leie.kommentar_start || leie.kommentar_retur || leie.avvik) && (
-        <Kort tittel="Kommentarer">
-          <dl className="space-y-3 text-sm">
+        <Kort>
+          <KortTittel>Kommentarer</KortTittel>
+          <dl className="space-y-3 p-5 text-sm">
             {leie.kommentar_start && (
               <Rad navn="Ved henting" verdi={leie.kommentar_start} />
             )}
@@ -141,85 +212,49 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
             {leie.avvik && (
               <Rad
                 navn="Avvik"
-                verdi={<span className="text-red-600 dark:text-red-400">{leie.avvik}</span>}
+                verdi={<span className="text-hm-red-ink">{leie.avvik}</span>}
               />
             )}
           </dl>
         </Kort>
       )}
 
-      <Kort tittel="Bilder">
-        {medUrl.length === 0 ? (
-          <p className="text-sm text-slate-500">Ingen bilder ennå.</p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {medUrl.map((b) => (
-              <figure key={b.id}>
-                {b.url ? (
-                  /* Signert URL som utløper – next/image ville cachet den feil. */
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={b.url}
-                    alt={b.type === 'henting' ? 'Ved henting' : 'Ved levering'}
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700"
-                  />
-                ) : (
-                  <div className="rounded-lg border border-dashed p-8 text-center text-sm text-slate-500">
-                    Kunne ikke hente bildet
-                  </div>
-                )}
-                <figcaption className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                  <span className="font-medium">
-                    {b.type === 'henting' ? 'Ved henting' : 'Ved levering'}
-                  </span>
-                  {' · '}
-                  {tid(b.mottatt_tid)}
-                  {b.lat !== null && b.lng !== null && (
-                    <>
-                      {' · '}
-                      <a
-                        href={`https://www.google.com/maps?q=${b.lat},${b.lng}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline underline-offset-2"
-                      >
-                        Se posisjon
-                      </a>
-                    </>
-                  )}
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        )}
-      </Kort>
-
       {leie.status === 'avsluttet' && (
-        <Kort tittel="Fakturering">
-          <pre className="mb-4 overflow-x-auto rounded-lg bg-slate-100 p-3 text-xs whitespace-pre-wrap dark:bg-slate-800">
-            {fakturagrunnlag}
-          </pre>
-          <form action={settFakturert.bind(null, leie.id, !leie.fakturert)}>
-            <button
-              type="submit"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+        <Kort>
+          <KortTittel>Fakturagrunnlag</KortTittel>
+          <div className="p-5">
+            <pre className="overflow-x-auto border-2 border-[var(--kant)] bg-[var(--flate-2)] p-4 font-mono text-xs whitespace-pre-wrap">
+              {fakturagrunnlag}
+            </pre>
+            <form
+              action={settFakturert.bind(null, leie.id, !leie.fakturert)}
+              className="mt-4"
             >
-              {leie.fakturert ? '✓ Fakturert – angre' : 'Marker som fakturert'}
-            </button>
-          </form>
+              <button
+                type="submit"
+                className={`${KNAPP_SEKUNDÆR} ${leie.fakturert ? 'border-hm-green text-hm-green' : ''}`}
+              >
+                {leie.fakturert ? '✓ Fakturert – angre' : 'Marker som fakturert'}
+              </button>
+            </form>
+          </div>
         </Kort>
       )}
 
       {hendelser && hendelser.length > 0 && (
-        <Kort tittel="Historikk">
-          <ol className="space-y-2 text-sm">
+        <Kort>
+          <KortTittel>Historikk</KortTittel>
+          <ol className="p-5 text-sm">
             {hendelser.map((h) => (
-              <li key={h.id} className="flex flex-wrap gap-x-3 text-slate-600 dark:text-slate-400">
-                <span className="tabular-nums">{tid(h.tid)}</span>
-                <span className="text-slate-900 dark:text-slate-200">
-                  {h.beskrivelse || h.type}
+              <li
+                key={h.id}
+                className="flex flex-wrap gap-x-4 gap-y-0.5 border-l-2 border-[var(--kant)] py-2 pl-4"
+              >
+                <span className="hm-tall text-[var(--blekk-svak)]">{tid(h.tid)}</span>
+                <span className="font-semibold">{h.beskrivelse || h.type}</span>
+                <span className="w-full text-xs text-[var(--blekk-svak)]">
+                  {h.aktor}
                 </span>
-                <span className="text-xs">{h.aktor}</span>
               </li>
             ))}
           </ol>
@@ -229,20 +264,13 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
   )
 }
 
-function Kort({ tittel, children }: { tittel: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-      <h2 className="mb-3 font-medium">{tittel}</h2>
-      {children}
-    </section>
-  )
-}
-
 function Rad({ navn, verdi }: { navn: string; verdi: React.ReactNode }) {
   return (
     <div className="flex flex-wrap justify-between gap-2">
-      <dt className="text-slate-500 dark:text-slate-400">{navn}</dt>
-      <dd className="text-right font-medium">{verdi}</dd>
+      <dt className="text-xs font-bold tracking-widest text-[var(--blekk-svak)] uppercase">
+        {navn}
+      </dt>
+      <dd className="hm-tall text-right font-semibold">{verdi}</dd>
     </div>
   )
 }

@@ -1,12 +1,10 @@
 'use client'
 
 import { useActionState, useEffect, useRef, useState } from 'react'
+import { ETIKETT, FELT, KNAPP_SEKUNDÆR } from '@/components/ui'
 import { opprettBruker, type BrukerTilstand } from './actions'
 
 const start: BrukerTilstand = {}
-
-const felt =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:focus:border-slate-400'
 
 export function NyBruker() {
   const [åpen, settÅpen] = useState(false)
@@ -19,16 +17,16 @@ export function NyBruker() {
 
   if (!åpen) {
     return (
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <button
           type="button"
           onClick={() => settÅpen(true)}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900"
+          className="hm-trykk hm-kant-skygge-sm inline-flex min-h-[2.75rem] items-center border-2 border-[var(--kant-sterk)] bg-hm-red px-4 text-sm font-bold tracking-wide text-white uppercase hover:bg-hm-red-hover"
         >
-          Ny bruker
+          + Ny bruker
         </button>
         {tilstand.ok && (
-          <p className="text-sm text-green-700 dark:text-green-400">{tilstand.ok}</p>
+          <p className="text-sm font-semibold text-hm-green">{tilstand.ok}</p>
         )}
       </div>
     )
@@ -38,50 +36,51 @@ export function NyBruker() {
     <form
       ref={skjema}
       action={handling}
-      className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+      className="border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-5"
     >
-      <div className="grid gap-3 sm:grid-cols-3">
+      <h2 className="hm-display mb-4 text-xl">Ny admin-bruker</h2>
+
+      <div className="grid gap-4 sm:grid-cols-3">
         <label>
-          <span className="mb-1 block text-sm font-medium">Navn</span>
-          <input name="navn" required className={felt} />
+          <span className={ETIKETT}>Navn</span>
+          <input name="navn" required className={FELT} />
         </label>
         <label>
-          <span className="mb-1 block text-sm font-medium">E-post</span>
-          <input name="epost" type="email" required className={felt} />
+          <span className={ETIKETT}>E-post</span>
+          <input name="epost" type="email" required className={FELT} />
         </label>
         <label>
-          <span className="mb-1 block text-sm font-medium">Passord</span>
-          <input name="passord" type="text" required minLength={8} className={felt} />
+          <span className={ETIKETT}>Passord</span>
+          <input name="passord" type="text" required minLength={8} className={FELT} />
         </label>
       </div>
 
-      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-        Passordet vises i klartekst her fordi du må formidle det videre til
-        personen selv. Be dem bytte det ved første innlogging.
+      <p className="mt-3 border-l-4 border-hm-amber bg-[var(--flate-2)] p-3 text-xs text-[var(--blekk-svak)]">
+        Passordet vises i klartekst fordi du må formidle det videre selv. Be
+        personen bytte det ved første innlogging.
       </p>
 
       {tilstand.feil && (
-        <p role="alert" className="mt-3 text-sm text-red-600 dark:text-red-400">
+        <p
+          role="alert"
+          className="mt-4 border-l-4 border-hm-red bg-hm-red/10 p-3 text-sm font-semibold text-hm-red-ink"
+        >
           {tilstand.feil}
         </p>
       )}
       {tilstand.ok && (
-        <p className="mt-3 text-sm text-green-700 dark:text-green-400">{tilstand.ok}</p>
+        <p className="mt-4 text-sm font-semibold text-hm-green">{tilstand.ok}</p>
       )}
 
-      <div className="mt-4 flex items-center gap-3">
+      <div className="mt-5 flex flex-wrap items-center gap-3">
         <button
           type="submit"
           disabled={venter}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+          className="hm-trykk hm-kant-skygge-sm inline-flex min-h-[2.75rem] items-center border-2 border-[var(--kant-sterk)] bg-hm-red px-5 text-sm font-bold tracking-wide text-white uppercase hover:bg-hm-red-hover disabled:opacity-50"
         >
           {venter ? 'Oppretter …' : 'Opprett bruker'}
         </button>
-        <button
-          type="button"
-          onClick={() => settÅpen(false)}
-          className="text-sm text-slate-600 dark:text-slate-400"
-        >
+        <button type="button" onClick={() => settÅpen(false)} className={KNAPP_SEKUNDÆR}>
           Lukk
         </button>
       </div>

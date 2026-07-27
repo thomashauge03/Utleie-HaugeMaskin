@@ -6,7 +6,7 @@ import { env } from '@/lib/env'
 import type { Kunde, Leie, Maskin } from '@/lib/types'
 import { KopierLenke } from '../maskiner/kopier-lenke'
 
-export const metadata: Metadata = { title: 'Kalender – Utleie' }
+export const metadata: Metadata = { title: 'Kalender – HM Utleie' }
 export const dynamic = 'force-dynamic'
 
 type Rad = Leie & { maskiner: Maskin | null; kunder: Kunde | null }
@@ -83,25 +83,28 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {MND[måned]} {år}
-        </h1>
+        <div>
+          <span className="hm-skrastrek mb-3" aria-hidden="true" />
+          <h1 className="hm-display text-3xl">
+            {MND[måned]} {år}
+          </h1>
+        </div>
         <div className="flex items-center gap-2 text-sm">
           <Link
             href={`/admin/kalender?ar=${forrige.getFullYear()}&mnd=${forrige.getMonth()}`}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 transition hover:bg-white dark:border-slate-700 dark:hover:bg-slate-900"
+            className="inline-flex min-h-[2.75rem] items-center border-2 border-[var(--kant)] bg-[var(--flate-opp)] px-3 text-xs font-bold tracking-wider uppercase transition-colors hover:border-[var(--kant-sterk)]"
           >
             ← Forrige
           </Link>
           <Link
             href="/admin/kalender"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 transition hover:bg-white dark:border-slate-700 dark:hover:bg-slate-900"
+            className="inline-flex min-h-[2.75rem] items-center border-2 border-[var(--kant)] bg-[var(--flate-opp)] px-3 text-xs font-bold tracking-wider uppercase transition-colors hover:border-[var(--kant-sterk)]"
           >
             I dag
           </Link>
           <Link
             href={`/admin/kalender?ar=${neste.getFullYear()}&mnd=${neste.getMonth()}`}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 transition hover:bg-white dark:border-slate-700 dark:hover:bg-slate-900"
+            className="inline-flex min-h-[2.75rem] items-center border-2 border-[var(--kant)] bg-[var(--flate-opp)] px-3 text-xs font-bold tracking-wider uppercase transition-colors hover:border-[var(--kant-sterk)]"
           >
             Neste →
           </Link>
@@ -109,17 +112,17 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
       </div>
 
       {rader.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+        <div className="border-2 border-dashed border-[var(--kant)] p-12 text-center text-sm text-[var(--blekk-svak)]">
           Ingen utleie denne måneden.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <div className="overflow-x-auto border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-4">
           <div className="min-w-[720px]">
             {/* Datolinje */}
             <div className="mb-2 flex gap-2">
               <div className="w-44 shrink-0" />
               <div
-                className="grid flex-1 gap-px text-center text-[10px] text-slate-400"
+                className="hm-tall grid flex-1 gap-px text-center text-[10px] text-[var(--blekk-svak)]"
                 style={{ gridTemplateColumns: `repeat(${antallDager}, minmax(0, 1fr))` }}
               >
                 {Array.from({ length: antallDager }, (_, i) => (
@@ -127,7 +130,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
                     key={i}
                     className={
                       erInneværende && i + 1 === iDag.getDate()
-                        ? 'font-bold text-slate-900 dark:text-slate-100'
+                        ? 'font-bold text-hm-red'
                         : ''
                     }
                   >
@@ -139,7 +142,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
 
             {rader.map(({ maskin, leier: maskinLeier }) => (
               <div key={maskin.id} className="mb-1.5 flex items-center gap-2">
-                <div className="w-44 shrink-0 truncate text-sm" title={maskin.navn}>
+                <div className="w-44 shrink-0 truncate text-sm font-semibold" title={maskin.navn}>
                   {maskin.navn}
                 </div>
                 <div
@@ -152,7 +155,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
                   {Array.from({ length: antallDager }, (_, i) => (
                     <div
                       key={i}
-                      className="h-8 rounded-sm bg-slate-100 dark:bg-slate-800"
+                      className="h-8 bg-[var(--flate-2)]"
                     />
                   ))}
 
@@ -169,19 +172,19 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
                       new Date(l.planlagt_slutt).getTime() < Date.now()
 
                     const farge = forfalt
-                      ? 'bg-red-500 hover:bg-red-600'
+                      ? 'bg-hm-red hover:bg-hm-red-hover'
                       : l.status === 'venter_godkjenning'
-                        ? 'bg-amber-500 hover:bg-amber-600'
+                        ? 'bg-hm-amber hover:brightness-90'
                         : l.status === 'aktiv'
-                          ? 'bg-green-600 hover:bg-green-700'
-                          : 'bg-slate-400 hover:bg-slate-500'
+                          ? 'bg-hm-green hover:brightness-90'
+                          : 'bg-hm-500 hover:bg-hm-700'
 
                     return (
                       <Link
                         key={l.id}
                         href={`/admin/leier/${l.id}`}
                         title={`${l.kunder?.navn ?? ''} · ${l.referanse}`}
-                        className={`absolute top-0 flex h-8 items-center overflow-hidden rounded-sm px-2 text-[11px] font-medium text-white transition ${farge}`}
+                        className={`absolute top-0 flex h-8 items-center overflow-hidden border-2 border-[var(--flate-opp)] px-2 text-[11px] font-bold text-white transition ${farge}`}
                         style={{
                           gridColumn: `${start} / ${slutt + 1}`,
                           left: `${((start - 1) / antallDager) * 100}%`,
@@ -199,28 +202,28 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
-        <Prikk farge="bg-green-600" tekst="Aktiv" />
-        <Prikk farge="bg-red-500" tekst="Forfalt" />
-        <Prikk farge="bg-amber-500" tekst="Venter godkjenning" />
-        <Prikk farge="bg-slate-400" tekst="Avsluttet" />
+      <div className="flex flex-wrap items-center gap-4 text-xs font-bold tracking-wider text-[var(--blekk-svak)] uppercase">
+        <Prikk farge="bg-hm-green" tekst="Aktiv" />
+        <Prikk farge="bg-hm-red" tekst="Forfalt" />
+        <Prikk farge="bg-hm-amber" tekst="Venter godkjenning" />
+        <Prikk farge="bg-hm-500" tekst="Avsluttet" />
       </div>
 
       {icalUrl && (
-        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-          <h2 className="font-medium">Abonner i din egen kalender</h2>
-          <p className="mt-1 mb-3 text-sm text-slate-600 dark:text-slate-400">
+        <div className="border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-5">
+          <h2 className="hm-display text-xl">Abonner i din egen kalender</h2>
+          <p className="mt-1 mb-3 text-sm text-[var(--blekk-svak)]">
             Legg denne lenken til som kalenderabonnement i Google Kalender,
             Outlook eller Apple Kalender, så dukker alle utleier opp der du
             allerede holder til – også på mobil.
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <code className="rounded bg-slate-100 px-2 py-1 text-xs break-all dark:bg-slate-800">
+            <code className="border-2 border-[var(--kant)] bg-[var(--flate-2)] px-2 py-1 font-mono text-xs break-all">
               {icalUrl}
             </code>
             <KopierLenke url={icalUrl} etikett="Kopier" />
           </div>
-          <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-3 text-xs text-[var(--blekk-svak)]">
             Lenken inneholder kundenavn og telefonnummer. Del den kun internt.
           </p>
         </div>

@@ -5,41 +5,47 @@ import { loggInn, type LoggInnTilstand } from './actions'
 
 const start: LoggInnTilstand = {}
 
+// Innloggingskortet står alltid på hvit flate, også i mørk modus, så
+// feltene er låst til lyse farger her framfor å bruke temavariablene.
+const felt =
+  'w-full border-2 border-hm-200 bg-white px-3.5 py-3 text-base text-hm-black outline-none transition-colors focus:border-hm-red'
+
 export function LoggInnSkjema() {
   const [tilstand, handling, venter] = useActionState(loggInn, start)
 
   return (
     <form action={handling} className="space-y-4">
-      <div>
-        <label htmlFor="epost" className="mb-1 block text-sm font-medium">
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-bold tracking-widest text-hm-500 uppercase">
           E-post
-        </label>
+        </span>
         <input
-          id="epost"
           name="epost"
           type="email"
           autoComplete="username"
           required
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:focus:border-slate-400"
+          className={felt}
         />
-      </div>
+      </label>
 
-      <div>
-        <label htmlFor="passord" className="mb-1 block text-sm font-medium">
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-bold tracking-widest text-hm-500 uppercase">
           Passord
-        </label>
+        </span>
         <input
-          id="passord"
           name="passord"
           type="password"
           autoComplete="current-password"
           required
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:focus:border-slate-400"
+          className={felt}
         />
-      </div>
+      </label>
 
       {tilstand.feil && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p
+          role="alert"
+          className="border-l-4 border-hm-red bg-hm-red/10 p-3 text-sm font-semibold text-hm-red-ink"
+        >
           {tilstand.feil}
         </p>
       )}
@@ -47,7 +53,7 @@ export function LoggInnSkjema() {
       <button
         type="submit"
         disabled={venter}
-        className="w-full rounded-lg bg-slate-900 px-4 py-2.5 font-medium text-white transition hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+        className="hm-trykk inline-flex min-h-[3.25rem] w-full items-center justify-center border-2 border-hm-black bg-hm-red px-6 text-base font-bold tracking-wide text-white uppercase shadow-[4px_4px_0_0_var(--color-hm-black)] hover:bg-hm-red-hover disabled:opacity-50"
       >
         {venter ? 'Logger inn …' : 'Logg inn'}
       </button>

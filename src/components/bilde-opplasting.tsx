@@ -1,8 +1,9 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import imageCompression from 'browser-image-compression'
 import { lagNettleserKlient } from '@/lib/supabase/client'
+import { lagreBildeSti, lesBildeSti } from '@/lib/kladd'
 import { ETIKETT } from '@/components/ui'
 
 type Status = 'tom' | 'jobber' | 'ferdig' | 'feil'
@@ -11,6 +12,8 @@ type Props = {
   type: 'henting' | 'levering'
   etikett: string
   hjelpetekst?: string
+  /** Slås mellomlagring på, overlever bildet at kunden forlater siden. */
+  kladdNøkkel?: string
 }
 
 /**
@@ -21,13 +24,32 @@ type Props = {
  * filsti å forholde seg til – aldri selve fila. Se docs/TEKNISK-PLAN.md
  * pkt. 9 om hvorfor opplastingen går utenom serveren.
  */
-export function BildeOpplasting({ type, etikett, hjelpetekst }: Props) {
+export function BildeOpplasting({
+  type,
+  etikett,
+  hjelpetekst,
+  kladdNøkkel,
+}: Props) {
   const [status, settStatus] = useState<Status>('tom')
   const [sti, settSti] = useState('')
   const [forhåndsvisning, settForhåndsvisning] = useState<string | null>(null)
   const [feilmelding, settFeilmelding] = useState('')
   const [posisjon, settPosisjon] = useState<GeolocationCoordinates | null>(null)
   const filvelger = useRef<HTMLInputElement>(null)
+
+  /*
+   * Bildet ligger allerede i Storage, så det er nok å hente fram stien.
+   * Miniatyrbildet er borte – blob-URL-en døde med forrige sidevisning –
+   * men kunden slipper å ta bildet på nytt, som er det som betyr noe.
+   */
+  useEffect(() => {
+    if (!kladdNøkkel) return
+    const lagret = lesBildeSti(kladdNøkkel)
+    if (lagret) {
+      settSti(lagret)
+      settStatus('ferdig')
+    }
+  }, [kladdNøkkel])
 
   /** Posisjon er frivillig – leien skal fungere om kunden sier nei. */
   function spørOmPosisjon() {
@@ -70,6 +92,7 @@ export function BildeOpplasting({ type, etikett, hjelpetekst }: Props) {
       settSti(målSti)
       settForhåndsvisning(URL.createObjectURL(komprimert))
       settStatus('ferdig')
+      if (kladdNøkkel) lagreBildeSti(kladdNøkkel, målSti)
     } catch (e) {
       settStatus('feil')
       settFeilmelding(
@@ -103,24 +126,36 @@ export function BildeOpplasting({ type, etikett, hjelpetekst }: Props) {
         }}
       />
 
-      {status === 'ferdig' && forhåndsvisning ? (
+      {status === 'ferdig' ? (
         <div>
-          <div className="relative border-2 border-[var(--kant-sterk)]">
-            {/* Lokal blob-URL – next/image gir ingenting her. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={forhåndsvisning}
-              alt="Bildet du tok av maskinen"
-              className="block max-h-64 w-full object-cover"
-            />
-            <span className="absolute top-0 left-0 bg-hm-green px-2 py-1 text-[11px] font-bold tracking-wider text-white uppercase">
-              ✓ Lagret
-            </span>
-          </div>
+          {forhåndsvisning ? (
+            <div className="relative border-2 border-[var(--kant-sterk)]">
+              {/* Lokal blob-URL – next/image gir ingenting her. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={forhåndsvisning}
+                alt="Bildet du tok av maskinen"
+                className="block max-h-64 w-full object-cover"
+              />
+              <span className="absolute top-0 left-0 bg-hm-green px-2 py-1 text-[11px] font-bold tracking-wider text-white uppercase">
+                ✓ Lagret
+              </span>
+            </div>
+          ) : (
+            /* Gjenopprettet kladd: stien finnes, men miniatyrbildet er borte. */
+            <div className="flex items-center gap-3 border-2 border-hm-green bg-[var(--flate-2)] p-4">
+              <span className="bg-hm-green px-2 py-1 text-[11px] font-bold tracking-wider text-white uppercase">
+                ✓ Lagret
+              </span>
+              <p className="text-sm text-[var(--blekk-svak)]">
+                Bildet du tok er tatt vare på.
+              </p>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => filvelger.current?.click()}
-            className="mt-2 text-sm font-semibold text-hm-red-ink underline underline-offset-4"
+            className="mt-2 inline-flex min-h-[2.75rem] items-center text-sm font-semibold text-hm-red-ink underline underline-offset-4"
           >
             Ta nytt bilde
           </button>

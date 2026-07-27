@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { hentEnhetsId } from '@/lib/enhet'
 import type { Leie, Maskin } from '@/lib/types'
 import { HMLogo } from '@/components/hm-logo'
+import { TømBildekladd } from '@/components/tom-bildekladd'
 import { KNAPP_PRIMÆR, Merke } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
@@ -44,6 +45,9 @@ export default async function LeieSide(props: PageProps<'/leie/[ref]'>) {
 
   return (
     <>
+      {/* Bildet er nå knyttet til leien – mellomlagringen skal ikke leve videre. */}
+      <TømBildekladd />
+
       <header className="relative overflow-hidden bg-hm-black px-5 pt-6 pb-8 text-white">
         <div
           aria-hidden="true"

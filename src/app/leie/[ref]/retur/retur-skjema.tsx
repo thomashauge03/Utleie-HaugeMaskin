@@ -22,6 +22,7 @@ export function ReturSkjema({
 
       <BildeOpplasting
         type="levering"
+        kladdNøkkel={`retur:${referanse}`}
         etikett="Bilde av maskinen"
         hjelpetekst={`Ta bilde av ${maskinNavn} slik den står nå. Bildet er påkrevd for å avslutte leien.`}
       />

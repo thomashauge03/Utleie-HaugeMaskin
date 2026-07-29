@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { KNAPP_LITEN, Merke, Seksjonstittel } from '@/components/ui'
-import { BekreftKnapp } from '@/components/bekreft-knapp'
 import { NyBruker } from './ny-bruker'
 import { settAktiv } from './actions'
 
@@ -65,11 +64,9 @@ export default async function BrukereSide() {
                 <td className="px-4 py-3 text-right">
                   {b.id !== meg.id && (
                     <form action={settAktiv.bind(null, b.id, !b.aktiv)}>
-                      {b.aktiv ? (
-                        <BekreftKnapp etikett="Deaktiver" bekreft="Bekreft" fare />
-                      ) : (
-                        <button className={KNAPP_LITEN}>Aktiver</button>
-                      )}
+                      <button className={KNAPP_LITEN}>
+                        {b.aktiv ? 'Deaktiver' : 'Aktiver'}
+                      </button>
                     </form>
                   )}
                 </td>

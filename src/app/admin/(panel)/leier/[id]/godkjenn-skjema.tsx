@@ -1,43 +1,8 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState } from 'react'
 import { ETIKETT, FELT, KNAPP_SEKUNDÆR } from '@/components/ui'
 import { godkjennLeie, sendTilbake, type GodkjennTilstand } from './actions'
-
-/**
- * «Send tilbake» gjenåpner en innlevering og starter faktureringsklokka
- * igjen, så den krever et ekstra bekreftelsestrykk.
- */
-function SendTilbakeKnapp() {
-  const [bekrefter, settBekrefter] = useState(false)
-
-  if (!bekrefter) {
-    return (
-      <button
-        type="button"
-        onClick={() => settBekrefter(true)}
-        className={KNAPP_SEKUNDÆR}
-      >
-        Send tilbake
-      </button>
-    )
-  }
-
-  return (
-    <span className="flex items-center gap-2">
-      <button type="submit" className={`${KNAPP_SEKUNDÆR} border-hm-red text-hm-red-ink`}>
-        Bekreft – klokka starter
-      </button>
-      <button
-        type="button"
-        onClick={() => settBekrefter(false)}
-        className="text-sm text-[var(--blekk-svak)]"
-      >
-        Avbryt
-      </button>
-    </span>
-  )
-}
 
 const start: GodkjennTilstand = {}
 
@@ -146,7 +111,9 @@ export function GodkjennSkjema({
               placeholder="Hvorfor sendes den tilbake?"
               className={`${FELT} flex-1 min-w-[12rem]`}
             />
-            <SendTilbakeKnapp />
+            <button type="submit" className={KNAPP_SEKUNDÆR}>
+              Send tilbake
+            </button>
           </div>
         </form>
       </div>

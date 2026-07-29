@@ -1,7 +1,7 @@
 'use client'
 
-import { useActionState, useState } from 'react'
-import { ETIKETT, FELT, KNAPP_LITEN } from '@/components/ui'
+import { useActionState } from 'react'
+import { ETIKETT, FELT } from '@/components/ui'
 import type { Maskin } from '@/lib/types'
 import { deaktiverMaskin, lagreMaskin, type MaskinTilstand } from './actions'
 
@@ -143,8 +143,6 @@ export function RedigerSkjema({
 }
 
 function TaUtAvBruk({ maskinId, utleid }: { maskinId: string; utleid: boolean }) {
-  const [bekrefter, settBekrefter] = useState(false)
-
   if (utleid) {
     return (
       <span className="text-xs text-[var(--blekk-svak)]">
@@ -153,38 +151,16 @@ function TaUtAvBruk({ maskinId, utleid }: { maskinId: string; utleid: boolean })
     )
   }
 
-  if (!bekrefter) {
-    return (
+  // Reversibelt: maskinen kan tas i bruk igjen, og historikken beholdes.
+  // Derfor ett trykk, ikke to.
+  return (
+    <form action={deaktiverMaskin.bind(null, maskinId)} className="ml-auto">
       <button
-        type="button"
-        onClick={() => settBekrefter(true)}
-        className="ml-auto text-sm font-semibold text-hm-red-ink underline underline-offset-4"
+        type="submit"
+        className="text-sm font-semibold text-hm-red-ink underline underline-offset-4"
       >
         Ta ut av bruk
       </button>
-    )
-  }
-
-  return (
-    <div className="ml-auto flex flex-wrap items-center gap-3">
-      <span className="text-xs text-[var(--blekk-svak)]">
-        Maskinen skjules, men historikken beholdes.
-      </span>
-      <form action={deaktiverMaskin.bind(null, maskinId)}>
-        <button
-          type="submit"
-          className={`${KNAPP_LITEN} border-hm-red bg-hm-red text-white`}
-        >
-          Bekreft
-        </button>
-      </form>
-      <button
-        type="button"
-        onClick={() => settBekrefter(false)}
-        className="text-sm text-[var(--blekk-svak)]"
-      >
-        Avbryt
-      </button>
-    </div>
+    </form>
   )
 }

@@ -74,7 +74,6 @@ export function Kategorier({ kategorier }: { kategorier: Kategori[] }) {
 
 function KategoriRad({ kategori }: { kategori: Kategori }) {
   const [redigerer, settRedigerer] = useState(false)
-  const [bekrefter, settBekrefter] = useState(false)
 
   if (redigerer) {
     return (
@@ -122,31 +121,16 @@ function KategoriRad({ kategori }: { kategori: Kategori }) {
           Endre navn
         </button>
 
-        {bekrefter ? (
-          <form action={slettKategori.bind(null, kategori.id)} className="flex gap-2">
-            <button
-              type="submit"
-              className={`${KNAPP_LITEN} border-hm-red bg-hm-red text-white`}
-            >
-              Bekreft sletting
-            </button>
-            <button
-              type="button"
-              onClick={() => settBekrefter(false)}
-              className="text-sm text-[var(--blekk-svak)]"
-            >
-              Avbryt
-            </button>
-          </form>
-        ) : (
+        {/* Reversibelt: kategorien kan legges til igjen, og maskinene
+            beholder teksten sin. Derfor ett trykk. */}
+        <form action={slettKategori.bind(null, kategori.id)}>
           <button
-            type="button"
-            onClick={() => settBekrefter(true)}
+            type="submit"
             className={`${KNAPP_LITEN} border-hm-red text-hm-red-ink`}
           >
             Slett
           </button>
-        )}
+        </form>
       </div>
     </div>
   )

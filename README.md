@@ -62,6 +62,32 @@ supabase/migrations/   Databaseskjema
 docs/                  Teknisk plan
 ```
 
+## Slå på e-postvarsling (utsatt – gjøres når det passer)
+
+Varslingskoden ligger klar, men er ikke konfigurert. Uten oppsettet
+under laster alt som normalt; varsler hoppes stille over, og
+varslingsskjemaet i innstillingene gir feilmelding ved lagring.
+
+1. **Kjør migrasjonen** `supabase/migrations/0003_varsling.sql` i
+   Supabase SQL Editor. (0002 må være kjørt først – den er kjørt.)
+2. **Resend:** verifiser et subdomene under Domains, f.eks.
+   `send.techauge.no` – subdomene, så SPF-en til vanlig e-post ikke
+   berøres. Lag en API-nøkkel. Gratisplanen har 1 domene og
+   3 000 e-poster/mnd, som holder lenge her.
+3. **Tre variabler i Vercel** (Settings → Environment Variables):
+   ```
+   RESEND_API_KEY=re_...
+   VARSEL_FRA=utleie@send.techauge.no
+   CRON_SECRET=<tilfeldig streng, f.eks. openssl rand -hex 32>
+   ```
+4. **Redeploy**, og sett mottakere under `/admin/innstillinger`.
+   Test med «Send forfallsvarsel nå» – utfallet vises i loggen på
+   samme side.
+
+Merk: uten verifisert domene (kun `onboarding@resend.dev`) kan Resend
+bare sende til kontoens egen adresse. Kunder får ingenting, og
+feilene vises kun i e-postloggen.
+
 ## Sikkerhet
 
 `SUPABASE_SERVICE_ROLE_KEY` omgår all radsikkerhet og må aldri havne i

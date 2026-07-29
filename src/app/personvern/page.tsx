@@ -1,25 +1,44 @@
 import type { Metadata } from 'next'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 
-export const metadata: Metadata = { title: 'Personvern – Utleie' }
+export const metadata: Metadata = { title: 'Personvern – HM Utleie' }
+export const dynamic = 'force-dynamic'
 
-export default function PersonvernSide() {
+export default async function PersonvernSide() {
+  const { data } = await supabaseAdmin
+    .from('innstillinger')
+    .select('firmanavn, varsel_epost')
+    .maybeSingle()
+
+  const firma = data?.firmanavn?.trim() || 'Hauge Maskin'
+  const kontakt = data?.varsel_epost?.trim()
+
   return (
     <main className="mx-auto w-full max-w-2xl px-5 py-10">
       <h1 className="hm-display text-3xl">Personvernerklæring</h1>
-
-      <div className="mt-6 border-l-4 border-hm-amber bg-[var(--flate-2)] p-4 text-sm">
-        <p className="hm-display text-lg">Utkast – firmanavn og kontaktinfo mangler</p>
-        <p className="mt-1 text-[var(--blekk-svak)]">
-          Erklæringen må fylles ut med firmaets navn, organisasjonsnummer og
-          kontaktadresse før systemet tas i bruk mot kunder.
-        </p>
-      </div>
+      <p className="mt-2 text-sm text-[var(--blekk-svak)]">
+        For utleietjenesten til {firma}.
+      </p>
 
       <div className="mt-8 max-w-[68ch] space-y-6 text-sm leading-relaxed">
         <Avsnitt tittel="Hvem er behandlingsansvarlig">
-          [Firmanavn AS, org.nr. ..., adresse, kontakt-e-post] er ansvarlig for
-          behandlingen av personopplysningene som samles inn gjennom denne
-          tjenesten.
+          {firma} er ansvarlig for behandlingen av personopplysningene som
+          samles inn gjennom denne tjenesten. Har du spørsmål om personvern,
+          {kontakt ? (
+            <>
+              {' '}
+              ta kontakt på{' '}
+              <a
+                href={`mailto:${kontakt}`}
+                className="font-semibold text-hm-red-ink underline underline-offset-2"
+              >
+                {kontakt}
+              </a>
+              .
+            </>
+          ) : (
+            ' ta kontakt med utleier.'
+          )}
         </Avsnitt>
 
         <Avsnitt tittel="Hvilke opplysninger vi behandler">
@@ -53,9 +72,23 @@ export default function PersonvernSide() {
         </Avsnitt>
 
         <Avsnitt tittel="Dine rettigheter">
-          Du kan be om innsyn i opplysningene vi har om deg, få rettet feil,
-          og be om sletting av opplysninger vi ikke er lovpålagt å beholde.
-          Ta kontakt på [kontakt-e-post]. Du kan også klage til Datatilsynet.
+          Du kan be om innsyn i opplysningene vi har om deg, få rettet feil, og
+          be om sletting av opplysninger vi ikke er lovpålagt å beholde.{' '}
+          {kontakt ? (
+            <>
+              Ta kontakt på{' '}
+              <a
+                href={`mailto:${kontakt}`}
+                className="font-semibold text-hm-red-ink underline underline-offset-2"
+              >
+                {kontakt}
+              </a>
+              .
+            </>
+          ) : (
+            'Ta kontakt med utleier.'
+          )}{' '}
+          Du kan også klage til Datatilsynet.
         </Avsnitt>
 
         <Avsnitt tittel="Hvem har tilgang">

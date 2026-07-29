@@ -17,7 +17,7 @@ export default async function PanelLayout({
   return (
     <div className="flex min-h-dvh flex-col bg-[var(--flate-2)]">
       <header className="bg-hm-black text-white">
-        <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
+        <div className="mx-auto flex max-w-[1600px] items-center gap-4 px-4 py-3 xl:px-8">
           <Link href="/admin" aria-label="Til oversikten">
             <HMLogo størrelse="sm" />
           </Link>
@@ -43,7 +43,10 @@ export default async function PanelLayout({
         <PanelMeny />
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
+      {/* Bredt, fordi tabeller og kalender trenger plassen på storskjerm. */}
+      <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-8 xl:px-8">
+        {children}
+      </main>
     </div>
   )
 }

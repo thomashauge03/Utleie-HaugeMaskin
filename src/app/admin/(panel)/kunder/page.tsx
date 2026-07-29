@@ -81,7 +81,6 @@ export default async function KunderSide(props: PageProps<'/admin/kunder'>) {
       <Søkefelt
         verdi={søk}
         plassholder="Søk på navn, telefon, e-post eller adresse"
-        skjulteFelt={{ filter: valgt !== 'alle' ? valgt : undefined }}
       />
 
       <div className="flex flex-wrap gap-2">

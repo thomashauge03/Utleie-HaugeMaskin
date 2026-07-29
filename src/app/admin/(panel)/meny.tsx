@@ -22,7 +22,7 @@ export function PanelMeny() {
 
   return (
     <nav className="border-t border-white/10">
-      <ul className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-2">
+      <ul className="mx-auto flex max-w-[1600px] gap-1 overflow-x-auto px-2 xl:px-6">
         {lenker.map((l) => {
           const aktiv =
             l.href === '/admin' ? sti === '/admin' : sti.startsWith(l.href)

@@ -25,6 +25,7 @@ const FILTRE = [
   { verdi: 'forfalt', tekst: 'Forfalt' },
   { verdi: 'venter_godkjenning', tekst: 'Venter godkjenning' },
   { verdi: 'ufakturert', tekst: 'Ikke fakturert' },
+  { verdi: 'fakturert', tekst: 'Fakturert' },
   { verdi: 'avsluttet', tekst: 'Avsluttet' },
 ] as const
 
@@ -53,6 +54,8 @@ export default async function LeierSide(props: PageProps<'/admin/leier'>) {
     spørring = spørring.eq('status', 'aktiv').lt('planlagt_slutt', new Date().toISOString())
   } else if (valgt === 'ufakturert') {
     spørring = spørring.eq('status', 'avsluttet').eq('fakturert', false)
+  } else if (valgt === 'fakturert') {
+    spørring = spørring.eq('fakturert', true)
   }
 
   const { data } = await spørring
@@ -105,7 +108,6 @@ export default async function LeierSide(props: PageProps<'/admin/leier'>) {
       <Søkefelt
         verdi={søk}
         plassholder="Søk på navn, referanse, maskin eller telefon"
-        skjulteFelt={{ status: valgt !== 'alle' ? valgt : undefined }}
       />
 
       <div className="flex flex-wrap gap-2">

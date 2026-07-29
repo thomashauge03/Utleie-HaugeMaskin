@@ -15,25 +15,24 @@ const MND = [
   'januar', 'februar', 'mars', 'april', 'mai', 'juni',
   'juli', 'august', 'september', 'oktober', 'november', 'desember',
 ]
-const UKEDAG = ['S', 'M', 'T', 'O', 'T', 'F', 'L']
+// Uka starter på mandag i Norge.
+const UKEDAGER = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag', 'Søndag']
 
-/** Dagnummer i måneden, klemt inn i [1, antallDager]. */
-function klem(d: Date, år: number, måned: number, antallDager: number) {
-  if (d.getFullYear() < år || (d.getFullYear() === år && d.getMonth() < måned)) return 1
-  if (d.getFullYear() > år || (d.getFullYear() === år && d.getMonth() > måned)) return antallDager
-  return d.getDate()
-}
+/** Date.getDay() har søndag som 0. Vi vil ha mandag som 0. */
+const ukedagIndeks = (d: Date) => (d.getDay() + 6) % 7
+
+const somDag = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
 
 function erForfalt(l: Leie) {
   return l.status === 'aktiv' && new Date(l.planlagt_slutt).getTime() < Date.now()
 }
 
-/** Fargen brukes både i tidslinja og i lista, så de leses som det samme. */
+/** Farge per status. Brukes både i rutenettet og i lista under. */
 function farge(l: Leie) {
-  if (erForfalt(l)) return 'bg-hm-red'
-  if (l.status === 'venter_godkjenning') return 'bg-hm-amber'
-  if (l.status === 'aktiv') return 'bg-hm-green'
-  return 'bg-hm-500'
+  if (erForfalt(l)) return 'bg-hm-red text-white'
+  if (l.status === 'venter_godkjenning') return 'bg-hm-amber text-white'
+  if (l.status === 'aktiv') return 'bg-hm-green text-white'
+  return 'bg-hm-500 text-white'
 }
 
 const kortDato = (iso: string) =>
@@ -47,7 +46,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
   const år = Number(sp.ar) || nå.getFullYear()
   const måned = sp.mnd !== undefined ? Number(sp.mnd) : nå.getMonth()
 
-  const førsteDag = new Date(år, måned, 1)
+  const førsteIMnd = new Date(år, måned, 1)
   const antallDager = new Date(år, måned + 1, 0).getDate()
 
   const supabase = await lagServerKlient()
@@ -57,28 +56,49 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
     .lte('start_tid', new Date(år, måned + 1, 0, 23, 59, 59).toISOString())
     .order('start_tid')
 
-  const leier = ((data ?? []) as Rad[]).filter(
-    (l) => new Date(l.slutt_tid ?? l.planlagt_slutt) >= førsteDag,
-  )
+  // Aktive leier regnes som pågående til i dag, ikke bare til avtalt dato.
+  const leier = ((data ?? []) as Rad[]).filter((l) => {
+    const slutt =
+      l.status === 'aktiv'
+        ? new Date(Math.max(new Date(l.planlagt_slutt).getTime(), Date.now()))
+        : new Date(l.slutt_tid ?? l.planlagt_slutt)
+    return slutt >= førsteIMnd
+  })
 
-  const perMaskin = new Map<string, { maskin: Maskin; leier: Rad[] }>()
-  for (const l of leier) {
-    if (!l.maskiner) continue
-    const e = perMaskin.get(l.maskiner.id)
-    if (e) e.leier.push(l)
-    else perMaskin.set(l.maskiner.id, { maskin: l.maskiner, leier: [l] })
-  }
-  const rader = [...perMaskin.values()].sort((a, b) =>
-    a.maskin.navn.localeCompare(b.maskin.navn, 'nb'),
-  )
+  /*
+   * Rutenettet starter på mandagen i uka der den 1. faller, og fylles
+   * ut til hele uker. Da får hver kolonne alltid samme ukedag.
+   */
+  const førFørste = ukedagIndeks(førsteIMnd)
+  const totaltRuter = Math.ceil((førFørste + antallDager) / 7) * 7
 
+  const ruter = Array.from({ length: totaltRuter }, (_, i) => {
+    const d = new Date(år, måned, i - førFørste + 1)
+    const iMåneden = d.getMonth() === måned && d.getFullYear() === år
+    const tid = somDag(d)
+
+    const påDagen = leier.filter((l) => {
+      const fra = somDag(new Date(l.start_tid))
+      /*
+       * En aktiv leie står ute til den faktisk leveres. Stoppet vi på
+       * avtalt dato, ville nettopp de dagene maskinen er på overtid
+       * mangle i kalenderen – som er de dagene man trenger å se.
+       */
+      const avtalt = somDag(new Date(l.planlagt_slutt))
+      const til =
+        l.status === 'aktiv'
+          ? Math.max(avtalt, somDag(new Date()))
+          : somDag(new Date(l.slutt_tid ?? l.planlagt_slutt))
+      return tid >= fra && tid <= til
+    })
+
+    return { dato: d, iMåneden, leier: påDagen }
+  })
+
+  const iDag = somDag(new Date())
   const forrige = new Date(år, måned - 1, 1)
   const neste = new Date(år, måned + 1, 1)
-  const iDag = new Date()
-  const dagIDag =
-    iDag.getFullYear() === år && iDag.getMonth() === måned ? iDag.getDate() : null
 
-  const kolonner = `repeat(${antallDager}, minmax(0, 1fr))`
   const navLenke =
     'inline-flex min-h-[2.75rem] items-center border-2 border-[var(--kant)] bg-[var(--flate-opp)] px-3 text-xs font-bold tracking-wider uppercase transition-colors hover:border-[var(--kant-sterk)]'
 
@@ -86,7 +106,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <Seksjonstittel
-          under={`${leier.length} ${leier.length === 1 ? 'leie' : 'leier'} i denne måneden`}
+          under={`${leier.length} ${leier.length === 1 ? 'leie' : 'leier'} berører denne måneden`}
         >
           {`${MND[måned]} ${år}`}
         </Seksjonstittel>
@@ -109,177 +129,153 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
         </div>
       </div>
 
-      {rader.length === 0 ? (
+      {/* ── Månedsrutenett ────────────────────────────────── */}
+      <div className="overflow-x-auto">
+        <div className="min-w-[900px]">
+          <div className="grid grid-cols-7 gap-px border-2 border-[var(--kant-sterk)] bg-[var(--kant-sterk)]">
+            {UKEDAGER.map((d) => (
+              <div
+                key={d}
+                className="bg-hm-black px-2 py-2 text-center text-[11px] font-bold tracking-widest text-white uppercase"
+              >
+                {d}
+              </div>
+            ))}
+
+            {ruter.map(({ dato, iMåneden, leier: påDagen }, i) => {
+              const erIDag = somDag(dato) === iDag
+              const helg = ukedagIndeks(dato) >= 5
+
+              return (
+                <div
+                  key={i}
+                  className={`min-h-[7.5rem] p-1.5 ${
+                    !iMåneden
+                      ? 'bg-[var(--flate-2)] opacity-45'
+                      : erIDag
+                        ? 'bg-hm-red/10'
+                        : helg
+                          ? 'bg-[var(--flate-2)]'
+                          : 'bg-[var(--flate-opp)]'
+                  }`}
+                >
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span
+                      className={`hm-tall inline-flex size-6 items-center justify-center text-sm font-bold ${
+                        erIDag ? 'bg-hm-red text-white' : ''
+                      }`}
+                    >
+                      {dato.getDate()}
+                    </span>
+                    {påDagen.length > 0 && (
+                      <span className="hm-tall text-[10px] font-bold text-[var(--blekk-svak)]">
+                        {påDagen.length}
+                      </span>
+                    )}
+                  </div>
+
+                  <ul className="space-y-1">
+                    {påDagen.slice(0, 3).map((l) => {
+                      // Er dagen etter avtalt levering, står maskinen på overtid.
+                      const påOvertid =
+                        l.status === 'aktiv' &&
+                        somDag(dato) > somDag(new Date(l.planlagt_slutt))
+
+                      return (
+                        <li key={l.id}>
+                          <Link
+                            href={`/admin/leier/${l.id}`}
+                            title={`${l.maskiner?.navn} · ${l.kunder?.navn ?? ''} · ${kortDato(l.start_tid)}–${kortDato(l.slutt_tid ?? l.planlagt_slutt)}`}
+                            className={`block truncate border border-[var(--kant-sterk)] px-1.5 py-1 text-[11px] leading-tight font-bold ${farge(l)}`}
+                          >
+                            {påOvertid && '⚠ '}
+                            {l.maskiner?.navn ?? l.referanse}
+                          </Link>
+                        </li>
+                      )
+                    })}
+
+                    {påDagen.length > 3 && (
+                      <li className="px-1 text-[10px] font-bold text-[var(--blekk-svak)]">
+                        +{påDagen.length - 3} til
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-4 text-xs font-bold tracking-wider text-[var(--blekk-svak)] uppercase">
+        <Prikk farge="bg-hm-green" tekst="Utleid" />
+        <Prikk farge="bg-hm-red" tekst="Forfalt · ⚠ = dag på overtid" />
+        <Prikk farge="bg-hm-amber" tekst="Venter godkjenning" />
+        <Prikk farge="bg-hm-500" tekst="Avsluttet" />
+      </div>
+
+      {/* ── Én og én, med datoene skrevet ut ──────────────── */}
+      {leier.length === 0 ? (
         <TomTilstand tittel="Ingen utleie denne måneden">
           Bla til en annen måned, eller vent til neste maskin blir skannet.
         </TomTilstand>
       ) : (
-        <>
-          {/* ── Tidslinje ─────────────────────────────────── */}
-          <div className="overflow-x-auto border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-4">
-            <div className="min-w-[780px]">
-              {/* Ukedag over dagnummer – uten den er det umulig å se
-                  hvilken dato en stolpe faktisk gjelder. */}
-              <div className="mb-1.5 flex gap-3">
-                <div className="w-48 shrink-0" />
-                <div
-                  className="hm-tall grid flex-1 gap-px text-center"
-                  style={{ gridTemplateColumns: kolonner }}
-                >
-                  {Array.from({ length: antallDager }, (_, i) => {
-                    const d = new Date(år, måned, i + 1)
-                    const helg = d.getDay() === 0 || d.getDay() === 6
-                    const idag = dagIDag === i + 1
-                    return (
-                      <div
-                        key={i}
-                        className={
-                          idag
-                            ? 'text-hm-red'
-                            : helg
-                              ? 'text-[var(--blekk-svak)]'
-                              : ''
+        <div>
+          <h2 className="hm-display mb-1 text-2xl">Leier i {MND[måned]}</h2>
+          <p className="mb-4 text-sm text-[var(--blekk-svak)]">
+            Samme utleie som i rutenettet, med datoene skrevet ut.
+          </p>
+
+          <ol className="space-y-3">
+            {[...leier]
+              .sort((a, b) => a.start_tid.localeCompare(b.start_tid))
+              .map((l) => (
+                <li key={l.id}>
+                  <Link
+                    href={`/admin/leier/${l.id}`}
+                    className="hm-trykk hm-kant-skygge-sm flex flex-wrap items-center gap-x-5 gap-y-3 border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-4"
+                  >
+                    <span
+                      className={`hm-display hm-tall shrink-0 border-2 border-[var(--kant-sterk)] px-3 py-1.5 text-base whitespace-nowrap ${farge(l)}`}
+                    >
+                      {kortDato(l.start_tid)} →{' '}
+                      {l.slutt_tid ? kortDato(l.slutt_tid) : kortDato(l.planlagt_slutt)}
+                      {erForfalt(l) && ' ⚠'}
+                    </span>
+
+                    <span className="min-w-0 flex-1">
+                      <span className="hm-display block truncate text-lg">
+                        {l.maskiner?.navn ?? 'Ukjent maskin'}
+                      </span>
+                      <span className="block text-sm text-[var(--blekk-svak)]">
+                        {l.kunder?.navn ?? '–'}
+                        {l.kunder && ` · ${visTelefon(l.kunder.telefon)}`}
+                      </span>
+                    </span>
+
+                    <span className="flex flex-wrap items-center gap-3">
+                      {erForfalt(l) && <Merke type="rød">Forfalt</Merke>}
+                      <Merke
+                        type={
+                          l.status === 'aktiv'
+                            ? 'grønn'
+                            : l.status === 'venter_godkjenning'
+                              ? 'gul'
+                              : 'nøytral'
                         }
                       >
-                        <div className="text-[9px] leading-tight font-bold uppercase opacity-70">
-                          {UKEDAG[d.getDay()]}
-                        </div>
-                        <div className={`text-[11px] leading-tight ${idag ? 'font-bold' : ''}`}>
-                          {i + 1}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {rader.map(({ maskin, leier: maskinLeier }) => (
-                <div key={maskin.id} className="mb-1.5 flex items-center gap-3">
-                  <div
-                    className="w-48 shrink-0 truncate text-sm font-semibold"
-                    title={maskin.navn}
-                  >
-                    {maskin.navn}
-                  </div>
-
-                  <div className="relative flex-1">
-                    {/* Bakgrunn: én rute per dag. Helg og i dag markert. */}
-                    <div className="grid gap-px" style={{ gridTemplateColumns: kolonner }}>
-                      {Array.from({ length: antallDager }, (_, i) => {
-                        const d = new Date(år, måned, i + 1)
-                        const helg = d.getDay() === 0 || d.getDay() === 6
-                        return (
-                          <div
-                            key={i}
-                            className={`h-9 ${
-                              dagIDag === i + 1
-                                ? 'bg-hm-red/25'
-                                : helg
-                                  ? 'bg-[var(--kant)]'
-                                  : 'bg-[var(--flate-2)]'
-                            }`}
-                          />
-                        )
-                      })}
-                    </div>
-
-                    {/* Leiene i samme rutenett, lagt oppå bakgrunnen. */}
-                    <div
-                      className="pointer-events-none absolute inset-0 grid gap-px"
-                      style={{ gridTemplateColumns: kolonner }}
-                    >
-                      {maskinLeier.map((l) => {
-                        const fra = klem(new Date(l.start_tid), år, måned, antallDager)
-                        const til = klem(
-                          new Date(l.slutt_tid ?? l.planlagt_slutt),
-                          år,
-                          måned,
-                          antallDager,
-                        )
-                        return (
-                          <Link
-                            key={l.id}
-                            href={`/admin/leier/${l.id}`}
-                            title={`${maskin.navn} · ${l.kunder?.navn ?? ''} · ${kortDato(l.start_tid)}–${kortDato(l.slutt_tid ?? l.planlagt_slutt)}`}
-                            style={{ gridColumn: `${fra} / ${til + 1}` }}
-                            className={`pointer-events-auto flex h-9 items-center overflow-hidden border border-[var(--kant-sterk)] px-1.5 text-[11px] font-bold text-white ${farge(l)}`}
-                          >
-                            <span className="truncate">
-                              {l.kunder?.navn ?? l.referanse}
-                            </span>
-                          </Link>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
+                        {LEIE_STATUS_TEKST[l.status]}
+                      </Merke>
+                      <span className="hm-tall font-mono text-xs text-[var(--blekk-svak)]">
+                        {l.referanse}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
               ))}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4 text-xs font-bold tracking-wider text-[var(--blekk-svak)] uppercase">
-            <Prikk farge="bg-hm-green" tekst="Aktiv" />
-            <Prikk farge="bg-hm-red" tekst="Forfalt" />
-            <Prikk farge="bg-hm-amber" tekst="Venter godkjenning" />
-            <Prikk farge="bg-hm-500" tekst="Avsluttet" />
-            <Prikk farge="bg-[var(--kant)]" tekst="Helg" />
-          </div>
-
-          {/* ── Én og én, med datoene skrevet ut ──────────── */}
-          <div>
-            <h2 className="hm-display mb-1 text-2xl">Leier i {MND[måned]}</h2>
-            <p className="mb-4 text-sm text-[var(--blekk-svak)]">
-              Samme utleie som i tidslinja, men med datoene skrevet ut.
-            </p>
-
-            <ol className="space-y-3">
-              {[...leier]
-                .sort((a, b) => a.start_tid.localeCompare(b.start_tid))
-                .map((l) => (
-                  <li key={l.id}>
-                    <Link
-                      href={`/admin/leier/${l.id}`}
-                      className="hm-trykk hm-kant-skygge-sm flex flex-wrap items-center gap-x-5 gap-y-3 border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-4"
-                    >
-                      <span
-                        className={`hm-display hm-tall shrink-0 border-2 border-[var(--kant-sterk)] px-3 py-1.5 text-base whitespace-nowrap text-white ${farge(l)}`}
-                      >
-                        {kortDato(l.start_tid)} → {kortDato(l.slutt_tid ?? l.planlagt_slutt)}
-                      </span>
-
-                      <span className="min-w-0 flex-1">
-                        <span className="hm-display block truncate text-lg">
-                          {l.maskiner?.navn ?? 'Ukjent maskin'}
-                        </span>
-                        <span className="block text-sm text-[var(--blekk-svak)]">
-                          {l.kunder?.navn ?? '–'}
-                          {l.kunder && ` · ${visTelefon(l.kunder.telefon)}`}
-                        </span>
-                      </span>
-
-                      <span className="flex flex-wrap items-center gap-3">
-                        {erForfalt(l) && <Merke type="rød">Forfalt</Merke>}
-                        <Merke
-                          type={
-                            l.status === 'aktiv'
-                              ? 'grønn'
-                              : l.status === 'venter_godkjenning'
-                                ? 'gul'
-                                : 'nøytral'
-                          }
-                        >
-                          {LEIE_STATUS_TEKST[l.status]}
-                        </Merke>
-                        <span className="hm-tall font-mono text-xs text-[var(--blekk-svak)]">
-                          {l.referanse}
-                        </span>
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-            </ol>
-          </div>
-        </>
+          </ol>
+        </div>
       )}
     </div>
   )

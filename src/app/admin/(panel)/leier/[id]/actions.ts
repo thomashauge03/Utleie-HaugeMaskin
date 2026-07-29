@@ -97,6 +97,42 @@ export async function godkjennLeie(
 }
 
 /**
+ * Registrerer levering på kundens vegne.
+ *
+ * For de tilfellene der kunden ikke får det til selv – en eldre kunde
+ * uten smarttelefon, dårlig dekning på anlegget – kan admin avslutte en
+ * aktiv leie manuelt. Klokka stoppes nå, og leien går til
+ * godkjenning slik at admin setter døgn og beløp på vanlig måte. Det
+ * finnes ikke noe returbilde i dette tilfellet, så det noteres i loggen.
+ */
+export async function registrerLeveringManuelt(leieId: string) {
+  const admin = await krevAdmin()
+  const supabase = await lagServerKlient()
+
+  // `.eq('status','aktiv')` gjør det trygt om kunden rakk å levere selv i
+  // mellomtiden – da treffer vi ingen rad og gjør ingenting.
+  const { data: oppdatert } = await supabase
+    .from('leier')
+    .update({ status: 'venter_godkjenning', slutt_tid: new Date().toISOString() })
+    .eq('id', leieId)
+    .eq('status', 'aktiv')
+    .select('id')
+
+  if (!oppdatert?.length) return
+
+  await supabase.from('hendelser').insert({
+    leie_id: leieId,
+    type: 'levering_manuell',
+    beskrivelse: 'Levering registrert av admin på kundens vegne',
+    aktor: `admin:${admin.epost}`,
+  })
+
+  revalidatePath('/admin')
+  revalidatePath('/admin/leier')
+  revalidatePath(`/admin/leier/${leieId}`)
+}
+
+/**
  * Setter leien tilbake til aktiv. Eneste tilfellet dette trengs er at
  * maskinen ikke faktisk er levert – da skal klokka gå videre.
  */

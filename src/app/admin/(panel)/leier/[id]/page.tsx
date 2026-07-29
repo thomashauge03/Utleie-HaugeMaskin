@@ -9,6 +9,7 @@ import { dato, tid } from '@/lib/dato'
 import { LEIE_STATUS_TEKST, type Bilde, type Kunde, type Leie, type Maskin } from '@/lib/types'
 import { KNAPP_SEKUNDÆR, Kort, KortTittel, Merke } from '@/components/ui'
 import { GodkjennSkjema } from './godkjenn-skjema'
+import { ManuellLevering } from './manuell-levering'
 import { settFakturert } from './actions'
 
 export const metadata: Metadata = { title: 'Leie – HM Utleie' }
@@ -101,6 +102,8 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
           foreslattBelop={foreslattBelop}
         />
       )}
+
+      {leie.status === 'aktiv' && <ManuellLevering leieId={leie.id} />}
 
       <Kort>
         <KortTittel>Bilder</KortTittel>

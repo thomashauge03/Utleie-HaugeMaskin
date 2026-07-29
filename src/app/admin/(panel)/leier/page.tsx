@@ -181,11 +181,16 @@ export default async function LeierSide(props: PageProps<'/admin/leier'>) {
                       <Merke type={LEIE_MERKE[l.status]}>
                         {LEIE_STATUS_TEKST[l.status]}
                       </Merke>
-                      {l.status === 'avsluttet' && !l.fakturert && (
-                        <span className="text-[10px] font-bold tracking-wider text-hm-amber uppercase">
-                          Ikke fakturert
-                        </span>
-                      )}
+                      {l.status === 'avsluttet' &&
+                        (l.fakturert ? (
+                          <span className="text-[10px] font-bold tracking-wider text-hm-green uppercase">
+                            ✓ Fakturert
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold tracking-wider text-hm-amber uppercase">
+                            Ikke fakturert
+                          </span>
+                        ))}
                     </div>
                   </td>
                 </tr>

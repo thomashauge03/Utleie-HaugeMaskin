@@ -100,9 +100,10 @@ export default async function LeieSide(props: PageProps<'/leie/[ref]'>) {
         )}
 
         {leie.status === 'venter_godkjenning' && (
-          <Beskjed tittel="Levert – venter på godkjenning">
-            Leien ble avsluttet {tid(leie.slutt_tid ?? leie.start_tid)}. Utleier
-            ser over bildet og bekrefter. Du betaler ikke for ventetiden.
+          <Beskjed tittel="Takk for leveringen!" grønn>
+            Leveringen er registrert {tid(leie.slutt_tid ?? leie.start_tid)}, og
+            leien er avsluttet. Faktura sendes til deg. Du trenger ikke gjøre
+            noe mer.
           </Beskjed>
         )}
 

@@ -53,8 +53,8 @@ export function ReturSkjema({
       </button>
 
       <p className="text-center text-sm text-[var(--blekk-svak)]">
-        Leien stopper i det du trykker. Utleier ser over bildet etterpå — du
-        betaler ikke for ventetiden.
+        Leien stopper i det du trykker. Da er du ferdig — faktura sendes til
+        deg etterpå.
       </p>
     </form>
   )

@@ -223,9 +223,23 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
         <Kort>
           <KortTittel>Fakturagrunnlag</KortTittel>
           <div className="p-5">
+            <div className="mb-5 flex flex-wrap items-center gap-3">
+              <a
+                href={`/api/faktura/${leie.id}`}
+                className="hm-trykk hm-kant-skygge-sm inline-flex min-h-[3rem] items-center gap-2 border-2 border-[var(--kant-sterk)] bg-hm-red px-5 text-sm font-bold tracking-wide text-white uppercase hover:bg-hm-red-hover"
+              >
+                <LastNed />
+                Last ned PDF
+              </a>
+              <span className="text-xs text-[var(--blekk-svak)]">
+                Med logo, kundeopplysninger og begge bildene — klar som vedlegg
+              </span>
+            </div>
+
             <pre className="overflow-x-auto border-2 border-[var(--kant)] bg-[var(--flate-2)] p-4 font-mono text-xs whitespace-pre-wrap">
               {fakturagrunnlag}
             </pre>
+
             <form
               action={settFakturert.bind(null, leie.id, !leie.fakturert)}
               className="mt-4"
@@ -261,6 +275,26 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
         </Kort>
       )}
     </div>
+  )
+}
+
+function LastNed() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M12 15V3" />
+    </svg>
   )
 }
 

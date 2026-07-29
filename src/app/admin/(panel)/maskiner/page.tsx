@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
@@ -80,7 +81,12 @@ export default async function MaskinerSide() {
                   className="border-b-2 border-[var(--kant)] last:border-0"
                 >
                   <td className="px-4 py-3">
-                    <div className="hm-display text-base">{m.navn}</div>
+                    <Link
+                      href={`/admin/maskiner/${m.id}`}
+                      className="hm-display inline-flex min-h-[2.75rem] items-center text-base underline underline-offset-4"
+                    >
+                      {m.navn}
+                    </Link>
                     {(m.kategori || m.internnummer) && (
                       <div className="text-xs text-[var(--blekk-svak)]">
                         {[m.kategori, m.internnummer].filter(Boolean).join(' · ')}

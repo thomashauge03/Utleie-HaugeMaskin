@@ -10,6 +10,7 @@ const lenker = [
   { href: '/admin/maskiner', tekst: 'Maskiner' },
   { href: '/admin/kunder', tekst: 'Kunder' },
   { href: '/admin/brukere', tekst: 'Brukere' },
+  { href: '/admin/innstillinger', tekst: 'Innstillinger' },
 ]
 
 /**

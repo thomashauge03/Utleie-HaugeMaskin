@@ -5,6 +5,7 @@ import { lagServerKlient } from '@/lib/supabase/server'
 import { visTelefon } from '@/lib/telefon'
 import { LEIE_STATUS_TEKST, type Leie, type Kunde, type Maskin } from '@/lib/types'
 import { Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
+import { Søkefelt } from '@/components/sokefelt'
 
 export const metadata: Metadata = { title: 'Leier – HM Utleie' }
 export const dynamic = 'force-dynamic'
@@ -18,41 +19,102 @@ const merkeType = {
   avvist: 'rød',
 } as const
 
-const filtre = [
+const FILTRE = [
   { verdi: 'alle', tekst: 'Alle' },
   { verdi: 'aktiv', tekst: 'Aktive' },
+  { verdi: 'forfalt', tekst: 'Forfalt' },
   { verdi: 'venter_godkjenning', tekst: 'Venter godkjenning' },
+  { verdi: 'ufakturert', tekst: 'Ikke fakturert' },
   { verdi: 'avsluttet', tekst: 'Avsluttet' },
-]
+] as const
+
+function erForfalt(l: Leie) {
+  return l.status === 'aktiv' && new Date(l.planlagt_slutt).getTime() < Date.now()
+}
 
 export default async function LeierSide(props: PageProps<'/admin/leier'>) {
   await krevAdmin()
-  const { status } = await props.searchParams
-  const valgt = typeof status === 'string' ? status : 'alle'
+  const sp = await props.searchParams
+  const valgt = typeof sp.status === 'string' ? sp.status : 'alle'
+  const søk = typeof sp.q === 'string' ? sp.q.trim() : ''
 
   const supabase = await lagServerKlient()
   let spørring = supabase
     .from('leier')
     .select('*, maskiner(*), kunder(*)')
     .order('start_tid', { ascending: false })
+    .limit(500)
 
-  if (valgt !== 'alle') spørring = spørring.eq('status', valgt)
+  // «Forfalt» og «ikke fakturert» går på tvers av status, og filtreres
+  // derfor etterpå sammen med søket.
+  if (valgt === 'aktiv' || valgt === 'venter_godkjenning' || valgt === 'avsluttet') {
+    spørring = spørring.eq('status', valgt)
+  } else if (valgt === 'forfalt') {
+    spørring = spørring.eq('status', 'aktiv').lt('planlagt_slutt', new Date().toISOString())
+  } else if (valgt === 'ufakturert') {
+    spørring = spørring.eq('status', 'avsluttet').eq('fakturert', false)
+  }
 
   const { data } = await spørring
-  const leier = (data ?? []) as Rad[]
-  const nå = Date.now()
+  let leier = (data ?? []) as Rad[]
+
+  /*
+   * Søket gjøres i minnet fordi det spenner over tre tabeller, og
+   * PostgREST ikke støtter OR på tvers av innebygde ressurser. Med
+   * grensen på 500 rader over er det uproblematisk i denne skalaen.
+   * Vokser basen til titusener, må dette flyttes til en databasevisning
+   * eller fulltekstindeks.
+   */
+  if (søk) {
+    const n = søk.toLowerCase().replace(/\s/g, '')
+    leier = leier.filter((l) =>
+      [
+        l.referanse,
+        l.maskiner?.navn,
+        l.maskiner?.qr_kode,
+        l.maskiner?.internnummer,
+        l.kunder?.navn,
+        l.kunder?.telefon,
+        l.kunder?.epost,
+      ]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().replace(/\s/g, '').includes(n)),
+    )
+  }
+
+  const lenke = (status: string) => {
+    const p = new URLSearchParams()
+    if (status !== 'alle') p.set('status', status)
+    if (søk) p.set('q', søk)
+    const s = p.toString()
+    return s ? `/admin/leier?${s}` : '/admin/leier'
+  }
 
   return (
-    <div className="space-y-7">
-      <Seksjonstittel under={`${leier.length} treff`}>Leier</Seksjonstittel>
+    <div className="space-y-6">
+      <Seksjonstittel
+        under={
+          søk
+            ? `${leier.length} treff på «${søk}»`
+            : `${leier.length} ${leier.length === 1 ? 'leie' : 'leier'}`
+        }
+      >
+        Leier
+      </Seksjonstittel>
+
+      <Søkefelt
+        verdi={søk}
+        plassholder="Søk på navn, referanse, maskin eller telefon"
+        skjulteFelt={{ status: valgt !== 'alle' ? valgt : undefined }}
+      />
 
       <div className="flex flex-wrap gap-2">
-        {filtre.map((f) => {
+        {FILTRE.map((f) => {
           const aktiv = valgt === f.verdi
           return (
             <Link
               key={f.verdi}
-              href={f.verdi === 'alle' ? '/admin/leier' : `/admin/leier?status=${f.verdi}`}
+              href={lenke(f.verdi)}
               aria-current={aktiv ? 'true' : undefined}
               className={`inline-flex min-h-[2.75rem] items-center border-2 px-4 text-xs font-bold tracking-wider uppercase transition-colors ${
                 aktiv
@@ -67,8 +129,10 @@ export default async function LeierSide(props: PageProps<'/admin/leier'>) {
       </div>
 
       {leier.length === 0 ? (
-        <TomTilstand tittel="Ingen leier her">
-          Prøv et annet filter, eller vent til første maskin blir skannet.
+        <TomTilstand tittel={søk ? 'Ingen treff' : 'Ingen leier her'}>
+          {søk
+            ? `Fant ingenting som matcher «${søk}». Prøv et annet søkeord, eller nullstill filteret.`
+            : 'Prøv et annet filter, eller vent til første maskin blir skannet.'}
         </TomTilstand>
       ) : (
         <div className="overflow-x-auto border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)]">
@@ -83,49 +147,50 @@ export default async function LeierSide(props: PageProps<'/admin/leier'>) {
               </tr>
             </thead>
             <tbody>
-              {leier.map((l) => {
-                const forfalt =
-                  l.status === 'aktiv' && new Date(l.planlagt_slutt).getTime() < nå
-                return (
-                  <tr
-                    key={l.id}
-                    className="border-b-2 border-[var(--kant)] transition-colors last:border-0 hover:bg-[var(--flate-2)]"
-                  >
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/admin/leier/${l.id}`}
-                        className="hm-tall inline-flex min-h-[2.75rem] items-center font-mono text-xs font-bold underline underline-offset-4"
-                      >
-                        {l.referanse}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 font-semibold">
-                      {l.maskiner?.navn ?? '–'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div>{l.kunder?.navn ?? '–'}</div>
-                      {l.kunder && (
-                        <div className="hm-tall text-xs text-[var(--blekk-svak)]">
-                          {visTelefon(l.kunder.telefon)}
-                        </div>
-                      )}
-                    </td>
-                    <td className="hm-tall px-4 py-3">
-                      {new Date(l.planlagt_slutt).toLocaleDateString('nb-NO')}
-                      {forfalt && (
-                        <span className="ml-2 inline-block bg-hm-red px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
-                          Forfalt
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
+              {leier.map((l) => (
+                <tr
+                  key={l.id}
+                  className="border-b-2 border-[var(--kant)] transition-colors last:border-0 hover:bg-[var(--flate-2)]"
+                >
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/admin/leier/${l.id}`}
+                      className="hm-tall inline-flex min-h-[2.75rem] items-center font-mono text-xs font-bold underline underline-offset-4"
+                    >
+                      {l.referanse}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 font-semibold">{l.maskiner?.navn ?? '–'}</td>
+                  <td className="px-4 py-3">
+                    <div>{l.kunder?.navn ?? '–'}</div>
+                    {l.kunder && (
+                      <div className="hm-tall text-xs text-[var(--blekk-svak)]">
+                        {visTelefon(l.kunder.telefon)}
+                      </div>
+                    )}
+                  </td>
+                  <td className="hm-tall px-4 py-3 whitespace-nowrap">
+                    {new Date(l.planlagt_slutt).toLocaleDateString('nb-NO')}
+                    {erForfalt(l) && (
+                      <span className="ml-2 inline-block bg-hm-red px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
+                        Forfalt
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Merke type={merkeType[l.status]}>
                         {LEIE_STATUS_TEKST[l.status]}
                       </Merke>
-                    </td>
-                  </tr>
-                )
-              })}
+                      {l.status === 'avsluttet' && !l.fakturert && (
+                        <span className="text-[10px] font-bold tracking-wider text-hm-amber uppercase">
+                          Ikke fakturert
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

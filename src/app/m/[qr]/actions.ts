@@ -1,10 +1,12 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sikreEnhetsId } from '@/lib/enhet'
 import { normaliserTelefon } from '@/lib/telefon'
+import { varsleNyLeie } from '@/lib/epost/varsler'
 
 export type LeieTilstand = { feil?: string }
 
@@ -124,6 +126,10 @@ export async function startLeie(
     beskrivelse: `${felter.data.navn} startet leie av ${maskin.navn}`,
     aktor: `kunde:${enhetsId}`,
   })
+
+  // Sendes etter at svaret er levert. Kunden står på anleggsplassen og
+  // skal ikke vente på at en e-posttjeneste svarer.
+  after(() => varsleNyLeie(leie.id))
 
   redirect(`/leie/${leie.referanse}`)
 }

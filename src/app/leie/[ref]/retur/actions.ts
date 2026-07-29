@@ -1,9 +1,11 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { hentEnhetsId } from '@/lib/enhet'
+import { varsleRetur } from '@/lib/epost/varsler'
 
 export type ReturTilstand = { feil?: string }
 
@@ -85,6 +87,8 @@ export async function leverTilbake(
     beskrivelse: 'Kunden leverte inn og lastet opp bilde',
     aktor: `kunde:${enhetsId}`,
   })
+
+  after(() => varsleRetur(leie.id))
 
   redirect(`/leie/${leie.referanse}`)
 }

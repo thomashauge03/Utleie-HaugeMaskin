@@ -52,6 +52,83 @@ export async function lagreInnstillinger(
   return { ok: 'Innstillingene er lagret.' }
 }
 
+/* ═══ Varsling ═════════════════════════════════════════════ */
+
+const av = z.union([z.literal('on'), z.null()]).transform((v) => v === 'on')
+
+const varselSkjema = z.object({
+  varsel_epost: z.string().trim(),
+  varsel_kopi: z.string().trim(),
+  avsender_navn: z.string().trim().max(60),
+  varsle_ny_leie: av,
+  varsle_retur: av,
+  varsle_forfalt: av,
+  kvittering_start: av,
+  kvittering_retur: av,
+  purring_forfalt: av,
+})
+
+/** Godtar «a@b.no, c@d.no» og validerer hver enkelt. */
+function sjekkAdresser(rå: string): { ok: true; verdi: string | null } | { ok: false; feil: string } {
+  const liste = rå.split(/[,;\s]+/).map((a) => a.trim()).filter(Boolean)
+  const ugyldig = liste.find((a) => !z.email().safeParse(a).success)
+  if (ugyldig) return { ok: false, feil: `«${ugyldig}» er ikke en gyldig e-postadresse` }
+  return { ok: true, verdi: liste.length ? liste.join(', ') : null }
+}
+
+export async function lagreVarsling(
+  _forrige: Tilstand,
+  formData: FormData,
+): Promise<Tilstand> {
+  await krevAdmin()
+
+  const felter = varselSkjema.safeParse({
+    varsel_epost: formData.get('varsel_epost') ?? '',
+    varsel_kopi: formData.get('varsel_kopi') ?? '',
+    avsender_navn: formData.get('avsender_navn') ?? '',
+    varsle_ny_leie: formData.get('varsle_ny_leie'),
+    varsle_retur: formData.get('varsle_retur'),
+    varsle_forfalt: formData.get('varsle_forfalt'),
+    kvittering_start: formData.get('kvittering_start'),
+    kvittering_retur: formData.get('kvittering_retur'),
+    purring_forfalt: formData.get('purring_forfalt'),
+  })
+  if (!felter.success) return { feil: felter.error.issues[0].message }
+
+  const til = sjekkAdresser(felter.data.varsel_epost)
+  if (!til.ok) return { feil: til.feil }
+  const kopi = sjekkAdresser(felter.data.varsel_kopi)
+  if (!kopi.ok) return { feil: kopi.feil }
+
+  const varslerAdmin =
+    felter.data.varsle_ny_leie || felter.data.varsle_retur || felter.data.varsle_forfalt
+  if (varslerAdmin && !til.verdi) {
+    return { feil: 'Du må oppgi minst én mottaker for å slå på varsler til admin.' }
+  }
+
+  const supabase = await lagServerKlient()
+  const { error } = await supabase
+    .from('innstillinger')
+    .update({
+      varsel_epost: til.verdi,
+      varsel_kopi: kopi.verdi,
+      avsender_navn: felter.data.avsender_navn || 'HM Utleie',
+      varsle_ny_leie: felter.data.varsle_ny_leie,
+      varsle_retur: felter.data.varsle_retur,
+      varsle_forfalt: felter.data.varsle_forfalt,
+      kvittering_start: felter.data.kvittering_start,
+      kvittering_retur: felter.data.kvittering_retur,
+      purring_forfalt: felter.data.purring_forfalt,
+      oppdatert: new Date().toISOString(),
+    })
+    .eq('id', true)
+
+  if (error) return { feil: `Kunne ikke lagre: ${error.message}` }
+
+  revalidatePath('/admin/innstillinger')
+  return { ok: 'Varslingsinnstillingene er lagret.' }
+}
+
 /**
  * Lager nytt iCal-token. Den gamle abonnementslenka slutter da å virke –
  * som er hele poenget dersom den har kommet på avveie.

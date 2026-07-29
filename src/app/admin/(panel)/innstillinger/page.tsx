@@ -6,6 +6,8 @@ import { Kort, KortTittel, Seksjonstittel } from '@/components/ui'
 import { KopierLenke } from '../maskiner/kopier-lenke'
 import { FirmaSkjema, type Innstillinger } from './firma-skjema'
 import { Kategorier, type Kategori } from './kategorier'
+import { VarselSkjema, type Varsling } from './varsel-skjema'
+import { EpostStatus } from './epost-status'
 import { nyttIcalToken } from './actions'
 
 export const metadata: Metadata = { title: 'Innstillinger – HM Utleie' }
@@ -59,6 +61,44 @@ export default async function InnstillingerSide() {
             vilkar_tekst: innst?.vilkar_tekst ?? '',
           }}
         />
+      </Kort>
+
+      <Kort>
+        <KortTittel>Varsling på e-post</KortTittel>
+        <EpostStatus />
+        <VarselSkjema
+          varsling={{
+            varsel_epost: innst?.varsel_epost ?? null,
+            varsel_kopi: innst?.varsel_kopi ?? null,
+            avsender_navn: innst?.avsender_navn ?? 'HM Utleie',
+            varsle_ny_leie: innst?.varsle_ny_leie ?? true,
+            varsle_retur: innst?.varsle_retur ?? true,
+            varsle_forfalt: innst?.varsle_forfalt ?? true,
+            kvittering_start: innst?.kvittering_start ?? true,
+            kvittering_retur: innst?.kvittering_retur ?? true,
+            purring_forfalt: innst?.purring_forfalt ?? false,
+          } satisfies Varsling}
+        />
+      </Kort>
+
+      <Kort>
+        <KortTittel>Kjør forfallsvarsel manuelt</KortTittel>
+        <div className="p-5">
+          <p className="mb-4 text-sm text-[var(--blekk-svak)]">
+            Oversikten over maskiner på overtid sendes automatisk hver morgen
+            kl. 07. Vil du utløse den nå — for å teste, eller fordi noe haster —
+            kan du kjøre den herfra. Kunder får maks én påminnelse per døgn
+            uansett hvor mange ganger du trykker.
+          </p>
+          <a
+            href="/api/varsler/forfalt"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hm-trykk inline-flex min-h-[2.75rem] items-center border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] px-4 text-xs font-bold tracking-wider uppercase"
+          >
+            Send forfallsvarsel nå
+          </a>
+        </div>
       </Kort>
 
       <Kort>

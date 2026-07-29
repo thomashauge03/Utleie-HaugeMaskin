@@ -87,3 +87,20 @@ export const LEIE_STATUS_TEKST: Record<LeieStatus, string> = {
   avsluttet: 'Avsluttet',
   avvist: 'Avvist',
 }
+
+/**
+ * Status → merketype. Ett sted, så fargene ikke driver fra hverandre
+ * mellom sidene. Merk: «forfalt» er ikke en egen status i databasen,
+ * men en aktiv leie med passert leveringsdato – se erForfalt.
+ */
+export const LEIE_MERKE: Record<LeieStatus, 'grønn' | 'gul' | 'nøytral' | 'rød'> = {
+  aktiv: 'grønn',
+  venter_godkjenning: 'gul',
+  avsluttet: 'nøytral',
+  avvist: 'rød',
+}
+
+/** En aktiv leie hvis avtalte leveringsdato er passert. */
+export function erForfalt(leie: Pick<Leie, 'status' | 'planlagt_slutt'>): boolean {
+  return leie.status === 'aktiv' && new Date(leie.planlagt_slutt).getTime() < Date.now()
+}

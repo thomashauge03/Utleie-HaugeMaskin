@@ -7,7 +7,11 @@ export const dynamic = 'force-dynamic'
 
 /** Pakker inn felt som inneholder skilletegn, hermetegn eller linjeskift. */
 function csvFelt(verdi: string | null): string {
-  const s = verdi ?? ''
+  let s = verdi ?? ''
+  // Nøytraliser formel-injeksjon: Excel og Sheets tolker en celle som
+  // starter med = + - @ (eller tab/CR) som en formel. Alle felt her er
+  // admin-styrte, men en apostrof foran koster ingenting og lukker det.
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
   return /[";\n\r]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s
 }
 

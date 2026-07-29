@@ -10,6 +10,7 @@ import {
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { visTelefon } from '@/lib/telefon'
+import { dato, tid } from '@/lib/dato'
 import type { Kunde, Leie, Maskin } from '@/lib/types'
 import 'server-only'
 
@@ -89,15 +90,6 @@ export type FakturaData = {
 
 const kr = (n: number) =>
   `${n.toLocaleString('nb-NO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`
-const dato = (iso: string) => new Date(iso).toLocaleDateString('nb-NO')
-const tid = (iso: string) =>
-  new Date(iso).toLocaleString('nb-NO', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 
 function Dokument({ leie, kunde, maskin, firmanavn, bilder, logo }: FakturaData & { logo: string | null }) {
   const dogn = leie.antall_dogn ?? 0

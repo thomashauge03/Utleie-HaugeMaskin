@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { hentEnhetsId } from '@/lib/enhet'
+import { dato } from '@/lib/dato'
 import { HMLogo } from '@/components/hm-logo'
 import { FinnSkjema } from './finn-skjema'
 
@@ -60,8 +61,7 @@ export default async function FellesReturSide() {
                     {(l.maskiner as unknown as { navn: string }).navn}
                   </span>
                   <span className="mt-0.5 block text-sm text-[var(--blekk-svak)]">
-                    Leid siden{' '}
-                    {new Date(l.start_tid).toLocaleDateString('nb-NO')}
+                    Leid siden {dato(l.start_tid)}
                   </span>
                 </Link>
               ))}

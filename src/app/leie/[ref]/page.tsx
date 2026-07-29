@@ -7,6 +7,7 @@ import type { Leie, Maskin } from '@/lib/types'
 import { HMLogo } from '@/components/hm-logo'
 import { TømBildekladd } from '@/components/tom-bildekladd'
 import { KNAPP_PRIMÆR, Merke } from '@/components/ui'
+import { dato, tid } from '@/lib/dato'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'Din leie – HM Utleie' }
@@ -158,12 +159,3 @@ function Beskjed({
   )
 }
 
-const dato = (iso: string) => new Date(iso).toLocaleDateString('nb-NO')
-const tid = (iso: string) =>
-  new Date(iso).toLocaleString('nb-NO', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })

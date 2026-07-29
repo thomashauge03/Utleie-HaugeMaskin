@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { ETIKETT, FELT, KNAPP_PRIMÆR } from '@/components/ui'
+import { dato } from '@/lib/dato'
 import { finnLeier, knyttTilEnhet, type FinnTilstand } from './actions'
 
 const start: FinnTilstand = {}
@@ -16,14 +17,17 @@ export function FinnSkjema() {
           Velg hvilken maskin du leverer:
         </p>
         {tilstand.treff.map((t) => (
-          <form key={t.referanse} action={knyttTilEnhet.bind(null, t.referanse)}>
+          <form
+            key={t.referanse}
+            action={knyttTilEnhet.bind(null, t.referanse, tilstand.telefon ?? '')}
+          >
             <button
               type="submit"
               className="hm-trykk hm-kant-skygge-sm w-full border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-4 text-left"
             >
               <span className="hm-display block text-lg">{t.maskinNavn}</span>
               <span className="mt-0.5 block text-sm text-[var(--blekk-svak)]">
-                Leid siden {new Date(t.startet).toLocaleDateString('nb-NO')}
+                Leid siden {dato(t.startet)}
               </span>
             </button>
           </form>

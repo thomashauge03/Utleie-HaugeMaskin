@@ -53,7 +53,11 @@ export async function godkjennLeie(
     String(felter.data.antall_dogn ?? '') !== (felter.data.foreslatt_dogn ?? '') ||
     String(felter.data.belop ?? '') !== (felter.data.foreslatt_belop ?? '')
 
-  const { error } = await supabase
+  // `.eq('status', ...)` + `.select()` gjør godkjenningen atomisk: to
+  // admins som trykker samtidig, treffer bare én en rad. Den andre får
+  // tomt svar og hopper ut, så maskinstatus og hendelseslogg ikke kjøres
+  // dobbelt.
+  const { data: oppdatert, error } = await supabase
     .from('leier')
     .update({
       status: 'avsluttet',
@@ -67,8 +71,12 @@ export async function godkjennLeie(
     })
     .eq('id', leie.id)
     .eq('status', 'venter_godkjenning')
+    .select('id')
 
   if (error) return { feil: `Kunne ikke godkjenne: ${error.message}` }
+  if (!oppdatert?.length) {
+    return { feil: 'Leien ble nettopp behandlet av noen andre. Last siden på nytt.' }
+  }
 
   // Maskinen blir først ledig når noen har bekreftet at den står der.
   await supabase.from('maskiner').update({ status: 'ledig' }).eq('id', leie.maskin_id)

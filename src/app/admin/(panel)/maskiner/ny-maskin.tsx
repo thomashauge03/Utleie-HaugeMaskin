@@ -26,7 +26,7 @@ export function NyMaskin() {
           + Ny maskin
         </button>
         {tilstand.ok && (
-          <p className="text-sm font-semibold text-hm-green">{tilstand.ok}</p>
+          <p role="status" className="text-sm font-semibold text-hm-green">{tilstand.ok}</p>
         )}
       </div>
     )

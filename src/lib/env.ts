@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import 'server-only'
 
 /**
  * Miljøvariabler valideres ved oppstart i stedet for å feile med

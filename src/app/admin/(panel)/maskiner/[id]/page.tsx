@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
+import { dato } from '@/lib/dato'
 import { LEIE_STATUS_TEKST, MASKIN_STATUS_TEKST, type Leie, type Kunde, type Maskin } from '@/lib/types'
 import { Kort, KortTittel, Merke } from '@/components/ui'
 import { KopierLenke } from '../kopier-lenke'
@@ -130,7 +131,7 @@ export default async function MaskinDetaljSide(props: PageProps<'/admin/maskiner
                     {l.kunder?.navn ?? '–'}
                   </span>
                   <span className="hm-tall text-sm text-[var(--blekk-svak)]">
-                    {new Date(l.start_tid).toLocaleDateString('nb-NO')}
+                    {dato(l.start_tid)}
                   </span>
                   <Merke
                     type={

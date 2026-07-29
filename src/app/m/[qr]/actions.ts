@@ -6,19 +6,26 @@ import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sikreEnhetsId } from '@/lib/enhet'
 import { normaliserTelefon } from '@/lib/telefon'
+import { BILDE_STI, MAKS_KOMMENTAR } from '@/lib/validering'
+import { bildeFinnes } from '@/lib/bilder'
+import { innenforGrense } from '@/lib/rategrense'
 import { varsleNyLeie } from '@/lib/epost/varsler'
 
 export type LeieTilstand = { feil?: string }
 
 const skjema = z.object({
   maskin_id: z.uuid(),
-  navn: z.string().trim().min(2, 'Navn må fylles ut'),
+  navn: z.string().trim().min(2, 'Navn må fylles ut').max(100),
   telefon: z.string().trim().min(1, 'Mobilnummer må fylles ut'),
-  adresse: z.string().trim().min(4, 'Adresse må fylles ut'),
-  epost: z.email('Ugyldig e-postadresse'),
+  adresse: z.string().trim().min(4, 'Adresse må fylles ut').max(200),
+  epost: z.email('Ugyldig e-postadresse').max(200),
   planlagt_slutt: z.string().min(1, 'Forventet leveringsdato må fylles ut'),
-  kommentar: z.string().trim().optional(),
-  bilde_sti: z.string().min(1, 'Du må ta bilde av maskinen før du starter leien'),
+  kommentar: z.string().trim().max(MAKS_KOMMENTAR).optional(),
+  // Stien må ha formatet route-handleren genererer. Uten det kunne en
+  // vilkårlig streng lagres som «bilde» på leien.
+  bilde_sti: z
+    .string()
+    .regex(BILDE_STI, 'Du må ta bilde av maskinen før du starter leien'),
   lat: z.string().optional(),
   lng: z.string().optional(),
   noyaktighet: z.string().optional(),
@@ -31,10 +38,43 @@ function tall(v: string | undefined): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+/**
+ * «2026-07-30» → tidspunktet 23:59:59 den dagen i norsk tid, som et
+ * korrekt UTC-instant – uavhengig av hvilken tidssone serveren står i.
+ *
+ * Vi finner Oslos offset ved å formatere kl. 12 UTC den dagen i
+ * Europe/Oslo: klokka blir 13 (vinter, UTC+1) eller 14 (sommer, UTC+2).
+ * Da vet vi at 23:59:59 Oslo = (23 − offset):59:59 UTC samme dato.
+ * Kl. 12 UTC unngår all døgnkryssing.
+ */
+function norskSluttAvDag(ymd: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null
+
+  const [år, mnd, dag] = ymd.split('-').map(Number)
+  const klokka12 = new Date(Date.UTC(år, mnd - 1, dag, 12, 0, 0))
+
+  const osloTime = Number(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Oslo',
+      hour: '2-digit',
+      hour12: false,
+    }).format(klokka12),
+  )
+  const offset = osloTime - 12 // 1 om vinteren, 2 om sommeren
+
+  const instant = new Date(Date.UTC(år, mnd - 1, dag, 23 - offset, 59, 59))
+  return Number.isNaN(instant.getTime()) ? null : instant
+}
+
 export async function startLeie(
   _forrige: LeieTilstand,
   formData: FormData,
 ): Promise<LeieTilstand> {
+  // Bremser spam av leier og kunder fra samme maskin.
+  if (!(await innenforGrense('start', 10, 60 * 60 * 1000))) {
+    return { feil: 'For mange forsøk. Vent litt og prøv igjen.' }
+  }
+
   const felter = skjema.safeParse(Object.fromEntries(formData))
   if (!felter.success) return { feil: felter.error.issues[0].message }
 
@@ -43,14 +83,22 @@ export async function startLeie(
     return { feil: 'Mobilnummeret må være åtte siffer' }
   }
 
-  // Leveringsdato må være i dag eller senere. Datoen kommer fra et
-  // <input type="date"> og settes til slutten av dagen.
-  const slutt = new Date(`${felter.data.planlagt_slutt}T23:59:59`)
-  if (Number.isNaN(slutt.getTime())) {
-    return { feil: 'Ugyldig leveringsdato' }
-  }
+  // Datoen kommer fra et <input type="date"> som yyyy-mm-dd, og skal
+  // bety «slutten av den dagen i norsk tid». Vi kan ikke bruke
+  // new Date('...T23:59:59') – den tolkes i serverens tidssone, og
+  // Vercel kjører UTC. Da ville fristen bli satt til 01:59 norsk tid
+  // natten etter. Norge er UTC+1 (+2 om sommeren), så vi bygger
+  // tidspunktet eksplisitt.
+  const slutt = norskSluttAvDag(felter.data.planlagt_slutt)
+  if (!slutt) return { feil: 'Ugyldig leveringsdato' }
   if (slutt.getTime() < Date.now()) {
     return { feil: 'Leveringsdatoen kan ikke være tilbake i tid' }
+  }
+
+  // Stien har riktig format (regex over), men vi krever også at bildet
+  // faktisk ligger i lageret før leien opprettes.
+  if (!(await bildeFinnes(felter.data.bilde_sti))) {
+    return { feil: 'Fant ikke bildet. Ta bildet på nytt og prøv igjen.' }
   }
 
   const { data: maskin } = await supabaseAdmin
@@ -79,11 +127,17 @@ export async function startLeie(
       },
       { onConflict: 'telefon' },
     )
-    .select('id')
+    .select('id, status')
     .single()
 
   if (kundeFeil || !kunde) {
     return { feil: 'Kunne ikke lagre kontaktopplysningene. Prøv igjen.' }
+  }
+
+  // upsert rører ikke status-kolonnen, så en sperret kunde forblir
+  // sperret og kan ikke starte en ny leie ved å fylle ut skjemaet.
+  if (kunde.status === 'sperret') {
+    return { feil: 'Ta kontakt med utleier for å leie denne maskinen.' }
   }
 
   const { data: leie, error: leieFeil } = await supabaseAdmin

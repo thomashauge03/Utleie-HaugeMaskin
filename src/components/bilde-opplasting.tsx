@@ -93,11 +93,12 @@ export function BildeOpplasting({
       settForhåndsvisning(URL.createObjectURL(komprimert))
       settStatus('ferdig')
       if (kladdNøkkel) lagreBildeSti(kladdNøkkel, målSti)
-    } catch (e) {
+    } catch {
+      // Kunden trenger ikke den tekniske meldingen fra Supabase/fetch –
+      // den er engelsk og forvirrende. Detaljen ligger uansett i
+      // nettverksloggen om noe må feilsøkes.
       settStatus('feil')
-      settFeilmelding(
-        e instanceof Error ? e.message : 'Noe gikk galt under opplasting',
-      )
+      settFeilmelding('Bildet ble ikke lastet opp')
     }
   }
 
@@ -119,6 +120,7 @@ export function BildeOpplasting({
         type="file"
         accept="image/*"
         capture="environment"
+        aria-label={etikett}
         className="sr-only"
         onChange={(e) => {
           const fil = e.target.files?.[0]

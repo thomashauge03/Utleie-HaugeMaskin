@@ -7,15 +7,34 @@ export const dynamic = 'force-dynamic'
 
 type Rad = Leie & { maskiner: Maskin | null; kunder: Kunde | null }
 
-/** ics-pakka vil ha [år, måned (1-indeksert), dag, time, minutt]. */
+/**
+ * Sammenligner to hemmeligheter i konstant tid, så svartiden ikke
+ * lekker hvor mange tegn som stemte. Praktisk talt ikke utnyttbart ved
+ * 192-bit token, men det koster ingenting å gjøre riktig.
+ */
+function likeHemmelige(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let ulik = 0
+  for (let i = 0; i < a.length; i++) ulik |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return ulik === 0
+}
+
+/**
+ * ics-pakka vil ha [år, måned (1-indeksert), dag, time, minutt].
+ *
+ * Vi bygger UTC-tall og merker hendelsen med `startInputType: 'utc'`.
+ * Uten det tolker kalenderklienten tallene som «flytende» lokaltid, og
+ * hendelsen havner på feil klokkeslett hos abonnenten. Med UTC-merking
+ * konverterer klienten selv til leserens tidssone.
+ */
 function tilDatoArray(iso: string): [number, number, number, number, number] {
   const d = new Date(iso)
   return [
-    d.getFullYear(),
-    d.getMonth() + 1,
-    d.getDate(),
-    d.getHours(),
-    d.getMinutes(),
+    d.getUTCFullYear(),
+    d.getUTCMonth() + 1,
+    d.getUTCDate(),
+    d.getUTCHours(),
+    d.getUTCMinutes(),
   ]
 }
 
@@ -35,8 +54,9 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/ical/[fil]'
     .select('ical_token')
     .maybeSingle()
 
-  // Feil token skal ikke avsløre om feeden finnes.
-  if (!innstillinger?.ical_token || token !== innstillinger.ical_token) {
+  // Feil token skal ikke avsløre om feeden finnes. Konstant-tid
+  // sammenligning så svartiden ikke lekker hvor mange tegn som stemte.
+  if (!innstillinger?.ical_token || !likeHemmelige(token, innstillinger.ical_token)) {
     return new Response(null, { status: 404 })
   }
 
@@ -70,7 +90,9 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/ical/[fil]'
       uid: `${l.id}@utleie`,
       title: `${forfalt ? '⚠ ' : ''}${l.maskiner?.navn ?? 'Maskin'} – ${l.kunder?.navn ?? 'ukjent'}`,
       start: tilDatoArray(l.start_tid),
+      startInputType: 'utc',
       end: tilDatoArray(slutt),
+      endInputType: 'utc',
       description: beskrivelse,
       location: l.kunder?.adresse ?? undefined,
       status: l.status === 'avsluttet' ? 'CONFIRMED' : 'TENTATIVE',

@@ -3,7 +3,15 @@ import Link from 'next/link'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { visTelefon } from '@/lib/telefon'
-import { LEIE_STATUS_TEKST, type Leie, type Kunde, type Maskin } from '@/lib/types'
+import { dato } from '@/lib/dato'
+import {
+  LEIE_MERKE,
+  LEIE_STATUS_TEKST,
+  erForfalt,
+  type Leie,
+  type Kunde,
+  type Maskin,
+} from '@/lib/types'
 import { Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
 import { Søkefelt } from '@/components/sokefelt'
 
@@ -11,13 +19,6 @@ export const metadata: Metadata = { title: 'Leier – HM Utleie' }
 export const dynamic = 'force-dynamic'
 
 type Rad = Leie & { maskiner: Maskin | null; kunder: Kunde | null }
-
-const merkeType = {
-  aktiv: 'grønn',
-  venter_godkjenning: 'gul',
-  avsluttet: 'nøytral',
-  avvist: 'rød',
-} as const
 
 const FILTRE = [
   { verdi: 'alle', tekst: 'Alle' },
@@ -28,10 +29,6 @@ const FILTRE = [
   { verdi: 'fakturert', tekst: 'Fakturert' },
   { verdi: 'avsluttet', tekst: 'Avsluttet' },
 ] as const
-
-function erForfalt(l: Leie) {
-  return l.status === 'aktiv' && new Date(l.planlagt_slutt).getTime() < Date.now()
-}
 
 export default async function LeierSide(props: PageProps<'/admin/leier'>) {
   await krevAdmin()
@@ -172,7 +169,7 @@ export default async function LeierSide(props: PageProps<'/admin/leier'>) {
                     )}
                   </td>
                   <td className="hm-tall px-4 py-3 whitespace-nowrap">
-                    {new Date(l.planlagt_slutt).toLocaleDateString('nb-NO')}
+                    {dato(l.planlagt_slutt)}
                     {erForfalt(l) && (
                       <span className="ml-2 inline-block bg-hm-red px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
                         Forfalt
@@ -181,7 +178,7 @@ export default async function LeierSide(props: PageProps<'/admin/leier'>) {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Merke type={merkeType[l.status]}>
+                      <Merke type={LEIE_MERKE[l.status]}>
                         {LEIE_STATUS_TEKST[l.status]}
                       </Merke>
                       {l.status === 'avsluttet' && !l.fakturert && (

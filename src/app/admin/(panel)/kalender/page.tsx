@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { visTelefon } from '@/lib/telefon'
-import { LEIE_STATUS_TEKST, type Kunde, type Leie, type Maskin } from '@/lib/types'
+import { datoKort, osloDag } from '@/lib/dato'
+import { LEIE_STATUS_TEKST, erForfalt, type Kunde, type Leie, type Maskin } from '@/lib/types'
 import { Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
 
 export const metadata: Metadata = { title: 'Kalender – HM Utleie' }
@@ -21,11 +22,14 @@ const UKEDAGER = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag',
 /** Date.getDay() har søndag som 0. Vi vil ha mandag som 0. */
 const ukedagIndeks = (d: Date) => (d.getDay() + 6) % 7
 
-const somDag = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
-
-function erForfalt(l: Leie) {
-  return l.status === 'aktiv' && new Date(l.planlagt_slutt).getTime() < Date.now()
-}
+/**
+ * Civil dato yyyy-mm-dd for en rutenettcelle. Cellene bygges på
+ * server-lokal midnatt, så samme lokale getter gir tallene tilbake
+ * uansett tidssone. Leiene bøttes på Oslo-dato (osloDag), så de havner
+ * på riktig dag også når serveren er UTC.
+ */
+const celleDag = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 /** Farge per status. Brukes både i rutenettet og i lista under. */
 function farge(l: Leie) {
@@ -34,9 +38,6 @@ function farge(l: Leie) {
   if (l.status === 'aktiv') return 'bg-hm-green text-white'
   return 'bg-hm-500 text-white'
 }
-
-const kortDato = (iso: string) =>
-  new Date(iso).toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit' })
 
 export default async function KalenderSide(props: PageProps<'/admin/kalender'>) {
   await krevAdmin()
@@ -72,30 +73,30 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
   const førFørste = ukedagIndeks(førsteIMnd)
   const totaltRuter = Math.ceil((førFørste + antallDager) / 7) * 7
 
+  const iDag = osloDag(new Date())
+
   const ruter = Array.from({ length: totaltRuter }, (_, i) => {
     const d = new Date(år, måned, i - førFørste + 1)
     const iMåneden = d.getMonth() === måned && d.getFullYear() === år
-    const tid = somDag(d)
+    const dag = celleDag(d)
 
     const påDagen = leier.filter((l) => {
-      const fra = somDag(new Date(l.start_tid))
+      const fra = osloDag(l.start_tid)
       /*
        * En aktiv leie står ute til den faktisk leveres. Stoppet vi på
        * avtalt dato, ville nettopp de dagene maskinen er på overtid
        * mangle i kalenderen – som er de dagene man trenger å se.
        */
-      const avtalt = somDag(new Date(l.planlagt_slutt))
       const til =
         l.status === 'aktiv'
-          ? Math.max(avtalt, somDag(new Date()))
-          : somDag(new Date(l.slutt_tid ?? l.planlagt_slutt))
-      return tid >= fra && tid <= til
+          ? osloDag(new Date(Math.max(new Date(l.planlagt_slutt).getTime(), Date.now())))
+          : osloDag(l.slutt_tid ?? l.planlagt_slutt)
+      // ISO-datoer kan sammenlignes som tekst.
+      return dag >= fra && dag <= til
     })
 
-    return { dato: d, iMåneden, leier: påDagen }
+    return { dato: d, dag, iMåneden, leier: påDagen }
   })
-
-  const iDag = somDag(new Date())
   const forrige = new Date(år, måned - 1, 1)
   const neste = new Date(år, måned + 1, 1)
 
@@ -142,8 +143,8 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
               </div>
             ))}
 
-            {ruter.map(({ dato, iMåneden, leier: påDagen }, i) => {
-              const erIDag = somDag(dato) === iDag
+            {ruter.map(({ dato, dag, iMåneden, leier: påDagen }, i) => {
+              const erIDag = dag === iDag
               const helg = ukedagIndeks(dato) >= 5
 
               return (
@@ -178,14 +179,13 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
                     {påDagen.slice(0, 3).map((l) => {
                       // Er dagen etter avtalt levering, står maskinen på overtid.
                       const påOvertid =
-                        l.status === 'aktiv' &&
-                        somDag(dato) > somDag(new Date(l.planlagt_slutt))
+                        l.status === 'aktiv' && dag > osloDag(l.planlagt_slutt)
 
                       return (
                         <li key={l.id}>
                           <Link
                             href={`/admin/leier/${l.id}`}
-                            title={`${l.maskiner?.navn} · ${l.kunder?.navn ?? ''} · ${kortDato(l.start_tid)}–${kortDato(l.slutt_tid ?? l.planlagt_slutt)}`}
+                            title={`${l.maskiner?.navn} · ${l.kunder?.navn ?? ''} · ${datoKort(l.start_tid)}–${datoKort(l.slutt_tid ?? l.planlagt_slutt)}`}
                             className={`block truncate border border-[var(--kant-sterk)] px-1.5 py-1 text-[11px] leading-tight font-bold ${farge(l)}`}
                           >
                             {påOvertid && '⚠ '}
@@ -239,8 +239,8 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
                     <span
                       className={`hm-display hm-tall shrink-0 border-2 border-[var(--kant-sterk)] px-3 py-1.5 text-base whitespace-nowrap ${farge(l)}`}
                     >
-                      {kortDato(l.start_tid)} →{' '}
-                      {l.slutt_tid ? kortDato(l.slutt_tid) : kortDato(l.planlagt_slutt)}
+                      {datoKort(l.start_tid)} →{' '}
+                      {l.slutt_tid ? datoKort(l.slutt_tid) : datoKort(l.planlagt_slutt)}
                       {erForfalt(l) && ' ⚠'}
                     </span>
 

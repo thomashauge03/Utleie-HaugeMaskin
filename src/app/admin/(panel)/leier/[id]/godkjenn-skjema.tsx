@@ -1,8 +1,43 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { ETIKETT, FELT, KNAPP_SEKUNDÆR } from '@/components/ui'
 import { godkjennLeie, sendTilbake, type GodkjennTilstand } from './actions'
+
+/**
+ * «Send tilbake» gjenåpner en innlevering og starter faktureringsklokka
+ * igjen, så den krever et ekstra bekreftelsestrykk.
+ */
+function SendTilbakeKnapp() {
+  const [bekrefter, settBekrefter] = useState(false)
+
+  if (!bekrefter) {
+    return (
+      <button
+        type="button"
+        onClick={() => settBekrefter(true)}
+        className={KNAPP_SEKUNDÆR}
+      >
+        Send tilbake
+      </button>
+    )
+  }
+
+  return (
+    <span className="flex items-center gap-2">
+      <button type="submit" className={`${KNAPP_SEKUNDÆR} border-hm-red text-hm-red-ink`}>
+        Bekreft – klokka starter
+      </button>
+      <button
+        type="button"
+        onClick={() => settBekrefter(false)}
+        className="text-sm text-[var(--blekk-svak)]"
+      >
+        Avbryt
+      </button>
+    </span>
+  )
+}
 
 const start: GodkjennTilstand = {}
 
@@ -78,7 +113,7 @@ export function GodkjennSkjema({
             </p>
           )}
           {tilstand.ok && (
-            <p className="border-l-4 border-hm-green bg-hm-green/10 p-3 text-sm font-semibold text-hm-green">
+            <p role="status" className="border-l-4 border-hm-green bg-hm-green/10 p-3 text-sm font-semibold text-hm-green">
               {tilstand.ok}
             </p>
           )}
@@ -101,15 +136,17 @@ export function GodkjennSkjema({
           <p className="mb-3 text-sm text-[var(--blekk-svak)]">
             Står ikke maskinen der? Send leien tilbake, så går klokka videre.
           </p>
+          <label htmlFor="grunn" className="sr-only">
+            Grunn for å sende tilbake
+          </label>
           <div className="flex flex-wrap gap-3">
             <input
+              id="grunn"
               name="grunn"
               placeholder="Hvorfor sendes den tilbake?"
               className={`${FELT} flex-1 min-w-[12rem]`}
             />
-            <button type="submit" className={KNAPP_SEKUNDÆR}>
-              Send tilbake
-            </button>
+            <SendTilbakeKnapp />
           </div>
         </form>
       </div>

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { visTelefon } from '@/lib/telefon'
+import { dato, dagerTil, tidKort } from '@/lib/dato'
 import type { Kunde, Leie, Maskin } from '@/lib/types'
 import { Kort, KortTittel, Merke, Seksjonstittel } from '@/components/ui'
 
@@ -10,21 +11,6 @@ export const metadata: Metadata = { title: 'Oversikt – HM Utleie' }
 export const dynamic = 'force-dynamic'
 
 type Rad = Leie & { maskiner: Maskin | null; kunder: Kunde | null }
-
-const dato = (iso: string) => new Date(iso).toLocaleDateString('nb-NO')
-const tid = (iso: string) =>
-  new Date(iso).toLocaleString('nb-NO', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-
-/** Hele dager fra i dag. Negativt tall = forfalt. */
-function dagerTil(iso: string) {
-  const ms = new Date(iso).setHours(23, 59, 59, 999) - Date.now()
-  return Math.ceil(ms / 86_400_000)
-}
 
 export default async function OversiktSide() {
   const admin = await krevAdmin()
@@ -120,7 +106,7 @@ export default async function OversiktSide() {
                     {l.kunder?.navn ?? '–'}
                   </span>
                   <span className="hm-tall text-xs text-[var(--blekk-svak)]">
-                    Levert {l.slutt_tid ? tid(l.slutt_tid) : '–'}
+                    Levert {l.slutt_tid ? tidKort(l.slutt_tid) : '–'}
                   </span>
                   <span className="text-xs font-bold tracking-wider text-hm-amber uppercase">
                     Godkjenn →
@@ -272,7 +258,7 @@ export default async function OversiktSide() {
                 className="flex flex-wrap gap-x-4 gap-y-0.5 border-l-2 border-[var(--kant)] py-2 pl-4 text-sm"
               >
                 <span className="hm-tall shrink-0 text-[var(--blekk-svak)]">
-                  {tid(h.tid)}
+                  {tidKort(h.tid)}
                 </span>
                 <span className="font-semibold">{h.beskrivelse || h.type}</span>
               </li>

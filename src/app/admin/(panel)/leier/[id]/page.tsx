@@ -5,6 +5,7 @@ import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { signertBildeUrl, beregnDogn } from '@/lib/bilder'
 import { visTelefon } from '@/lib/telefon'
+import { dato, tid } from '@/lib/dato'
 import { LEIE_STATUS_TEKST, type Bilde, type Kunde, type Leie, type Maskin } from '@/lib/types'
 import { KNAPP_SEKUNDÆR, Kort, KortTittel, Merke } from '@/components/ui'
 import { GodkjennSkjema } from './godkjenn-skjema'
@@ -309,12 +310,3 @@ function Rad({ navn, verdi }: { navn: string; verdi: React.ReactNode }) {
   )
 }
 
-const dato = (iso: string) => new Date(iso).toLocaleDateString('nb-NO')
-const tid = (iso: string) =>
-  new Date(iso).toLocaleString('nb-NO', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })

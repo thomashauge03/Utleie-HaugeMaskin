@@ -6,6 +6,7 @@ import { hentEnhetsId } from '@/lib/enhet'
 import type { Leie, Maskin } from '@/lib/types'
 import { HMLogo } from '@/components/hm-logo'
 import { KNAPP_PRIMÆR, Merke } from '@/components/ui'
+import { dato } from '@/lib/dato'
 import { LeieSkjema } from './leie-skjema'
 
 export const dynamic = 'force-dynamic'
@@ -135,9 +136,3 @@ function Beskjed({
   )
 }
 
-const dato = (iso: string) =>
-  new Date(iso).toLocaleDateString('nb-NO', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })

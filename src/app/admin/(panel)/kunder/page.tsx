@@ -6,6 +6,7 @@ import { visTelefon } from '@/lib/telefon'
 import type { Kunde } from '@/lib/types'
 import { KNAPP_LITEN, Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
 import { Søkefelt } from '@/components/sokefelt'
+import { BekreftKnapp } from '@/components/bekreft-knapp'
 import { settKundeStatus } from './actions'
 import { KundeNotat } from './kunde-notat'
 
@@ -150,9 +151,7 @@ export default async function KunderSide(props: PageProps<'/admin/kunder'>) {
                     )}
                     {k.status !== 'sperret' ? (
                       <form action={settKundeStatus.bind(null, k.id, 'sperret')}>
-                        <button className={`${KNAPP_LITEN} border-hm-red text-hm-red-ink`}>
-                          Sperr
-                        </button>
+                        <BekreftKnapp etikett="Sperr" bekreft="Bekreft sperring" fare />
                       </form>
                     ) : (
                       <form action={settKundeStatus.bind(null, k.id, 'godkjent')}>

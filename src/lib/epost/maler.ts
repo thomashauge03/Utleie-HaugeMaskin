@@ -1,19 +1,27 @@
 import { visTelefon } from '@/lib/telefon'
+import { dato, tid } from '@/lib/dato'
 import type { Kunde, Leie, Maskin } from '@/lib/types'
 import 'server-only'
 
 const RØD = '#D81E28'
 const SVART = '#0B0B0C'
 
-const dato = (iso: string) => new Date(iso).toLocaleDateString('nb-NO')
-const tid = (iso: string) =>
-  new Date(iso).toLocaleString('nb-NO', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+/**
+ * Escaper verdier som skal inn i HTML-malene.
+ *
+ * Kundenavn og fritekstkommentarer er brukerstyrt. Uten escaping kunne
+ * en kunde skrevet «<a href=…>» eller annen markup som ble rendret i
+ * admin sin og andre kunders innboks – et phishing-smutthull. Alt som
+ * interpoleres i en mal går gjennom denne.
+ */
+function esc(v: string | null | undefined): string {
+  return String(v ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
 
 /**
  * Rammen rundt alle e-poster.
@@ -33,7 +41,7 @@ function ramme(tittel: string, innhold: string, firmanavn: string) {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:2px solid ${SVART}">
   <tr><td style="background:${SVART};padding:18px 24px">
     <span style="color:#ffffff;font-size:19px;font-weight:700;letter-spacing:.5px">
-      ${firmanavn || 'HM UTLEIE'}
+      ${esc(firmanavn) || 'HM UTLEIE'}
     </span>
   </td></tr>
   <tr><td style="height:5px;background:${RØD};font-size:0;line-height:0">&nbsp;</td></tr>
@@ -56,8 +64,8 @@ function fakta(rader: [string, string][]) {
   ${rader
     .map(
       ([k, v], i) => `<tr${i % 2 ? ' style="background:#fafafa"' : ''}>
-    <td style="padding:9px 12px;font-size:12px;color:#71717a;text-transform:uppercase;letter-spacing:.8px;white-space:nowrap">${k}</td>
-    <td style="padding:9px 12px;font-size:15px;font-weight:600;text-align:right">${v}</td></tr>`,
+    <td style="padding:9px 12px;font-size:12px;color:#71717a;text-transform:uppercase;letter-spacing:.8px;white-space:nowrap">${esc(k)}</td>
+    <td style="padding:9px 12px;font-size:15px;font-weight:600;text-align:right">${esc(v)}</td></tr>`,
     )
     .join('')}
 </table>`
@@ -91,7 +99,7 @@ export function kvitteringStart(s: Sammenheng): Mal {
     html: ramme(
       'Leien din er registrert',
       h1('Leien din er registrert') +
-        p(`Hei ${s.kunde?.navn?.split(' ')[0] ?? ''}! Du har nå leid <strong>${maskin}</strong>.`) +
+        p(`Hei ${esc(s.kunde?.navn?.split(' ')[0])}! Du har nå leid <strong>${esc(maskin)}</strong>.`) +
         fakta([
           ['Referanse', s.leie.referanse],
           ['Hentet', tid(s.leie.start_tid)],
@@ -140,7 +148,7 @@ export function nyLeieAdmin(s: Sammenheng): Mal {
           ['Forventet levering', dato(s.leie.planlagt_slutt)],
           ['Referanse', s.leie.referanse],
         ]) +
-        (s.leie.kommentar_start ? p(`<em>«${s.leie.kommentar_start}»</em>`) : '') +
+        (s.leie.kommentar_start ? p(`<em>«${esc(s.leie.kommentar_start)}»</em>`) : '') +
         knapp(url, 'Åpne adminpanelet'),
       s.firmanavn,
     ),
@@ -173,7 +181,7 @@ export function returAdmin(s: Sammenheng): Mal {
           ['Levert', s.leie.slutt_tid ? tid(s.leie.slutt_tid) : '–'],
           ['Referanse', s.leie.referanse],
         ]) +
-        (s.leie.kommentar_retur ? p(`<em>«${s.leie.kommentar_retur}»</em>`) : '') +
+        (s.leie.kommentar_retur ? p(`<em>«${esc(s.leie.kommentar_retur)}»</em>`) : '') +
         p('Maskinen blir ikke ledig før du har sett over bildet og godkjent.') +
         knapp(url, 'Se over og godkjenn'),
       s.firmanavn,
@@ -199,7 +207,7 @@ export function kvitteringRetur(s: Sammenheng): Mal {
     html: ramme(
       'Innleveringen er registrert',
       h1('Takk – innleveringen er registrert') +
-        p(`Vi har mottatt bildet ditt av <strong>${maskin}</strong>. Leien ble avsluttet ${s.leie.slutt_tid ? tid(s.leie.slutt_tid) : 'nå'}.`) +
+        p(`Vi har mottatt bildet ditt av <strong>${esc(maskin)}</strong>. Leien ble avsluttet ${s.leie.slutt_tid ? tid(s.leie.slutt_tid) : 'nå'}.`) +
         fakta([
           ['Referanse', s.leie.referanse],
           ['Hentet', dato(s.leie.start_tid)],
@@ -228,7 +236,7 @@ export function forfaltKunde(s: Sammenheng, dagerOver: number): Mal {
     html: ramme(
       'Påminnelse om levering',
       h1('Vennlig påminnelse') +
-        p(`Hei ${s.kunde?.navn?.split(' ')[0] ?? ''}! Ifølge systemet vårt har du fortsatt <strong>${maskin}</strong>, som var ventet tilbake ${dato(s.leie.planlagt_slutt)}.`) +
+        p(`Hei ${esc(s.kunde?.navn?.split(' ')[0])}! Ifølge systemet vårt har du fortsatt <strong>${esc(maskin)}</strong>, som var ventet tilbake ${dato(s.leie.planlagt_slutt)}.`) +
         fakta([
           ['Referanse', s.leie.referanse],
           ['Avtalt levering', dato(s.leie.planlagt_slutt)],
@@ -264,8 +272,8 @@ export function forfaltAdmin(
       ${rader
         .map(
           (r, i) => `<tr${i % 2 ? ' style="background:#fafafa"' : ''}>
-        <td style="padding:9px 10px;font-size:14px;font-weight:600">${r.maskin}</td>
-        <td style="padding:9px 10px;font-size:14px">${r.kunde}<br><span style="color:#71717a;font-size:12px">${r.telefon}</span></td>
+        <td style="padding:9px 10px;font-size:14px;font-weight:600">${esc(r.maskin)}</td>
+        <td style="padding:9px 10px;font-size:14px">${esc(r.kunde)}<br><span style="color:#71717a;font-size:12px">${esc(r.telefon)}</span></td>
         <td style="padding:9px 10px;font-size:16px;font-weight:700;color:${RØD};text-align:right">${r.dager}</td>
       </tr>`,
         )

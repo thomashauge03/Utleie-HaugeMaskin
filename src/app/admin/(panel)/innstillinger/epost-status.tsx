@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { tidKort } from '@/lib/dato'
 
 /**
  * Sier tydelig fra om utsending faktisk er satt opp.
@@ -46,14 +47,7 @@ export async function EpostStatus() {
           <ul className="space-y-1 text-xs">
             {siste.map((e, i) => (
               <li key={i} className="flex flex-wrap gap-x-3">
-                <span className="hm-tall text-[var(--blekk-svak)]">
-                  {new Date(e.sendt).toLocaleString('nb-NO', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
+                <span className="hm-tall text-[var(--blekk-svak)]">{tidKort(e.sendt)}</span>
                 <span
                   className={`font-bold ${e.status === 'sendt' ? 'text-hm-green' : 'text-hm-red-ink'}`}
                 >

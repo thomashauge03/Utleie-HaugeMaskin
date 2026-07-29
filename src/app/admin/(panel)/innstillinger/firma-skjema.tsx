@@ -83,7 +83,7 @@ export function FirmaSkjema({ innstillinger }: { innstillinger: Innstillinger })
         </p>
       )}
       {tilstand.ok && (
-        <p className="border-l-4 border-hm-green bg-hm-green/10 p-3 text-sm font-semibold text-hm-green">
+        <p role="status" className="border-l-4 border-hm-green bg-hm-green/10 p-3 text-sm font-semibold text-hm-green">
           {tilstand.ok}
         </p>
       )}

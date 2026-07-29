@@ -43,7 +43,9 @@ export default async function ReturSide(props: PageProps<'/leie/[ref]/retur'>) {
               {leie.referanse}
             </span>
           </div>
-          <p className="mt-6 text-sm font-bold tracking-widest text-hm-red uppercase">
+          {/* Hvit, ikke rød: rød på svart når ikke 4.5:1 kontrast, og
+              denne står i sollys på anleggsplass. */}
+          <p className="mt-6 text-sm font-bold tracking-widest text-white/70 uppercase">
             Innlevering
           </p>
           <h1 className="hm-display mt-1 text-3xl">{leie.maskiner.navn}</h1>

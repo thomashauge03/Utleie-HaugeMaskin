@@ -3,6 +3,7 @@ import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
 import { Kort, KortTittel, Seksjonstittel } from '@/components/ui'
+import { BekreftKnapp } from '@/components/bekreft-knapp'
 import { KopierLenke } from '../maskiner/kopier-lenke'
 import { FirmaSkjema, type Innstillinger } from './firma-skjema'
 import { Kategorier, type Kategori } from './kategorier'
@@ -124,12 +125,7 @@ export default async function InnstillingerSide() {
               Har lenken kommet på avveie? Lag en ny — da slutter den gamle å
               virke, og alle som abonnerer må legge inn den nye.
             </p>
-            <button
-              type="submit"
-              className="hm-trykk inline-flex min-h-[2.75rem] items-center border-2 border-hm-red px-4 text-xs font-bold tracking-wider text-hm-red-ink uppercase"
-            >
-              Lag ny lenke
-            </button>
+            <BekreftKnapp etikett="Lag ny lenke" bekreft="Bekreft – gammel slutter å virke" fare />
           </form>
         </div>
       </Kort>

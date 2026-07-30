@@ -1,17 +1,17 @@
 -- ============================================================
--- Alle migrasjoner etter 0002, samlet.
+-- Migrasjoner etter 0002, samlet.
 -- Lim inn hele fila i Supabase SQL Editor og trykk Run.
 -- Trygg a kjore flere ganger - alt er idempotent.
 -- ============================================================
 
--- >>>>>>>>>>>>>>>>  0003_varsling.sql  <<<<<<<<<<<<<<<<
--- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- >>>>>>>>>>  0003_varsling.sql  <<<<<<<<<<
+-- ═══════════════════════════════════════════════════════════
 --  E-postvarsling
 --
 --  Mottakere lagres som kommaseparert tekst framfor egen tabell.
---  Det er typisk toâ€“tre adresser hos et firma i denne stÃ¸rrelsen,
+--  Det er typisk to–tre adresser hos et firma i denne størrelsen,
 --  og en tabell ville kostet mer i vedlikehold enn den ga.
--- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- ═══════════════════════════════════════════════════════════
 
 alter table innstillinger
   add column if not exists varsel_kopi        text,
@@ -30,10 +30,10 @@ comment on column innstillinger.varsel_epost is
 comment on column innstillinger.varsel_kopi is
   'Kopimottaker(e). Kommaseparert.';
 comment on column innstillinger.purring_forfalt is
-  'Av som standard â€“ en purring til kunden bÃ¸r vÃ¦re et bevisst valg.';
+  'Av som standard – en purring til kunden bør være et bevisst valg.';
 
 
--- â•â•â• Logg over sendt e-post â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- ═══ Logg over sendt e-post ════════════════════════════════
 -- Uten denne vet ingen om et varsel faktisk gikk ut, og en
 -- forfallspurring kan bli sendt om igjen hver eneste dag.
 
@@ -48,7 +48,7 @@ create table if not exists epost_logg (
   sendt     timestamptz not null default now(),
   -- Egen datokolonne fordi (sendt::date) ikke kan brukes i en indeks:
   -- Postgres krever IMMUTABLE, og cast fra timestamptz til date er
-  -- STABLE â€“ den avhenger av tidssoneinnstillingen. Med eksplisitt
+  -- STABLE – den avhenger av tidssoneinnstillingen. Med eksplisitt
   -- UTC blir uttrykket immutable og kan indekseres.
   sendt_dato date generated always as ((sendt at time zone 'UTC')::date) stored
 );
@@ -56,8 +56,8 @@ create table if not exists epost_logg (
 create index if not exists epost_logg_leie_idx on epost_logg (leie_id, type);
 create index if not exists epost_logg_sendt_idx on epost_logg (sendt desc);
 
--- Ã‰n forfallspurring per leie per dag, hÃ¥ndhevet i databasen framfor
--- i kode â€“ da kan ikke to samtidige kjÃ¸ringer sende dobbelt opp.
+-- Én forfallspurring per leie per dag, håndhevet i databasen framfor
+-- i kode – da kan ikke to samtidige kjøringer sende dobbelt opp.
 create unique index if not exists epost_logg_daglig_unik
   on epost_logg (leie_id, type, sendt_dato)
   where status = 'sendt' and type in ('forfalt_admin', 'forfalt_kunde');
@@ -68,44 +68,42 @@ drop policy if exists admin_alt on epost_logg;
 create policy admin_alt on epost_logg
   for all using (er_admin()) with check (er_admin());
 
-
--- >>>>>>>>>>>>>>>>  0004_prisenhet.sql  <<<<<<<<<<<<<<<<
--- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
---  Time- eller dÃ¸gnpris per maskin
+-- >>>>>>>>>>  0004_prisenhet.sql  <<<<<<<<<<
+-- ═══════════════════════════════════════════════════════════
+--  Time- eller døgnpris per maskin
 --
---  Kolonnen dogn_pris beholder navnet sitt selv om den nÃ¥ kan
---  inneholde en timepris. Ã… dÃ¸pe den om ville blanket ut alle
---  priser i systemet fram til migrasjonen faktisk er kjÃ¸rt, og
---  dette er en base i drift. Kommentaren under stÃ¥r som
+--  Kolonnen dogn_pris beholder navnet sitt selv om den nå kan
+--  inneholde en timepris. Å døpe den om ville blanket ut alle
+--  priser i systemet fram til migrasjonen faktisk er kjørt, og
+--  dette er en base i drift. Kommentaren under står som
 --  forklaring til den som leser skjemaet senere.
--- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- ═══════════════════════════════════════════════════════════
 
 alter table maskiner
   add column if not exists pris_enhet text not null default 'dogn'
     check (pris_enhet in ('dogn', 'time'));
 
 comment on column maskiner.dogn_pris is
-  'Pris per enhet. Enheten stÃ¥r i pris_enhet â€“ kan vÃ¦re dÃ¸gn eller time.';
+  'Pris per enhet. Enheten står i pris_enhet – kan være døgn eller time.';
 
 comment on column maskiner.pris_enhet is
-  'dogn eller time. Styrer bÃ¥de visning og hvordan belÃ¸p foreslÃ¥s.';
+  'dogn eller time. Styrer både visning og hvordan beløp foreslås.';
 
 comment on column leier.antall_dogn is
-  'Antall enheter â€“ dÃ¸gn eller timer, avhengig av maskinens pris_enhet.';
+  'Antall enheter – døgn eller timer, avhengig av maskinens pris_enhet.';
 
-
--- >>>>>>>>>>>>>>>>  0005_verksted.sql  <<<<<<<<<<<<<<<<
--- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- >>>>>>>>>>  0005_verksted.sql  <<<<<<<<<<
+-- ═══════════════════════════════════════════════════════════
 --  Verkstedmodul
 --
 --  Skuffer leies ikke ut som motorsager. QR-koden henger ett
---  sted, viser hele lista, og brukes til Ã¥ holde styr pÃ¥ hva
---  som mÃ¥ fikses. Kategorien velges i innstillingene, sÃ¥ det
---  ikke er lÃ¥st til navnet Â«SkufferÂ».
--- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+--  sted, viser hele lista, og brukes til å holde styr på hva
+--  som må fikses. Kategorien velges i innstillingene, så det
+--  ikke er låst til navnet «Skuffer».
+-- ═══════════════════════════════════════════════════════════
 
--- â”€â”€ Roller â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
--- Fram til nÃ¥ kunne alle innloggede alt. Servicearbeidere skal
+-- ── Roller ─────────────────────────────────────────────────
+-- Fram til nå kunne alle innloggede alt. Servicearbeidere skal
 -- kunne styre verkstedet, men ikke se kundedata eller slette
 -- maskiner. Eksisterende brukere blir admin.
 alter table admin_brukere
@@ -116,15 +114,15 @@ comment on column admin_brukere.rolle is
   'admin = full tilgang. service = kun verkstedmodulen.';
 
 
--- â”€â”€ Hvilken kategori er verkstedkategori â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ── Hvilken kategori er verkstedkategori ───────────────────
 alter table innstillinger
   add column if not exists verksted_kategori text;
 
 comment on column innstillinger.verksted_kategori is
-  'Navnet pÃ¥ kategorien som bruker verkstedflyten framfor utleie.';
+  'Navnet på kategorien som bruker verkstedflyten framfor utleie.';
 
 
--- â”€â”€ Felter pÃ¥ maskinen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ── Felter på maskinen ─────────────────────────────────────
 alter table maskiner
   add column if not exists kjeft_dimensjon text,
   add column if not exists underkategori text,
@@ -139,9 +137,9 @@ comment on column maskiner.verksted_status is
   'null = ingen sak registrert. Ellers ma_sveises / deler_bestilt / klar.';
 
 
--- â”€â”€ Deler det kan vÃ¦re noe galt med â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ── Deler det kan være noe galt med ────────────────────────
 -- Egen tabell framfor faste kolonner, slik at verkstedet kan
--- legge til f.eks. Â«SideskjÃ¦rÂ» uten en ny migrasjon.
+-- legge til f.eks. «Sideskjær» uten en ny migrasjon.
 create table if not exists verksted_deler (
   id         uuid primary key default gen_random_uuid(),
   navn       text not null unique,
@@ -152,12 +150,12 @@ create table if not exists verksted_deler (
 insert into verksted_deler (navn, rekkefolge) values
   ('Tenner', 1),
   ('Tannholder', 2),
-  ('SlitestÃ¥l', 3),
+  ('Slitestål', 3),
   ('Bunn', 4)
 on conflict (navn) do nothing;
 
 
--- â”€â”€ Tilstand per del per maskin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ── Tilstand per del per maskin ────────────────────────────
 create table if not exists maskin_delstatus (
   maskin_id  uuid not null references maskiner(id) on delete cascade,
   del_id     uuid not null references verksted_deler(id) on delete cascade,
@@ -167,12 +165,13 @@ create table if not exists maskin_delstatus (
   primary key (maskin_id, del_id)
 );
 
-create index maskin_delstatus_maskin_idx on maskin_delstatus (maskin_id);
+create index if not exists maskin_delstatus_maskin_idx
+  on maskin_delstatus (maskin_id);
 
 
--- â”€â”€ Logg over utfÃ¸rt arbeid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
--- Uten denne ser man bare hva som gjenstÃ¥r, ikke hva som er
--- gjort fÃ¸r â€“ og da mister man slitasjehistorikken.
+-- ── Logg over utført arbeid ────────────────────────────────
+-- Uten denne ser man bare hva som gjenstår, ikke hva som er
+-- gjort før – og da mister man slitasjehistorikken.
 create table if not exists verksted_logg (
   id          uuid primary key default gen_random_uuid(),
   maskin_id   uuid not null references maskiner(id) on delete cascade,
@@ -182,13 +181,14 @@ create table if not exists verksted_logg (
   tid         timestamptz not null default now()
 );
 
-create index verksted_logg_maskin_idx on verksted_logg (maskin_id, tid desc);
+create index if not exists verksted_logg_maskin_idx
+  on verksted_logg (maskin_id, tid desc);
 
 
--- â”€â”€ Etterslep i kategorilista â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
--- Kategori er fritekst pÃ¥ maskinen, sÃ¥ maskiner lagt inn etter at
--- 0002 kjÃ¸rte har kategorier som aldri havnet i plukklista. Da var
--- de umulige Ã¥ velge som verkstedkategori. Denne henter dem inn.
+-- ── Etterslep i kategorilista ──────────────────────────────
+-- Kategori er fritekst på maskinen, så maskiner lagt inn etter at
+-- 0002 kjørte har kategorier som aldri havnet i plukklista. Da var
+-- de umulige å velge som verkstedkategori. Denne henter dem inn.
 insert into kategorier (navn)
 select distinct trim(kategori)
 from maskiner
@@ -196,9 +196,9 @@ where kategori is not null and trim(kategori) <> ''
 on conflict (navn) do nothing;
 
 
--- â”€â”€ Radsikkerhet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ── Radsikkerhet ───────────────────────────────────────────
 -- Lesing for anonyme skjer gjennom server-ruter med service
--- role, som i resten av kundeflyten. Her lÃ¥ser vi til admin.
+-- role, som i resten av kundeflyten. Her låser vi til admin.
 alter table verksted_deler    enable row level security;
 alter table maskin_delstatus  enable row level security;
 alter table verksted_logg     enable row level security;
@@ -213,4 +213,3 @@ create policy admin_alt on maskin_delstatus
   for all using (er_admin()) with check (er_admin());
 create policy admin_alt on verksted_logg
   for all using (er_admin()) with check (er_admin());
-

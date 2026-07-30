@@ -70,7 +70,8 @@ create table if not exists maskin_delstatus (
   primary key (maskin_id, del_id)
 );
 
-create index maskin_delstatus_maskin_idx on maskin_delstatus (maskin_id);
+create index if not exists maskin_delstatus_maskin_idx
+  on maskin_delstatus (maskin_id);
 
 
 -- ── Logg over utført arbeid ────────────────────────────────
@@ -85,7 +86,8 @@ create table if not exists verksted_logg (
   tid         timestamptz not null default now()
 );
 
-create index verksted_logg_maskin_idx on verksted_logg (maskin_id, tid desc);
+create index if not exists verksted_logg_maskin_idx
+  on verksted_logg (maskin_id, tid desc);
 
 
 -- ── Etterslep i kategorilista ──────────────────────────────

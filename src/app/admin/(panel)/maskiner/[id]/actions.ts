@@ -19,8 +19,9 @@ const skjema = z.object({
     .trim()
     .transform((v) => (v === '' ? null : Number(v.replace(',', '.'))))
     .refine((v) => v === null || (Number.isFinite(v) && v >= 0), {
-      message: 'Døgnpris må være et positivt tall',
+      message: 'Prisen må være et positivt tall',
     }),
+  pris_enhet: z.enum(['dogn', 'time']).default('dogn'),
   vis_pris: z.union([z.literal('on'), z.null()]).transform((v) => v === 'on'),
   status: z.enum(['ledig', 'utleid', 'service', 'utrangert']),
   notat: z.string().trim().optional(),
@@ -70,6 +71,7 @@ export async function lagreMaskin(
       kategori: felter.data.kategori || null,
       internnummer: felter.data.internnummer || null,
       dogn_pris: felter.data.dogn_pris,
+      pris_enhet: felter.data.pris_enhet,
       vis_pris: felter.data.vis_pris,
       status: felter.data.status,
       notat: felter.data.notat || null,

@@ -4,6 +4,7 @@ import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { visTelefon } from '@/lib/telefon'
 import { dato, dagerTil, tidKort } from '@/lib/dato'
+import { antallTekst, prisEnhet } from '@/lib/pris'
 import type { Kunde, Leie, Maskin } from '@/lib/types'
 import { Kort, KortTittel, Merke, Seksjonstittel } from '@/components/ui'
 
@@ -227,7 +228,10 @@ export default async function OversiktSide() {
                         {l.kunder?.navn ?? '–'}
                       </span>
                       <span className="block truncate text-sm text-[var(--blekk-svak)]">
-                        {l.maskiner?.navn ?? 'Ukjent'} · {l.antall_dogn ?? '–'} døgn
+                        {l.maskiner?.navn ?? 'Ukjent'} ·{' '}
+                        {l.antall_dogn
+                          ? antallTekst(l.antall_dogn, prisEnhet(l.maskiner?.pris_enhet))
+                          : '–'}
                       </span>
                     </span>
                     <span className="hm-display hm-tall shrink-0 text-lg">

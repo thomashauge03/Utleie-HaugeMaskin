@@ -10,10 +10,13 @@ export function GodkjennSkjema({
   leieId,
   foreslattDogn,
   foreslattBelop,
+  antallEtikett,
 }: {
   leieId: string
   foreslattDogn: number
   foreslattBelop: number | null
+  /** «Antall døgn» eller «Antall timer», styrt av maskinens prisenhet. */
+  antallEtikett: string
 }) {
   const [tilstand, handling, venter] = useActionState(godkjennLeie, start)
 
@@ -36,7 +39,7 @@ export function GodkjennSkjema({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label>
-              <span className={ETIKETT}>Antall døgn</span>
+              <span className={ETIKETT}>{antallEtikett}</span>
               <input
                 name="antall_dogn"
                 inputMode="decimal"

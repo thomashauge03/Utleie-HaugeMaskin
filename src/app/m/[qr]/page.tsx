@@ -7,6 +7,7 @@ import type { Leie, Maskin } from '@/lib/types'
 import { HMLogo } from '@/components/hm-logo'
 import { KNAPP_PRIMÆR, Merke } from '@/components/ui'
 import { dato } from '@/lib/dato'
+import { krPer, prisEnhet } from '@/lib/pris'
 import { LeieSkjema } from './leie-skjema'
 
 export const dynamic = 'force-dynamic'
@@ -86,7 +87,7 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
                 {maskin.dogn_pris.toLocaleString('nb-NO')}
               </span>
               <span className="text-sm font-semibold tracking-widest text-white/60 uppercase">
-                kr / døgn
+                {krPer(prisEnhet(maskin.pris_enhet))}
               </span>
             </p>
           )}

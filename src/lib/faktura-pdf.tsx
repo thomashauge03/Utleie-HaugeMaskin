@@ -11,6 +11,7 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { visTelefon } from '@/lib/telefon'
 import { dato, tid } from '@/lib/dato'
+import { enhetKolonne, prisEnhet } from '@/lib/pris'
 import type { Kunde, Leie, Maskin } from '@/lib/types'
 import 'server-only'
 
@@ -153,7 +154,9 @@ function Dokument({ leie, kunde, maskin, firmanavn, bilder, logo }: FakturaData 
 
         <View style={s.tabellTopp}>
           <Text style={[s.tabellTekst, { flex: 3 }]}>BESKRIVELSE</Text>
-          <Text style={[s.tabellTekst, { flex: 1, textAlign: 'right' }]}>DØGN</Text>
+          <Text style={[s.tabellTekst, { flex: 1, textAlign: 'right' }]}>
+            {enhetKolonne(prisEnhet(maskin?.pris_enhet))}
+          </Text>
           <Text style={[s.tabellTekst, { flex: 1.3, textAlign: 'right' }]}>PRIS</Text>
           <Text style={[s.tabellTekst, { flex: 1.3, textAlign: 'right' }]}>SUM</Text>
         </View>

@@ -4,6 +4,7 @@ import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
 import { MASKIN_STATUS_TEKST, type Maskin } from '@/lib/types'
+import { prisEnhet } from '@/lib/pris'
 import { KNAPP_SEKUNDÆR, Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
 import { KopierLenke } from './kopier-lenke'
 import { NyMaskin } from './ny-maskin'
@@ -106,7 +107,7 @@ export default async function MaskinerSide() {
               <tr>
                 <Th>Maskin</Th>
                 <Th>Kode</Th>
-                <Th>Døgnpris</Th>
+                <Th>Pris</Th>
                 <Th>Status</Th>
                 <Th>Lenke for QR</Th>
               </tr>
@@ -150,6 +151,9 @@ export default async function MaskinerSide() {
                       ) : (
                         <>
                           {m.dogn_pris.toLocaleString('nb-NO')} kr
+                          <span className="font-normal text-[var(--blekk-svak)]">
+                            {prisEnhet(m.pris_enhet) === 'time' ? ' / time' : ' / døgn'}
+                          </span>
                           {!m.vis_pris && (
                             <span
                               className="ml-1.5 text-[10px] font-bold tracking-wider text-[var(--blekk-svak)] uppercase"

@@ -8,6 +8,7 @@ import { HMLogo } from '@/components/hm-logo'
 import { TømBildekladd } from '@/components/tom-bildekladd'
 import { KNAPP_PRIMÆR, Merke } from '@/components/ui'
 import { dato, tid } from '@/lib/dato'
+import { antallTekst, perEnhet, prisEnhet } from '@/lib/pris'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'Din leie – HM Utleie' }
@@ -75,7 +76,7 @@ export default async function LeieSide(props: PageProps<'/leie/[ref]'>) {
           {leie.slutt_tid && <Rad navn="Levert" verdi={tid(leie.slutt_tid)} />}
           {maskin.vis_pris && maskin.dogn_pris !== null && (
             <Rad
-              navn="Døgnpris"
+              navn={`Pris ${perEnhet(prisEnhet(maskin.pris_enhet))}`}
               verdi={`${maskin.dogn_pris.toLocaleString('nb-NO')} kr`}
             />
           )}
@@ -109,7 +110,9 @@ export default async function LeieSide(props: PageProps<'/leie/[ref]'>) {
 
         {leie.status === 'avsluttet' && (
           <Beskjed tittel="Leien er avsluttet" grønn>
-            {leie.antall_dogn ? `${leie.antall_dogn} døgn. ` : ''}
+            {leie.antall_dogn
+              ? `${antallTekst(leie.antall_dogn, prisEnhet(maskin.pris_enhet))}. `
+              : ''}
             Faktura sendes til e-postadressen din.
           </Beskjed>
         )}

@@ -14,8 +14,9 @@ const maskinSkjema = z.object({
     .trim()
     .transform((v) => (v === '' ? null : Number(v.replace(',', '.'))))
     .refine((v) => v === null || (Number.isFinite(v) && v >= 0), {
-      message: 'Døgnpris må være et positivt tall',
+      message: 'Prisen må være et positivt tall',
     }),
+  pris_enhet: z.enum(['dogn', 'time']).default('dogn'),
   vis_pris: z.union([z.literal('on'), z.null()]).transform((v) => v === 'on'),
   notat: z.string().trim().optional(),
 })
@@ -28,6 +29,7 @@ function les(formData: FormData) {
     kategori: formData.get('kategori'),
     internnummer: formData.get('internnummer'),
     dogn_pris: formData.get('dogn_pris'),
+    pris_enhet: formData.get('pris_enhet') ?? 'dogn',
     vis_pris: formData.get('vis_pris'),
     notat: formData.get('notat'),
   })
@@ -50,6 +52,7 @@ export async function opprettMaskin(
     kategori: felter.data.kategori || null,
     internnummer: felter.data.internnummer || null,
     dogn_pris: felter.data.dogn_pris,
+    pris_enhet: felter.data.pris_enhet,
     vis_pris: felter.data.vis_pris,
     notat: felter.data.notat || null,
   })

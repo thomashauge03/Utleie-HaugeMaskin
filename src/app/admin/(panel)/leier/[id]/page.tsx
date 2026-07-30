@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
-import { signertBildeUrl, beregnDogn } from '@/lib/bilder'
+import { signertBildeUrl } from '@/lib/bilder'
+import { antallEtikett, antallTekst, beregnAntall, prisEnhet } from '@/lib/pris'
 import { visTelefon } from '@/lib/telefon'
 import { dato, tid } from '@/lib/dato'
 import { LEIE_STATUS_TEKST, type Bilde, type Kunde, type Leie, type Maskin } from '@/lib/types'
@@ -55,7 +56,8 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
     .order('tid', { ascending: false })
 
   const sluttForBeregning = leie.slutt_tid ?? new Date().toISOString()
-  const foreslattDogn = beregnDogn(leie.start_tid, sluttForBeregning)
+  const enhet = prisEnhet(leie.maskiner?.pris_enhet)
+  const foreslattDogn = beregnAntall(leie.start_tid, sluttForBeregning, enhet)
   const foreslattBelop = leie.maskiner?.dogn_pris
     ? Math.round(foreslattDogn * leie.maskiner.dogn_pris)
     : null
@@ -67,7 +69,7 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
     leie.kunder ? visTelefon(leie.kunder.telefon) : null,
     '',
     `${leie.referanse} – ${leie.maskiner?.navn ?? ''}`,
-    `${leie.antall_dogn ?? foreslattDogn} døgn`,
+    antallTekst(leie.antall_dogn ?? foreslattDogn, enhet),
     leie.belop ? `${leie.belop.toLocaleString('nb-NO')} kr` : '',
   ]
     .filter((l) => l !== null && l !== undefined)
@@ -101,6 +103,7 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
           leieId={leie.id}
           foreslattDogn={foreslattDogn}
           foreslattBelop={foreslattBelop}
+          antallEtikett={antallEtikett(enhet)}
         />
       )}
 
@@ -186,7 +189,7 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
               <Rad navn="Forventet levering" verdi={dato(leie.planlagt_slutt)} />
               <Rad navn="Levert" verdi={leie.slutt_tid ? tid(leie.slutt_tid) : '–'} />
               <Rad
-                navn="Døgn"
+                navn={enhet === 'time' ? 'Timer' : 'Døgn'}
                 verdi={leie.antall_dogn ?? `${foreslattDogn} (forslag)`}
               />
               <Rad

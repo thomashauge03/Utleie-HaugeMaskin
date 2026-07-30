@@ -73,10 +73,27 @@ export function NyMaskin({ kategorier }: { kategorier: string[] }) {
           <input name="internnummer" placeholder="HM-14" className={FELT} />
         </label>
 
-        <label>
-          <span className={ETIKETT}>Døgnpris (kr)</span>
-          <input name="dogn_pris" inputMode="decimal" placeholder="850" className={FELT} />
-        </label>
+        <div>
+          <span className={ETIKETT}>Pris (kr)</span>
+          <div className="flex gap-2">
+            <input
+              name="dogn_pris"
+              inputMode="decimal"
+              placeholder="850"
+              aria-label="Pris i kroner"
+              className={`${FELT} min-w-0 flex-1`}
+            />
+            <select
+              name="pris_enhet"
+              defaultValue="dogn"
+              aria-label="Prisenhet"
+              className={`${FELT} w-32 shrink-0`}
+            >
+              <option value="dogn">per døgn</option>
+              <option value="time">per time</option>
+            </select>
+          </div>
+        </div>
 
         <label className="flex min-h-[2.75rem] items-center gap-3 self-end">
           <input

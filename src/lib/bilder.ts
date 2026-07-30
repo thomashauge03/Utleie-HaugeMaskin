@@ -37,9 +37,3 @@ export async function bildeFinnes(sti: string): Promise<boolean> {
 
   return Boolean(data?.some((f) => f.name === navn))
 }
-
-/** Beregner antall døgn, der påbegynt døgn teller som helt. */
-export function beregnDogn(start: string, slutt: string): number {
-  const ms = new Date(slutt).getTime() - new Date(start).getTime()
-  return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)))
-}

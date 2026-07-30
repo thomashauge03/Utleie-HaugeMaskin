@@ -1,5 +1,6 @@
 import { visTelefon } from '@/lib/telefon'
 import { dato, tid } from '@/lib/dato'
+import { perEnhet, prisEnhet } from '@/lib/pris'
 import type { Kunde, Leie, Maskin } from '@/lib/types'
 import 'server-only'
 
@@ -105,7 +106,12 @@ export function kvitteringStart(s: Sammenheng): Mal {
           ['Hentet', tid(s.leie.start_tid)],
           ['Forventet levering', dato(s.leie.planlagt_slutt)],
           ...(s.maskin?.vis_pris && s.maskin.dogn_pris
-            ? ([['Døgnpris', `${s.maskin.dogn_pris.toLocaleString('nb-NO')} kr`]] as [string, string][])
+            ? ([
+                [
+                  `Pris ${perEnhet(prisEnhet(s.maskin.pris_enhet))}`,
+                  `${s.maskin.dogn_pris.toLocaleString('nb-NO')} kr`,
+                ],
+              ] as [string, string][])
             : []),
         ]) +
         p('Når du skal levere tilbake, skanner du returkoden på arbeidsstedet og tar et bilde av maskinen.') +

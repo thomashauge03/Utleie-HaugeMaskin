@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { ETIKETT, FELT } from '@/components/ui'
+import { prisEnhet } from '@/lib/pris'
 import type { Maskin } from '@/lib/types'
 import {
   deaktiverMaskin,
@@ -65,15 +66,27 @@ export function RedigerSkjema({
           />
         </label>
 
-        <label className="block">
-          <span className={ETIKETT}>Døgnpris (kr)</span>
-          <input
-            name="dogn_pris"
-            inputMode="decimal"
-            defaultValue={maskin.dogn_pris ?? ''}
-            className={`${FELT} hm-tall`}
-          />
-        </label>
+        <div className="block">
+          <span className={ETIKETT}>Pris (kr)</span>
+          <div className="flex gap-2">
+            <input
+              name="dogn_pris"
+              inputMode="decimal"
+              defaultValue={maskin.dogn_pris ?? ''}
+              aria-label="Pris i kroner"
+              className={`${FELT} hm-tall min-w-0 flex-1`}
+            />
+            <select
+              name="pris_enhet"
+              defaultValue={prisEnhet(maskin.pris_enhet)}
+              aria-label="Prisenhet"
+              className={`${FELT} w-32 shrink-0`}
+            >
+              <option value="dogn">per døgn</option>
+              <option value="time">per time</option>
+            </select>
+          </div>
+        </div>
 
         <label className="block">
           <span className={ETIKETT}>Status</span>

@@ -18,7 +18,9 @@ export type Maskin = {
   navn: string
   kategori: string | null
   internnummer: string | null
+  /** Pris per enhet – se pris_enhet for hvilken. */
   dogn_pris: number | null
+  pris_enhet: 'dogn' | 'time'
   vis_pris: boolean
   status: MaskinStatus
   bilde_sti: string | null

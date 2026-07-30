@@ -98,6 +98,30 @@ export async function deaktiverMaskin(maskinId: string) {
   redirect('/admin/maskiner')
 }
 
+/**
+ * Sletter maskinen for godt.
+ *
+ * Kun mulig når maskinen aldri har vært utleid. Har den historikk, ville
+ * sletting gjort fakturagrunnlaget på gamle leier verdiløst – databasen
+ * nekter det uansett via fremmednøkkelen, men vi sjekker her for å kunne
+ * gi en forklaring i stedet for en teknisk feilmelding.
+ */
+export async function slettMaskin(maskinId: string) {
+  await krevAdmin()
+  const supabase = await lagServerKlient()
+
+  const { count } = await supabase
+    .from('leier')
+    .select('id', { count: 'exact', head: true })
+    .eq('maskin_id', maskinId)
+
+  if ((count ?? 0) > 0) return
+
+  await supabase.from('maskiner').delete().eq('id', maskinId)
+  revalidatePath('/admin/maskiner')
+  redirect('/admin/maskiner')
+}
+
 export async function aktiverMaskin(maskinId: string) {
   await krevAdmin()
   const supabase = await lagServerKlient()

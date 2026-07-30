@@ -6,7 +6,7 @@ import { opprettMaskin, type MaskinTilstand } from './actions'
 
 const start: MaskinTilstand = {}
 
-export function NyMaskin() {
+export function NyMaskin({ kategorier }: { kategorier: string[] }) {
   const [åpen, settÅpen] = useState(false)
   const [tilstand, handling, venter] = useActionState(opprettMaskin, start)
   const skjema = useRef<HTMLFormElement>(null)
@@ -53,7 +53,19 @@ export function NyMaskin() {
 
         <label>
           <span className={ETIKETT}>Kategori</span>
-          <input name="kategori" placeholder="Komprimering" className={FELT} />
+          {/* Forslag fra kategoriene admin styrer under Innstillinger,
+              men fritekst er fortsatt lov om en mangler. */}
+          <input
+            name="kategori"
+            list="ny-maskin-kategorier"
+            placeholder={kategorier[0] ?? 'Motorsager'}
+            className={FELT}
+          />
+          <datalist id="ny-maskin-kategorier">
+            {kategorier.map((k) => (
+              <option key={k} value={k} />
+            ))}
+          </datalist>
         </label>
 
         <label>

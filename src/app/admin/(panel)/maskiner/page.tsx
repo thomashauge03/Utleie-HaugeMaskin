@@ -18,17 +18,41 @@ const merkeType = {
   utrangert: 'nøytral',
 } as const
 
+const UTEN = 'Uten kategori'
+
 export default async function MaskinerSide() {
   await krevAdmin()
 
   const supabase = await lagServerKlient()
-  const { data, error } = await supabase
-    .from('maskiner')
-    .select('*')
-    .eq('aktiv', true)
-    .order('navn')
+  const [{ data, error }, { data: kategoriRader }, { data: utAvBruk }] =
+    await Promise.all([
+      supabase.from('maskiner').select('*').eq('aktiv', true).order('navn'),
+      supabase.from('kategorier').select('navn').order('rekkefolge').order('navn'),
+      supabase.from('maskiner').select('*').eq('aktiv', false).order('navn'),
+    ])
 
   const maskiner = (data ?? []) as Maskin[]
+  const inaktive = (utAvBruk ?? []) as Maskin[]
+  const kategoriListe = (kategoriRader ?? []).map((k) => k.navn as string)
+
+  // Grupper maskinene under kategorien sin. Rekkefølgen følger den admin
+  // har satt under Innstillinger; maskiner uten kategori havner sist.
+  const grupper = new Map<string, Maskin[]>()
+  for (const navn of kategoriListe) grupper.set(navn, [])
+  for (const m of maskiner) {
+    const nøkkel = m.kategori?.trim() || UTEN
+    if (!grupper.has(nøkkel)) grupper.set(nøkkel, [])
+    grupper.get(nøkkel)!.push(m)
+  }
+
+  // Bare grupper som faktisk har maskiner. Uten-kategori alltid nederst.
+  const seksjoner = [...grupper.entries()]
+    .filter(([, liste]) => liste.length > 0)
+    .sort((a, b) => {
+      if (a[0] === UTEN) return 1
+      if (b[0] === UTEN) return -1
+      return 0
+    })
 
   return (
     <div className="space-y-7">
@@ -46,7 +70,7 @@ export default async function MaskinerSide() {
         )}
       </div>
 
-      <NyMaskin />
+      <NyMaskin kategorier={kategoriListe} />
 
       {error && (
         <p
@@ -63,69 +87,110 @@ export default async function MaskinerSide() {
           av.
         </TomTilstand>
       ) : (
-        <div className="overflow-x-auto border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)]">
-          <table className="w-full text-sm">
-            <thead className="bg-hm-black text-white">
-              <tr>
-                <Th>Maskin</Th>
-                <Th>Kode</Th>
-                <Th>Døgnpris</Th>
-                <Th>Status</Th>
-                <Th>Lenke for QR</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {maskiner.map((m) => (
-                <tr
-                  key={m.id}
-                  className="border-b-2 border-[var(--kant)] last:border-0"
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/maskiner/${m.id}`}
-                      className="hm-display inline-flex min-h-[2.75rem] items-center text-base underline underline-offset-4"
-                    >
-                      {m.navn}
-                    </Link>
-                    {(m.kategori || m.internnummer) && (
-                      <div className="text-xs text-[var(--blekk-svak)]">
-                        {[m.kategori, m.internnummer].filter(Boolean).join(' · ')}
-                      </div>
-                    )}
-                  </td>
-                  <td className="hm-tall px-4 py-3 font-mono text-xs">
-                    {m.qr_kode}
-                  </td>
-                  <td className="hm-tall px-4 py-3 font-semibold">
-                    {m.dogn_pris === null ? (
-                      <span className="text-[var(--blekk-svak)]">–</span>
-                    ) : (
-                      <>
-                        {m.dogn_pris.toLocaleString('nb-NO')} kr
-                        {!m.vis_pris && (
-                          <span
-                            className="ml-1.5 text-[10px] font-bold tracking-wider text-[var(--blekk-svak)] uppercase"
-                            title="Prisen vises ikke for kunden"
+        <div className="space-y-8">
+          {seksjoner.map(([kategori, liste]) => (
+            <section key={kategori}>
+              <div className="mb-3 flex items-center gap-3">
+                <span className="hm-skrastrek !h-1 !w-6" aria-hidden="true" />
+                <h2 className="hm-display text-xl">{kategori}</h2>
+                <span className="hm-tall text-xs font-bold tracking-wider text-[var(--blekk-svak)] uppercase">
+                  {liste.length} {liste.length === 1 ? 'maskin' : 'maskiner'}
+                </span>
+              </div>
+
+              <div className="overflow-x-auto border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)]">
+                <table className="w-full text-sm">
+                  <thead className="bg-hm-black text-white">
+                    <tr>
+                      <Th>Maskin</Th>
+                      <Th>Kode</Th>
+                      <Th>Døgnpris</Th>
+                      <Th>Status</Th>
+                      <Th>Lenke for QR</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {liste.map((m) => (
+                      <tr
+                        key={m.id}
+                        className="border-b-2 border-[var(--kant)] last:border-0"
+                      >
+                        <td className="px-4 py-3">
+                          <Link
+                            href={`/admin/maskiner/${m.id}`}
+                            className="hm-display inline-flex min-h-[2.75rem] items-center text-base underline underline-offset-4"
                           >
-                            skjult
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Merke type={merkeType[m.status]}>
-                      {MASKIN_STATUS_TEKST[m.status]}
-                    </Merke>
-                  </td>
-                  <td className="px-4 py-3">
-                    <KopierLenke url={`${env.NEXT_PUBLIC_SITE_URL}/m/${m.qr_kode}`} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                            {m.navn}
+                          </Link>
+                          {m.internnummer && (
+                            <div className="text-xs text-[var(--blekk-svak)]">
+                              {m.internnummer}
+                            </div>
+                          )}
+                        </td>
+                        <td className="hm-tall px-4 py-3 font-mono text-xs">
+                          {m.qr_kode}
+                        </td>
+                        <td className="hm-tall px-4 py-3 font-semibold">
+                          {m.dogn_pris === null ? (
+                            <span className="text-[var(--blekk-svak)]">–</span>
+                          ) : (
+                            <>
+                              {m.dogn_pris.toLocaleString('nb-NO')} kr
+                              {!m.vis_pris && (
+                                <span
+                                  className="ml-1.5 text-[10px] font-bold tracking-wider text-[var(--blekk-svak)] uppercase"
+                                  title="Prisen vises ikke for kunden"
+                                >
+                                  skjult
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Merke type={merkeType[m.status]}>
+                            {MASKIN_STATUS_TEKST[m.status]}
+                          </Merke>
+                        </td>
+                        <td className="px-4 py-3">
+                          <KopierLenke url={`${env.NEXT_PUBLIC_SITE_URL}/m/${m.qr_kode}`} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ))}
         </div>
+      )}
+
+      {/* Uten dette blir en maskin som tas ut av bruk umulig å finne igjen. */}
+      {inaktive.length > 0 && (
+        <details className="border-2 border-[var(--kant)] bg-[var(--flate-opp)]">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-bold tracking-wider uppercase">
+            Ute av bruk ({inaktive.length})
+          </summary>
+          <ul className="divide-y-2 divide-[var(--kant)] border-t-2 border-[var(--kant)]">
+            {inaktive.map((m) => (
+              <li key={m.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <Link
+                  href={`/admin/maskiner/${m.id}`}
+                  className="font-semibold underline underline-offset-4"
+                >
+                  {m.navn}
+                </Link>
+                <span className="hm-tall font-mono text-xs text-[var(--blekk-svak)]">
+                  {m.qr_kode}
+                </span>
+                <span className="ml-auto text-xs text-[var(--blekk-svak)]">
+                  Åpne for å ta i bruk igjen
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
     </div>
   )

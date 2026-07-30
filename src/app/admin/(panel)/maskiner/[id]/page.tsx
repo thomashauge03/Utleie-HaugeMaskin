@@ -91,7 +91,12 @@ export default async function MaskinDetaljSide(props: PageProps<'/admin/maskiner
 
       <Kort>
         <KortTittel>Rediger</KortTittel>
-        <RedigerSkjema maskin={maskin} kategorier={kategorier} utleid={utleid} />
+        <RedigerSkjema
+          maskin={maskin}
+          kategorier={kategorier}
+          utleid={utleid}
+          harHistorikk={leier.length > 0}
+        />
       </Kort>
 
       <Kort>

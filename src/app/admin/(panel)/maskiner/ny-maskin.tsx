@@ -6,7 +6,13 @@ import { opprettMaskin, type MaskinTilstand } from './actions'
 
 const start: MaskinTilstand = {}
 
-export function NyMaskin({ kategorier }: { kategorier: string[] }) {
+export function NyMaskin({
+  kategorier,
+  typer,
+}: {
+  kategorier: string[]
+  typer: string[]
+}) {
   const [åpen, settÅpen] = useState(false)
   const [tilstand, handling, venter] = useActionState(opprettMaskin, start)
   const skjema = useRef<HTMLFormElement>(null)
@@ -64,6 +70,23 @@ export function NyMaskin({ kategorier }: { kategorier: string[] }) {
           <datalist id="ny-maskin-kategorier">
             {kategorier.map((k) => (
               <option key={k} value={k} />
+            ))}
+          </datalist>
+        </label>
+
+        <label>
+          <span className={ETIKETT}>
+            Type <span className="normal-case">(underkategori)</span>
+          </span>
+          <input
+            name="underkategori"
+            list="ny-maskin-typer"
+            placeholder="Graveskuff"
+            className={FELT}
+          />
+          <datalist id="ny-maskin-typer">
+            {typer.map((t) => (
+              <option key={t} value={t} />
             ))}
           </datalist>
         </label>

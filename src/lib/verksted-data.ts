@@ -9,6 +9,7 @@ export type VerkstedMaskin = Maskin & {
   underkategori: string | null
   verksted_status: string | null
   deler: Record<string, string>
+  delMal: Record<string, string>
 }
 
 export const UTEN_TYPE = 'Uten type'
@@ -69,17 +70,24 @@ export async function hentVerksted(): Promise<{
   // Én spørring for alle delstatusene framfor én per maskin.
   const { data: statuser } = await supabaseAdmin
     .from('maskin_delstatus')
-    .select('maskin_id, del_id, status')
+    .select('maskin_id, del_id, status, mal')
     .in(
       'maskin_id',
       maskiner.map((m) => m.id),
     )
 
   const perMaskin = new Map<string, Record<string, string>>()
+  const malPerMaskin = new Map<string, Record<string, string>>()
   for (const s of statuser ?? []) {
     const eksisterende = perMaskin.get(s.maskin_id) ?? {}
     eksisterende[s.del_id] = s.status
     perMaskin.set(s.maskin_id, eksisterende)
+
+    if (s.mal) {
+      const mal = malPerMaskin.get(s.maskin_id) ?? {}
+      mal[s.del_id] = s.mal
+      malPerMaskin.set(s.maskin_id, mal)
+    }
   }
 
   return {
@@ -89,6 +97,7 @@ export async function hentVerksted(): Promise<{
       ...(m as VerkstedMaskin),
       // Deler uten rad regnes som OK – ingen har meldt noe galt.
       deler: perMaskin.get(m.id) ?? {},
+      delMal: malPerMaskin.get(m.id) ?? {},
     })),
   }
 }
@@ -106,7 +115,7 @@ export async function hentVerkstedMaskin(maskinId: string) {
     supabaseAdmin.from('verksted_deler').select('*').order('rekkefolge').order('navn'),
     supabaseAdmin
       .from('maskin_delstatus')
-      .select('del_id, status')
+      .select('del_id, status, mal')
       .eq('maskin_id', maskinId),
     supabaseAdmin
       .from('verksted_logg')
@@ -118,12 +127,17 @@ export async function hentVerkstedMaskin(maskinId: string) {
 
   const deler = (delRader ?? []) as Del[]
   const status: Record<string, string> = {}
-  for (const s of statuser ?? []) status[s.del_id] = s.status
+  const mal: Record<string, string> = {}
+  for (const s of statuser ?? []) {
+    status[s.del_id] = s.status
+    if (s.mal) mal[s.del_id] = s.mal
+  }
 
   return {
     maskin: data as VerkstedMaskin,
     deler,
     delStatus: status,
+    delMal: mal,
     logg: (logg ?? []) as {
       id: string
       del_navn: string | null

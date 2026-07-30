@@ -24,7 +24,7 @@ export default async function VerkstedMaskinSide(
   const [data, bruker] = await Promise.all([hentVerkstedMaskin(id), hentAdmin()])
 
   if (!data) notFound()
-  const { maskin, deler, delStatus, logg } = data
+  const { maskin, deler, delStatus, delMal, logg } = data
   const innlogget = Boolean(bruker)
 
   return (
@@ -91,6 +91,7 @@ export default async function VerkstedMaskinSide(
                   maskinId={maskin.id}
                   delId={d.id}
                   naavaerende={delStatus[d.id] ?? 'ok'}
+                  mal={delMal[d.id] ?? ''}
                   innlogget={innlogget}
                 />
               </li>

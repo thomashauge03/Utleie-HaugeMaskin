@@ -8,6 +8,7 @@ import { lagServerKlient } from '@/lib/supabase/server'
 const maskinSkjema = z.object({
   navn: z.string().trim().min(1, 'Navn må fylles ut'),
   kategori: z.string().trim().optional(),
+  underkategori: z.string().trim().optional(),
   internnummer: z.string().trim().optional(),
   dogn_pris: z
     .string()
@@ -27,6 +28,7 @@ function les(formData: FormData) {
   return maskinSkjema.safeParse({
     navn: formData.get('navn'),
     kategori: formData.get('kategori'),
+    underkategori: formData.get('underkategori'),
     internnummer: formData.get('internnummer'),
     dogn_pris: formData.get('dogn_pris'),
     pris_enhet: formData.get('pris_enhet') ?? 'dogn',
@@ -50,6 +52,7 @@ export async function opprettMaskin(
   const { error } = await supabase.from('maskiner').insert({
     navn: felter.data.navn,
     kategori: felter.data.kategori || null,
+    underkategori: felter.data.underkategori || null,
     internnummer: felter.data.internnummer || null,
     dogn_pris: felter.data.dogn_pris,
     pris_enhet: felter.data.pris_enhet,

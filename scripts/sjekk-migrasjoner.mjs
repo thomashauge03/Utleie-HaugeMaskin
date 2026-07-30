@@ -23,6 +23,7 @@ const MIGRASJONER = [
   { fil: '0004_prisenhet.sql', tabell: 'maskiner', kolonne: 'pris_enhet' },
   { fil: '0005_verksted.sql', tabell: 'maskiner', kolonne: 'underkategori' },
   { fil: '0006_flere_verkstedkategorier.sql', tabell: 'kategorier', kolonne: 'er_verksted' },
+  { fil: '0007_delmal.sql', tabell: 'maskin_delstatus', kolonne: 'mal' },
 ]
 
 const mangler = []

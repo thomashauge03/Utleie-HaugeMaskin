@@ -82,6 +82,13 @@ export default async function MaskinerSide(props: PageProps<'/admin/maskiner'>) 
     (m) => !søk || treffer(m, søk),
   )
 
+  // Underkategoriene som er i bruk, som forslag i «Ny maskin».
+  const typerIBruk = [
+    ...new Set(
+      alle.map((m) => m.underkategori?.trim()).filter((t): t is string => Boolean(t)),
+    ),
+  ].sort((a, b) => a.localeCompare(b, 'nb'))
+
   // Kategoriene som faktisk finnes, til filtervelgeren.
   const kategorierIBruk = [
     ...new Set(alle.map((m) => m.kategori?.trim() || UTEN)),
@@ -142,7 +149,7 @@ export default async function MaskinerSide(props: PageProps<'/admin/maskiner'>) 
         )}
       </div>
 
-      <NyMaskin kategorier={kategoriListe} />
+      <NyMaskin kategorier={kategoriListe} typer={typerIBruk} />
 
       <Søkefelt
         verdi={søk}

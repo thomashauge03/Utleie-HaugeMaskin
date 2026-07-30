@@ -4,6 +4,7 @@ import { hentAdmin } from '@/lib/auth'
 import { hentVerksted, grupperPaaType } from '@/lib/verksted-data'
 import { HMLogo } from '@/components/hm-logo'
 import { Merke, TomTilstand } from '@/components/ui'
+import { Søkefelt } from '@/components/sokefelt'
 import {
   DEL_MERKE,
   DEL_STATUS_TEKST,
@@ -21,8 +22,12 @@ export const dynamic = 'force-dynamic'
  * QR-koden i verkstedet peker hit. Viser hele lista, ikke én maskin –
  * skuffene har ikke hver sin kode.
  */
-export default async function VerkstedSide() {
-  const [{ kategorier, deler, maskiner }, bruker] = await Promise.all([
+export default async function VerkstedSide(props: PageProps<'/verksted'>) {
+  const sp = await props.searchParams
+  const søk = typeof sp.q === 'string' ? sp.q.trim() : ''
+  const kunArbeid = sp.filter === 'arbeid'
+
+  const [{ kategorier, deler, maskiner: alle }, bruker] = await Promise.all([
     hentVerksted(),
     hentAdmin(),
   ])
@@ -41,12 +46,35 @@ export default async function VerkstedSide() {
     )
   }
 
-  const trengerArbeid = maskiner.filter((m) =>
+  const harArbeid = (m: (typeof alle)[number]) =>
     krevesArbeid(
       m.verksted_status,
       Object.values(m.deler).map((s) => ({ status: s })),
-    ),
-  )
+    )
+
+  const trengerArbeid = alle.filter(harArbeid)
+
+  // Søket treffer også målene på delene, så «S70» finner alt med den
+  // festetypen selv om den bare står registrert på tannholderen.
+  let maskiner = alle
+  if (kunArbeid) maskiner = maskiner.filter(harArbeid)
+  if (søk) {
+    const n = søk.toLowerCase().replace(/\s/g, '')
+    maskiner = maskiner.filter((m) =>
+      [
+        m.navn,
+        m.internnummer,
+        m.underkategori,
+        m.kjeft_dimensjon,
+        m.qr_kode,
+        ...Object.values(m.delMal),
+      ]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().replace(/\s/g, '').includes(n)),
+    )
+  }
+
+  const filtrerer = søk !== '' || kunArbeid
 
   return (
     <>
@@ -75,7 +103,8 @@ export default async function VerkstedSide() {
           <h1 className="hm-display mt-6 text-3xl">Verksted</h1>
           <p className="mt-0.5 text-sm text-white/60">{kategorier.join(' · ')}</p>
           <p className="mt-1 text-sm text-white/70">
-            {maskiner.length} i lista ·{' '}
+            {filtrerer ? `${maskiner.length} av ${alle.length}` : `${alle.length} i lista`}{' '}
+            ·{' '}
             {trengerArbeid.length > 0 ? (
               <span className="font-bold text-hm-red">
                 {trengerArbeid.length} trenger arbeid
@@ -95,7 +124,48 @@ export default async function VerkstedSide() {
           </p>
         )}
 
-        {maskiner.length === 0 ? (
+        <div className="mb-6 space-y-3">
+          <Søkefelt
+            verdi={søk}
+            plassholder="Søk på navn, internnummer, type eller mål"
+          />
+
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={søk ? `/verksted?q=${encodeURIComponent(søk)}` : '/verksted'}
+              aria-current={!kunArbeid ? 'true' : undefined}
+              className={`inline-flex min-h-[2.75rem] items-center border-2 px-4 text-xs font-bold tracking-wider uppercase ${
+                !kunArbeid
+                  ? 'border-[var(--kant-sterk)] bg-hm-black text-white'
+                  : 'border-[var(--kant)] bg-[var(--flate-opp)]'
+              }`}
+            >
+              Alle
+            </Link>
+            <Link
+              href={`/verksted?filter=arbeid${søk ? `&q=${encodeURIComponent(søk)}` : ''}`}
+              aria-current={kunArbeid ? 'true' : undefined}
+              className={`inline-flex min-h-[2.75rem] items-center border-2 px-4 text-xs font-bold tracking-wider uppercase ${
+                kunArbeid
+                  ? 'border-[var(--kant-sterk)] bg-hm-red text-white'
+                  : 'border-[var(--kant)] bg-[var(--flate-opp)]'
+              }`}
+            >
+              Trenger arbeid ({trengerArbeid.length})
+            </Link>
+          </div>
+        </div>
+
+        {maskiner.length === 0 && filtrerer ? (
+          <TomTilstand
+            tittel="Ingen treff"
+            handling={{ href: '/verksted', tekst: 'Nullstill' }}
+          >
+            {søk
+              ? `Fant ingenting som matcher «${søk}».`
+              : 'Ingenting trenger arbeid akkurat nå.'}
+          </TomTilstand>
+        ) : maskiner.length === 0 ? (
           <TomTilstand tittel="Ingenting i verkstedet ennå">
             Legg inn maskiner under Maskiner, med {kategorier.join(' eller ')} som
             kategori.

@@ -8,7 +8,7 @@ import {
   type DelStatus,
   type VerkstedStatus,
 } from '@/lib/verksted'
-import { settDelStatus, settVerkstedStatus } from '../actions'
+import { settDelMal, settDelStatus, settVerkstedStatus } from '../actions'
 
 const STATUSER: VerkstedStatus[] = ['ma_sveises', 'deler_bestilt', 'klar']
 const DEL_STATUSER: DelStatus[] = ['ok', 'ma_byttes', 'bestilt', 'byttet']
@@ -102,20 +102,24 @@ export function StatusVelger({
   )
 }
 
-/** Status per del. Krever innlogging – vises som låst ellers. */
+/** Status og mål per del. Krever innlogging – vises som låst ellers. */
 export function DelVelger({
   maskinId,
   delId,
   naavaerende,
+  mal,
   innlogget,
 }: {
   maskinId: string
   delId: string
   naavaerende: string
+  mal: string
   innlogget: boolean
 }) {
   const [venter, start] = useTransition()
   const [feil, settFeil] = useState('')
+  const [malTekst, settMalTekst] = useState(mal)
+  const [lagret, settLagret] = useState(false)
 
   return (
     <div>
@@ -132,6 +136,42 @@ export function DelVelger({
           })
         }
       />
+
+      {innlogget && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="min-w-[9rem] flex-1">
+            <input
+              value={malTekst}
+              onChange={(e) => {
+                settMalTekst(e.target.value)
+                settLagret(false)
+              }}
+              placeholder="Mål / spesifikasjon"
+              aria-label={`Mål for delen`}
+              className="w-full border-2 border-[var(--kant)] bg-[var(--flate-opp)] px-3 py-2 text-sm outline-none focus:border-hm-red"
+            />
+          </div>
+          <button
+            type="button"
+            disabled={venter || malTekst === mal}
+            onClick={() =>
+              start(async () => {
+                const r = await settDelMal(maskinId, delId, malTekst)
+                settFeil(r.feil ?? '')
+                settLagret(!r.feil)
+              })
+            }
+            className="hm-trykk inline-flex min-h-[2.5rem] items-center border-2 border-[var(--kant)] px-3 text-xs font-bold tracking-wider uppercase disabled:opacity-40"
+          >
+            {lagret ? '✓ Lagret' : 'Lagre mål'}
+          </button>
+        </div>
+      )}
+
+      {!innlogget && mal && (
+        <p className="mt-2 text-sm text-[var(--blekk-svak)]">Mål: {mal}</p>
+      )}
+
       {feil && (
         <p role="alert" className="mt-2 text-sm font-semibold text-hm-red-ink">
           {feil}

@@ -111,6 +111,40 @@ export async function settDelStatus(
   return { ok: 'Lagret.' }
 }
 
+/**
+ * Målet på en del – f.eks. tannstørrelse eller lengde på slitestål.
+ *
+ * Egen handling framfor å ligge i settDelStatus, slik at målet kan
+ * fylles ut uten å endre status. Delen kan være helt i orden og likevel
+ * trenge et registrert mål for framtidig bestilling.
+ */
+export async function settDelMal(
+  maskinId: string,
+  delId: string,
+  mal: string,
+): Promise<VerkstedTilstand> {
+  const bruker = await hentAdmin()
+  if (!bruker) return { feil: 'Krever innlogging.' }
+
+  const verdi = mal.trim().slice(0, 120)
+
+  const { error } = await supabaseAdmin.from('maskin_delstatus').upsert(
+    {
+      maskin_id: maskinId,
+      del_id: delId,
+      mal: verdi || null,
+      oppdatert: new Date().toISOString(),
+    },
+    { onConflict: 'maskin_id,del_id' },
+  )
+
+  if (error) return { feil: `Kunne ikke lagre: ${error.message}` }
+
+  revalidatePath('/verksted')
+  revalidatePath(`/verksted/${maskinId}`)
+  return { ok: 'Mål lagret.' }
+}
+
 /** Fritekstnotat i loggen, f.eks. hva som faktisk ble gjort. */
 export async function leggTilNotat(
   maskinId: string,

@@ -38,6 +38,16 @@ export default async function InnstillingerSide() {
     antallMaskiner: antall.get(k.navn) ?? 0,
   }))
 
+  /*
+   * Verkstedvelgeren må vise kategoriene som faktisk er i bruk på
+   * maskinene, ikke bare de som ligger i plukklista. Kategori er
+   * fritekst, så en kategori kan være i bruk uten å stå i tabellen –
+   * og da ville den vært umulig å velge her.
+   */
+  const alleKategorier = [
+    ...new Set([...kategorier.map((k) => k.navn), ...antall.keys()]),
+  ].sort((a, b) => a.localeCompare(b, 'nb'))
+
   const icalUrl = innst?.ical_token
     ? `${env.NEXT_PUBLIC_SITE_URL}/api/ical/${innst.ical_token}.ics`
     : null
@@ -56,7 +66,7 @@ export default async function InnstillingerSide() {
       <Kort>
         <KortTittel>Verksted</KortTittel>
         <VerkstedSkjema
-          kategorier={kategorier.map((k) => k.navn)}
+          kategorier={alleKategorier}
           valgt={innst?.verksted_kategori ?? null}
         />
       </Kort>

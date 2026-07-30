@@ -88,6 +88,17 @@ create table if not exists verksted_logg (
 create index verksted_logg_maskin_idx on verksted_logg (maskin_id, tid desc);
 
 
+-- ── Etterslep i kategorilista ──────────────────────────────
+-- Kategori er fritekst på maskinen, så maskiner lagt inn etter at
+-- 0002 kjørte har kategorier som aldri havnet i plukklista. Da var
+-- de umulige å velge som verkstedkategori. Denne henter dem inn.
+insert into kategorier (navn)
+select distinct trim(kategori)
+from maskiner
+where kategori is not null and trim(kategori) <> ''
+on conflict (navn) do nothing;
+
+
 -- ── Radsikkerhet ───────────────────────────────────────────
 -- Lesing for anonyme skjer gjennom server-ruter med service
 -- role, som i resten av kundeflyten. Her låser vi til admin.

@@ -29,8 +29,9 @@ export function RedigerSkjema({
   const [tilstand, handling, venter] = useActionState(lagreMaskin, start)
 
   return (
-    <form action={handling} className="space-y-5 p-5">
-      <input type="hidden" name="id" value={maskin.id} />
+    <>
+      <form action={handling} className="space-y-5 p-5">
+        <input type="hidden" name="id" value={maskin.id} />
 
       <label className="block">
         <span className={ETIKETT}>Navn</span>
@@ -68,23 +69,32 @@ export function RedigerSkjema({
 
         <div className="block">
           <span className={ETIKETT}>Pris (kr)</span>
+          {/*
+            Hvert felt får sin egen wrapper som styrer bredden. Legges
+            bredde-klasser rett på feltene, slåss de med w-full som
+            ligger i FELT, og prisen ble presset ned til 31 px.
+          */}
           <div className="flex gap-2">
-            <input
-              name="dogn_pris"
-              inputMode="decimal"
-              defaultValue={maskin.dogn_pris ?? ''}
-              aria-label="Pris i kroner"
-              className={`${FELT} hm-tall min-w-0 flex-1`}
-            />
-            <select
-              name="pris_enhet"
-              defaultValue={prisEnhet(maskin.pris_enhet)}
-              aria-label="Prisenhet"
-              className={`${FELT} w-32 shrink-0`}
-            >
-              <option value="dogn">per døgn</option>
-              <option value="time">per time</option>
-            </select>
+            <div className="min-w-0 flex-1">
+              <input
+                name="dogn_pris"
+                inputMode="decimal"
+                defaultValue={maskin.dogn_pris ?? ''}
+                aria-label="Pris i kroner"
+                className={`${FELT} hm-tall`}
+              />
+            </div>
+            <div className="w-36 shrink-0">
+              <select
+                name="pris_enhet"
+                defaultValue={prisEnhet(maskin.pris_enhet)}
+                aria-label="Prisenhet"
+                className={FELT}
+              >
+                <option value="dogn">per døgn</option>
+                <option value="time">per time</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -149,15 +159,23 @@ export function RedigerSkjema({
         </p>
       )}
 
-      <div className="flex flex-wrap items-center gap-4 border-t-2 border-[var(--kant)] pt-5">
-        <button
-          type="submit"
-          disabled={venter}
-          className="hm-trykk hm-kant-skygge-sm inline-flex min-h-[3rem] items-center border-2 border-[var(--kant-sterk)] bg-hm-red px-6 text-sm font-bold tracking-wide text-white uppercase hover:bg-hm-red-hover disabled:opacity-50"
-        >
-          {venter ? 'Lagrer …' : 'Lagre endringer'}
-        </button>
+        <div className="border-t-2 border-[var(--kant)] pt-5">
+          <button
+            type="submit"
+            disabled={venter}
+            className="hm-trykk hm-kant-skygge-sm inline-flex min-h-[3rem] items-center border-2 border-[var(--kant-sterk)] bg-hm-red px-6 text-sm font-bold tracking-wide text-white uppercase hover:bg-hm-red-hover disabled:opacity-50"
+          >
+            {venter ? 'Lagrer …' : 'Lagre endringer'}
+          </button>
+        </div>
+      </form>
 
+      {/*
+        Utenfor redigeringsskjemaet med vilje. Disse knappene er egne
+        <form>, og nøstede skjemaer er ugyldig HTML – nettleseren kaster
+        det indre, og knappen blir liggende uten handling.
+      */}
+      <div className="border-t-2 border-[var(--kant)] px-5 py-4">
         <FjernMaskin
           maskinId={maskin.id}
           utleid={utleid}
@@ -165,7 +183,7 @@ export function RedigerSkjema({
           antallLeier={antallLeier}
         />
       </div>
-    </form>
+    </>
   )
 }
 

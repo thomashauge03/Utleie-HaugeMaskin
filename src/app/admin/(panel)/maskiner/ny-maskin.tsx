@@ -75,23 +75,29 @@ export function NyMaskin({ kategorier }: { kategorier: string[] }) {
 
         <div>
           <span className={ETIKETT}>Pris (kr)</span>
+          {/* Egen wrapper per felt – bredde-klasser rett på feltene
+              slåss med w-full som ligger i FELT. */}
           <div className="flex gap-2">
-            <input
-              name="dogn_pris"
-              inputMode="decimal"
-              placeholder="850"
-              aria-label="Pris i kroner"
-              className={`${FELT} min-w-0 flex-1`}
-            />
-            <select
-              name="pris_enhet"
-              defaultValue="dogn"
-              aria-label="Prisenhet"
-              className={`${FELT} w-32 shrink-0`}
-            >
-              <option value="dogn">per døgn</option>
-              <option value="time">per time</option>
-            </select>
+            <div className="min-w-0 flex-1">
+              <input
+                name="dogn_pris"
+                inputMode="decimal"
+                placeholder="850"
+                aria-label="Pris i kroner"
+                className={FELT}
+              />
+            </div>
+            <div className="w-36 shrink-0">
+              <select
+                name="pris_enhet"
+                defaultValue="dogn"
+                aria-label="Prisenhet"
+                className={FELT}
+              >
+                <option value="dogn">per døgn</option>
+                <option value="time">per time</option>
+              </select>
+            </div>
           </div>
         </div>
 

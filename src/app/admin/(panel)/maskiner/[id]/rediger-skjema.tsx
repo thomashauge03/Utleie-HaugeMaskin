@@ -17,11 +17,13 @@ export function RedigerSkjema({
   kategorier,
   utleid,
   harHistorikk,
+  antallLeier,
 }: {
   maskin: Maskin
   kategorier: string[]
   utleid: boolean
   harHistorikk: boolean
+  antallLeier: number
 }) {
   const [tilstand, handling, venter] = useActionState(lagreMaskin, start)
 
@@ -147,6 +149,7 @@ export function RedigerSkjema({
           maskinId={maskin.id}
           utleid={utleid}
           harHistorikk={harHistorikk}
+          antallLeier={antallLeier}
         />
       </div>
     </form>
@@ -154,20 +157,22 @@ export function RedigerSkjema({
 }
 
 /**
- * To ulike måter å fjerne en maskin, avhengig av om den har historikk.
+ * Fjerner en maskin – enten mildt (ut av bruk) eller for godt.
  *
- * Har den vært utleid, kan den ikke slettes – da ville fakturagrunnlaget
- * på gamle leier mistet maskinen de gjaldt. Da er «ta ut av bruk» det
- * riktige, og det er reversibelt.
+ * Sletting tar med seg leiehistorikken, fordi fremmednøkkelen fra leier
+ * ellers blokkerer. Derfor navngir bekreftelsen hvor mange leier som
+ * ryker, slik at omfanget er synlig før man trykker og ikke etterpå.
  */
 function FjernMaskin({
   maskinId,
   utleid,
   harHistorikk,
+  antallLeier,
 }: {
   maskinId: string
   utleid: boolean
   harHistorikk: boolean
+  antallLeier: number
 }) {
   const [bekrefter, settBekrefter] = useState(false)
 
@@ -179,13 +184,13 @@ function FjernMaskin({
     )
   }
 
-  // Aldri utleid: trygt å slette for godt. Krever bekreftelse siden det
-  // ikke kan angres.
-  if (!harHistorikk) {
-    return bekrefter ? (
+  if (bekrefter) {
+    return (
       <div className="ml-auto flex flex-wrap items-center gap-3">
         <span className="text-xs text-[var(--blekk-svak)]">
-          Slettes for godt. Kan ikke angres.
+          {harHistorikk
+            ? `Sletter maskinen og ${antallLeier} ${antallLeier === 1 ? 'leie' : 'leier'} med bilder. Kan ikke angres.`
+            : 'Slettes for godt. Kan ikke angres.'}
         </span>
         <form action={slettMaskin.bind(null, maskinId)}>
           <button
@@ -203,31 +208,30 @@ function FjernMaskin({
           Avbryt
         </button>
       </div>
-    ) : (
-      <button
-        type="button"
-        onClick={() => settBekrefter(true)}
-        className="ml-auto text-sm font-semibold text-hm-red-ink underline underline-offset-4"
-      >
-        Slett maskin
-      </button>
     )
   }
 
-  // Har historikk: kun deaktivering. Reversibelt, derfor ett trykk.
   return (
-    <div className="ml-auto flex flex-wrap items-center gap-3">
-      <span className="text-xs text-[var(--blekk-svak)]">
-        Har leiehistorikk og kan ikke slettes
-      </span>
-      <form action={deaktiverMaskin.bind(null, maskinId)}>
-        <button
-          type="submit"
-          className="text-sm font-semibold text-hm-red-ink underline underline-offset-4"
-        >
-          Ta ut av bruk
-        </button>
-      </form>
+    <div className="ml-auto flex flex-wrap items-center gap-4">
+      {/* Det milde valget står først, for de som egentlig bare vil ha
+          maskinen ut av lista uten å miste historikken. */}
+      {harHistorikk && (
+        <form action={deaktiverMaskin.bind(null, maskinId)}>
+          <button
+            type="submit"
+            className="text-sm font-semibold underline underline-offset-4"
+          >
+            Ta ut av bruk
+          </button>
+        </form>
+      )}
+      <button
+        type="button"
+        onClick={() => settBekrefter(true)}
+        className="text-sm font-semibold text-hm-red-ink underline underline-offset-4"
+      >
+        Slett maskin
+      </button>
     </div>
   )
 }

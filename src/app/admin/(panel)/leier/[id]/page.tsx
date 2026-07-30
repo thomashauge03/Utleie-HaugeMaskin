@@ -10,6 +10,7 @@ import { LEIE_STATUS_TEKST, type Bilde, type Kunde, type Leie, type Maskin } fro
 import { KNAPP_SEKUNDÆR, Kort, KortTittel, Merke } from '@/components/ui'
 import { GodkjennSkjema } from './godkjenn-skjema'
 import { ManuellLevering } from './manuell-levering'
+import { SlettLeie } from './slett-leie'
 import { settFakturert } from './actions'
 
 export const metadata: Metadata = { title: 'Leie – HM Utleie' }
@@ -278,6 +279,12 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
           </ol>
         </Kort>
       )}
+
+      <SlettLeie
+        leieId={leie.id}
+        referanse={leie.referanse}
+        fakturert={leie.fakturert}
+      />
     </div>
   )
 }

@@ -30,15 +30,21 @@ export default async function MaskinDetaljSide(props: PageProps<'/admin/maskiner
   if (!data) notFound()
   const maskin = data as Maskin
 
-  const [{ data: kategoriRader }, { data: leieRader }] = await Promise.all([
-    supabase.from('kategorier').select('navn').order('navn'),
-    supabase
-      .from('leier')
-      .select('*, kunder(*)')
-      .eq('maskin_id', maskin.id)
-      .order('start_tid', { ascending: false })
-      .limit(10),
-  ])
+  const [{ data: kategoriRader }, { data: leieRader }, { count: antallLeier }] =
+    await Promise.all([
+      supabase.from('kategorier').select('navn').order('navn'),
+      supabase
+        .from('leier')
+        .select('*, kunder(*)')
+        .eq('maskin_id', maskin.id)
+        .order('start_tid', { ascending: false })
+        .limit(10),
+      // Egen telling, siden lista over er begrenset til ti.
+      supabase
+        .from('leier')
+        .select('id', { count: 'exact', head: true })
+        .eq('maskin_id', maskin.id),
+    ])
 
   const leier = (leieRader ?? []) as (Leie & { kunder: Kunde | null })[]
   const utleid = leier.some(
@@ -95,7 +101,8 @@ export default async function MaskinDetaljSide(props: PageProps<'/admin/maskiner
           maskin={maskin}
           kategorier={kategorier}
           utleid={utleid}
-          harHistorikk={leier.length > 0}
+          harHistorikk={(antallLeier ?? 0) > 0}
+          antallLeier={antallLeier ?? 0}
         />
       </Kort>
 

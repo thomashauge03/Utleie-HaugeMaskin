@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
+import { slettLeierMedFiler } from '@/lib/slett'
 
 export type MaskinTilstand = { feil?: string; ok?: string }
 
@@ -107,17 +108,37 @@ export async function deaktiverMaskin(maskinId: string) {
  * gi en forklaring i stedet for en teknisk feilmelding.
  */
 export async function slettMaskin(maskinId: string) {
-  await krevAdmin()
+  const admin = await krevAdmin()
   const supabase = await lagServerKlient()
 
-  const { count } = await supabase
+  // Fremmednøkkelen fra leier hindrer sletting så lenge det finnes
+  // historikk, så leiene må ryddes først. Bilder, hendelser og
+  // e-postlogg følger med via cascade; filene tas av hjelperen.
+  const { data: leier } = await supabase
     .from('leier')
-    .select('id', { count: 'exact', head: true })
+    .select('id')
     .eq('maskin_id', maskinId)
 
-  if ((count ?? 0) > 0) return
+  const leieIder = (leier ?? []).map((l) => l.id as string)
+  const antall = await slettLeierMedFiler(leieIder)
+
+  const { data: maskin } = await supabase
+    .from('maskiner')
+    .select('navn, qr_kode')
+    .eq('id', maskinId)
+    .maybeSingle()
 
   await supabase.from('maskiner').delete().eq('id', maskinId)
+
+  await supabase.from('hendelser').insert({
+    leie_id: null,
+    type: 'maskin_slettet',
+    beskrivelse: maskin
+      ? `Maskin ${maskin.navn} (${maskin.qr_kode}) slettet permanent${antall ? `, med ${antall} leier` : ''}`
+      : 'Maskin slettet permanent',
+    aktor: `admin:${admin.epost}`,
+  })
+
   revalidatePath('/admin/maskiner')
   redirect('/admin/maskiner')
 }

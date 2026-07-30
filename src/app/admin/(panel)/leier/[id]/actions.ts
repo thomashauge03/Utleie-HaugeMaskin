@@ -1,9 +1,11 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
+import { slettLeierMedFiler } from '@/lib/slett'
 
 export type GodkjennTilstand = { feil?: string; ok?: string }
 
@@ -154,6 +156,47 @@ export async function sendTilbake(leieId: string, grunn: string) {
   })
 
   revalidatePath(`/admin/leier/${leieId}`)
+}
+
+/**
+ * Sletter leien for godt, med bilder, hendelser og e-postlogg.
+ *
+ * Frigjør samtidig maskinen hvis leien var pågående – ellers ville
+ * maskinen blitt stående som «utleid» til en leie som ikke finnes.
+ */
+export async function slettLeie(leieId: string) {
+  const admin = await krevAdmin()
+  const supabase = await lagServerKlient()
+
+  const { data: leie } = await supabase
+    .from('leier')
+    .select('maskin_id, status, referanse')
+    .eq('id', leieId)
+    .maybeSingle()
+
+  if (!leie) return
+
+  if (leie.status === 'aktiv' || leie.status === 'venter_godkjenning') {
+    await supabase
+      .from('maskiner')
+      .update({ status: 'ledig' })
+      .eq('id', leie.maskin_id)
+  }
+
+  await slettLeierMedFiler([leieId])
+
+  // Hendelsesloggen for leien forsvinner med den, så vi noterer det på
+  // et sted som overlever: en hendelse uten leiekobling.
+  await supabase.from('hendelser').insert({
+    leie_id: null,
+    type: 'leie_slettet',
+    beskrivelse: `Leie ${leie.referanse} ble slettet permanent`,
+    aktor: `admin:${admin.epost}`,
+  })
+
+  revalidatePath('/admin')
+  revalidatePath('/admin/leier')
+  redirect('/admin/leier')
 }
 
 export async function settFakturert(leieId: string, fakturert: boolean) {

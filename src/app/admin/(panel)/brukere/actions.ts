@@ -12,6 +12,7 @@ const skjema = z.object({
   navn: z.string().trim().min(2, 'Navn må fylles ut'),
   epost: z.email('Ugyldig e-postadresse'),
   passord: z.string().min(8, 'Passordet må være minst 8 tegn'),
+  rolle: z.enum(['admin', 'service']).default('admin'),
 })
 
 /**
@@ -49,6 +50,7 @@ export async function opprettBruker(
     id: data.user.id,
     navn: felter.data.navn,
     epost: felter.data.epost,
+    rolle: felter.data.rolle,
   })
 
   if (radFeil) {

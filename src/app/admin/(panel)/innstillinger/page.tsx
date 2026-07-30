@@ -8,6 +8,7 @@ import { KopierLenke } from '../maskiner/kopier-lenke'
 import { FirmaSkjema, type Innstillinger } from './firma-skjema'
 import { Kategorier, type Kategori } from './kategorier'
 import { VarselSkjema, type Varsling } from './varsel-skjema'
+import { VerkstedSkjema } from './verksted-skjema'
 import { EpostStatus } from './epost-status'
 import { nyttIcalToken } from './actions'
 
@@ -50,6 +51,14 @@ export default async function InnstillingerSide() {
       <Kort>
         <KortTittel>Varetyper</KortTittel>
         <Kategorier kategorier={kategorier} />
+      </Kort>
+
+      <Kort>
+        <KortTittel>Verksted</KortTittel>
+        <VerkstedSkjema
+          kategorier={kategorier.map((k) => k.navn)}
+          valgt={innst?.verksted_kategori ?? null}
+        />
       </Kort>
 
       <Kort>

@@ -13,6 +13,7 @@ const skjema = z.object({
   id: z.uuid(),
   navn: z.string().trim().min(1, 'Navn må fylles ut'),
   kategori: z.string().trim().optional(),
+  underkategori: z.string().trim().optional(),
   internnummer: z.string().trim().optional(),
   dogn_pris: z
     .string()
@@ -69,6 +70,7 @@ export async function lagreMaskin(
     .update({
       navn: felter.data.navn,
       kategori: felter.data.kategori || null,
+      underkategori: felter.data.underkategori || null,
       internnummer: felter.data.internnummer || null,
       dogn_pris: felter.data.dogn_pris,
       pris_enhet: felter.data.pris_enhet,

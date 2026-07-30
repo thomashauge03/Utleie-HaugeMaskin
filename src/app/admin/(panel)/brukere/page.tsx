@@ -13,6 +13,7 @@ type AdminRad = {
   navn: string
   epost: string
   aktiv: boolean
+  rolle: 'admin' | 'service'
   opprettet: string
 }
 
@@ -57,9 +58,12 @@ export default async function BrukereSide() {
                 </td>
                 <td className="px-4 py-3 text-[var(--blekk-svak)]">{b.epost}</td>
                 <td className="px-4 py-3">
-                  <Merke type={b.aktiv ? 'grønn' : 'nøytral'}>
-                    {b.aktiv ? 'Aktiv' : 'Deaktivert'}
-                  </Merke>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Merke type={b.aktiv ? 'grønn' : 'nøytral'}>
+                      {b.aktiv ? 'Aktiv' : 'Deaktivert'}
+                    </Merke>
+                    {b.rolle === 'service' && <Merke type="svart">Service</Merke>}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-right">
                   {b.id !== meg.id && (

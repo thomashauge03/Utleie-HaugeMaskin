@@ -17,6 +17,9 @@ export type Maskin = {
   qr_kode: string
   navn: string
   kategori: string | null
+  underkategori: string | null
+  kjeft_dimensjon: string | null
+  verksted_status: string | null
   internnummer: string | null
   /** Pris per enhet – se pris_enhet for hvilken. */
   dogn_pris: number | null

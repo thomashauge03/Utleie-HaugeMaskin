@@ -16,12 +16,15 @@ const start: MaskinTilstand = {}
 export function RedigerSkjema({
   maskin,
   kategorier,
+  typer,
   utleid,
   harHistorikk,
   antallLeier,
 }: {
   maskin: Maskin
   kategorier: string[]
+  /** Eksisterende underkategorier, som forslag. */
+  typer: string[]
   utleid: boolean
   harHistorikk: boolean
   antallLeier: number
@@ -55,6 +58,27 @@ export function RedigerSkjema({
               <option key={k} value={k} />
             ))}
           </datalist>
+        </label>
+
+        <label className="block">
+          <span className={ETIKETT}>
+            Type <span className="normal-case">(underkategori)</span>
+          </span>
+          <input
+            name="underkategori"
+            list="typeliste"
+            defaultValue={maskin.underkategori ?? ''}
+            placeholder="Graveskuff"
+            className={FELT}
+          />
+          <datalist id="typeliste">
+            {typer.map((t) => (
+              <option key={t} value={t} />
+            ))}
+          </datalist>
+          <span className="mt-1.5 block text-xs text-[var(--blekk-svak)]">
+            Grupperer maskinen i verkstedlista
+          </span>
         </label>
 
         <label className="block">

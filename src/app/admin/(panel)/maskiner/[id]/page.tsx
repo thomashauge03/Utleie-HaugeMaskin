@@ -46,6 +46,20 @@ export default async function MaskinDetaljSide(props: PageProps<'/admin/maskiner
         .eq('maskin_id', maskin.id),
     ])
 
+  // Underkategorier som allerede er i bruk, som forslag i skjemaet.
+  const { data: typeRader } = await supabase
+    .from('maskiner')
+    .select('underkategori')
+    .not('underkategori', 'is', null)
+
+  const typer = [
+    ...new Set(
+      (typeRader ?? [])
+        .map((t) => (t.underkategori as string | null)?.trim())
+        .filter((t): t is string => Boolean(t)),
+    ),
+  ].sort((a, b) => a.localeCompare(b, 'nb'))
+
   const leier = (leieRader ?? []) as (Leie & { kunder: Kunde | null })[]
   const utleid = leier.some(
     (l) => l.status === 'aktiv' || l.status === 'venter_godkjenning',
@@ -100,6 +114,7 @@ export default async function MaskinDetaljSide(props: PageProps<'/admin/maskiner
         <RedigerSkjema
           maskin={maskin}
           kategorier={kategorier}
+          typer={typer}
           utleid={utleid}
           harHistorikk={(antallLeier ?? 0) > 0}
           antallLeier={antallLeier ?? 0}

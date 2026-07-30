@@ -30,8 +30,13 @@ comment on column innstillinger.verksted_kategori is
 -- ── Felter på maskinen ─────────────────────────────────────
 alter table maskiner
   add column if not exists kjeft_dimensjon text,
+  add column if not exists underkategori text,
   add column if not exists verksted_status text
     check (verksted_status in ('ma_sveises', 'deler_bestilt', 'klar'));
+
+comment on column maskiner.underkategori is
+  'Type innenfor kategorien, f.eks. Graveskuff eller Pusseskuff. '
+  'Brukes til gruppering i verkstedlista.';
 
 comment on column maskiner.verksted_status is
   'null = ingen sak registrert. Ellers ma_sveises / deler_bestilt / klar.';

@@ -52,6 +52,37 @@ export async function lagreInnstillinger(
   return { ok: 'Innstillingene er lagret.' }
 }
 
+/* ═══ Verksted ═════════════════════════════════════════════ */
+
+/**
+ * Velger hvilken kategori som bruker verkstedflyten i stedet for
+ * utleie. Tom verdi slår modulen av.
+ */
+export async function lagreVerkstedKategori(
+  _forrige: Tilstand,
+  formData: FormData,
+): Promise<Tilstand> {
+  await krevAdmin()
+
+  const kategori = String(formData.get('verksted_kategori') ?? '').trim()
+
+  const supabase = await lagServerKlient()
+  const { error } = await supabase
+    .from('innstillinger')
+    .update({ verksted_kategori: kategori || null })
+    .eq('id', true)
+
+  if (error) return { feil: `Kunne ikke lagre: ${error.message}` }
+
+  revalidatePath('/admin/innstillinger')
+  revalidatePath('/verksted')
+  return {
+    ok: kategori
+      ? `${kategori} bruker nå verkstedflyten.`
+      : 'Verkstedmodulen er slått av.',
+  }
+}
+
 /* ═══ Varsling ═════════════════════════════════════════════ */
 
 const av = z.union([z.literal('on'), z.null()]).transform((v) => v === 'on')

@@ -53,6 +53,18 @@ export function NyBruker() {
           <span className={ETIKETT}>Passord</span>
           <input name="passord" type="text" required minLength={8} className={FELT} />
         </label>
+
+        <label className="sm:col-span-3">
+          <span className={ETIKETT}>Tilgang</span>
+          <select name="rolle" defaultValue="admin" className={FELT}>
+            <option value="admin">Admin — full tilgang</option>
+            <option value="service">Servicearbeider — kun verkstedet</option>
+          </select>
+          <span className="mt-1.5 block text-xs text-[var(--blekk-svak)]">
+            Servicearbeidere ser verkstedlista og kan endre status på deler,
+            men kommer ikke inn i kunder, leier eller innstillinger.
+          </span>
+        </label>
       </div>
 
       <p className="mt-3 border-l-4 border-hm-amber bg-[var(--flate-2)] p-3 text-xs text-[var(--blekk-svak)]">

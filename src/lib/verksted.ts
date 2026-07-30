@@ -43,6 +43,27 @@ export const DEL_MERKE: Record<DelStatus, 'rød' | 'gul' | 'grønn' | 'nøytral'
  * rapportere et problem. Å erklære noe bestilt eller klart for drift
  * er en beslutning, og krever service- eller adminbruker.
  */
+/**
+ * Hvilende tilstand er «klar for drift».
+ *
+ * En maskin uten registrert sak er i orden – null betyr ikke «ukjent»,
+ * det betyr at ingen har meldt noe galt. Uten dette ville alt nyopprettet
+ * utstyr vært usynlig sperret for utleie.
+ */
+export function verkstedStatusAv(
+  verdi: string | null | undefined,
+): VerkstedStatus {
+  return verdi === 'ma_sveises' || verdi === 'deler_bestilt' ? verdi : 'klar'
+}
+
+/**
+ * Utstyr i verkstedet kan bare leies ut når det er klart for drift.
+ * Må det sveises, eller venter det på deler, skal det ikke ut til kunde.
+ */
+export function kanLeiesUt(verkstedStatus: string | null | undefined): boolean {
+  return verkstedStatusAv(verkstedStatus) === 'klar'
+}
+
 export const APEN_STATUS: VerkstedStatus[] = ['ma_sveises']
 
 export function kanSettesAvAlle(status: VerkstedStatus): boolean {

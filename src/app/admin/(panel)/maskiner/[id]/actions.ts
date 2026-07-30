@@ -23,7 +23,15 @@ const skjema = z.object({
       message: 'Prisen må være et positivt tall',
     }),
   pris_enhet: z.enum(['dogn', 'time']).default('dogn'),
-  vis_pris: z.union([z.literal('on'), z.null()]).transform((v) => v === 'on'),
+  /*
+   * En avhuket boks sendes ikke med i FormData i det hele tatt. Med
+   * Object.fromEntries blir feltet da undefined, ikke null – og uten
+   * undefined her feilet all lagring der «Vis prisen» var slått av.
+   */
+  vis_pris: z
+    .union([z.literal('on'), z.null()])
+    .optional()
+    .transform((v) => v === 'on'),
   status: z.enum(['ledig', 'utleid', 'service', 'utrangert']),
   notat: z.string().trim().optional(),
 })
@@ -49,7 +57,13 @@ export async function lagreMaskin(
   await krevAdmin()
 
   const felter = skjema.safeParse(Object.fromEntries(formData))
-  if (!felter.success) return { feil: felter.error.issues[0].message }
+  if (!felter.success) {
+    // Ta med feltnavnet. Zods standardmelding er «Invalid input», som
+    // ikke sier noe om hvor i skjemaet det gikk galt.
+    const sak = felter.error.issues[0]
+    const felt = sak.path.join('.')
+    return { feil: felt ? `${felt}: ${sak.message}` : sak.message }
+  }
 
   const supabase = await lagServerKlient()
   const utleid = await harAktivLeie(supabase, felter.data.id)

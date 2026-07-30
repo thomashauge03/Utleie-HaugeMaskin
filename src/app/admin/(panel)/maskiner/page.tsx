@@ -7,6 +7,7 @@ import { MASKIN_STATUS_TEKST, type Maskin } from '@/lib/types'
 import { prisEnhet } from '@/lib/pris'
 import { KNAPP_SEKUNDÆR, Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
 import { Søkefelt } from '@/components/sokefelt'
+import { Filtervelger } from '@/components/filtervelger'
 import { KopierLenke } from './kopier-lenke'
 import { NyMaskin } from './ny-maskin'
 
@@ -175,36 +176,27 @@ export default async function MaskinerSide(props: PageProps<'/admin/maskiner'>) 
           )
         })}
 
+        {/* Nedtrekk framfor chips: elleve kategorier tok mer plass enn
+            tabellen de filtrerte, og brøt over flere rader. */}
         {kategorierIBruk.length > 1 && (
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold tracking-wider text-[var(--blekk-svak)] uppercase">
-              Kategori
-            </span>
-            <Link
-              href={lenke({ kategori: '' })}
-              className={`inline-flex min-h-[2.75rem] items-center border-2 px-3 text-xs font-bold tracking-wider uppercase ${
-                !kategoriFilter
-                  ? 'border-[var(--kant-sterk)] bg-hm-black text-white'
-                  : 'border-[var(--kant)] bg-[var(--flate-opp)]'
-              }`}
-            >
-              Alle
-            </Link>
-            {kategorierIBruk.map((k) => (
-              <Link
-                key={k}
-                href={lenke({ kategori: k })}
-                aria-current={kategoriFilter === k ? 'true' : undefined}
-                className={`inline-flex min-h-[2.75rem] items-center border-2 px-3 text-xs font-bold tracking-wider uppercase ${
-                  kategoriFilter === k
-                    ? 'border-[var(--kant-sterk)] bg-hm-black text-white'
-                    : 'border-[var(--kant)] bg-[var(--flate-opp)] hover:border-[var(--kant-sterk)]'
-                }`}
-              >
-                {k}
-              </Link>
-            ))}
+          <div className="ml-auto">
+            <Filtervelger
+              navn="kategori"
+              etikett="Kategori"
+              alleTekst="Alle kategorier"
+              valg={kategorierIBruk}
+              valgt={kategoriFilter}
+            />
           </div>
+        )}
+
+        {filtrerer && (
+          <Link
+            href="/admin/maskiner"
+            className="text-sm font-semibold text-[var(--blekk-svak)] underline underline-offset-4"
+          >
+            Nullstill
+          </Link>
         )}
       </div>
 
@@ -263,12 +255,20 @@ export default async function MaskinerSide(props: PageProps<'/admin/maskiner'>) 
               <tbody key={kategori}>
                 <tr className="border-y-2 border-[var(--kant-sterk)] bg-[var(--flate-2)]">
                   <th colSpan={5} scope="colgroup" className="px-4 py-2.5 text-left">
-                    <span className="flex items-center gap-3">
+                    <span className="flex flex-wrap items-center gap-3">
                       <span className="hm-skrastrek !h-1 !w-5" aria-hidden="true" />
                       <span className="hm-display text-lg">{kategori}</span>
                       <span className="hm-tall text-xs font-bold tracking-wider text-[var(--blekk-svak)] uppercase">
                         {liste.length} {liste.length === 1 ? 'maskin' : 'maskiner'}
                       </span>
+                      {/* Felles QR for hele kategorien – for utstyr som
+                          ikke har kode per enhet, som skuffer. */}
+                      {kategori !== UTEN && (
+                        <KopierLenke
+                          url={`${env.NEXT_PUBLIC_SITE_URL}/kategori/${encodeURIComponent(kategori)}`}
+                          etikett="Felles QR for kategorien"
+                        />
+                      )}
                     </span>
                   </th>
                 </tr>

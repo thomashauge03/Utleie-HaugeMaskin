@@ -8,6 +8,7 @@ import { HMLogo } from '@/components/hm-logo'
 import { KNAPP_PRIMÆR, Merke } from '@/components/ui'
 import { dato } from '@/lib/dato'
 import { krPer, prisEnhet } from '@/lib/pris'
+import { kanLeiesUt, verkstedStatusAv } from '@/lib/verksted'
 import { LeieSkjema } from './leie-skjema'
 
 export const dynamic = 'force-dynamic'
@@ -49,6 +50,7 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
   const enhetsId = await hentEnhetsId()
   const erMin = Boolean(aktiv && enhetsId && aktiv.enhets_id === enhetsId)
   const utilgjengelig = maskin.status === 'service' || maskin.status === 'utrangert'
+  const påVerksted = !kanLeiesUt(maskin.verksted_status)
 
   return (
     <>
@@ -98,6 +100,13 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
         {utilgjengelig ? (
           <Beskjed tittel="Ikke tilgjengelig">
             Denne maskinen er ute av drift. Ta kontakt med utleier.
+          </Beskjed>
+        ) : påVerksted && !aktiv ? (
+          <Beskjed tittel="Står til reparasjon">
+            {verkstedStatusAv(maskin.verksted_status) === 'deler_bestilt'
+              ? 'Deler er bestilt, og den er klar når de er på plass.'
+              : 'Den må sveises før den kan brukes igjen.'}{' '}
+            Ta kontakt med utleier hvis du trenger den.
           </Beskjed>
         ) : erMin && aktiv ? (
           <div className="space-y-5">

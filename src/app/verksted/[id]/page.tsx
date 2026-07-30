@@ -9,7 +9,8 @@ import { ETIKETT, FELT, Kort, KortTittel, Merke } from '@/components/ui'
 import {
   VERKSTED_MERKE,
   VERKSTED_STATUS_TEKST,
-  type VerkstedStatus,
+  kanLeiesUt,
+  verkstedStatusAv,
 } from '@/lib/verksted'
 import { DelVelger, StatusVelger } from './status-velger'
 import { leggTilNotat, settKjeftDimensjon } from '../actions'
@@ -37,12 +38,22 @@ export default async function VerkstedMaskinSide(
         <div className="relative mx-auto max-w-2xl">
           <div className="flex items-start justify-between gap-4">
             <HMLogo størrelse="sm" />
-            <Link
-              href="/verksted"
-              className="text-xs font-bold tracking-wider text-white/70 uppercase underline underline-offset-4"
-            >
-              ← Hele lista
-            </Link>
+            <div className="flex flex-wrap items-center gap-4">
+              <Link
+                href="/verksted"
+                className="text-xs font-bold tracking-wider text-white/70 uppercase underline underline-offset-4"
+              >
+                ← Hele lista
+              </Link>
+              {bruker?.rolle === 'admin' && (
+                <Link
+                  href="/admin"
+                  className="border-2 border-white/25 px-3 py-1.5 text-xs font-bold tracking-wider text-white/80 uppercase transition-colors hover:border-white hover:text-white"
+                >
+                  Adminpanel
+                </Link>
+              )}
+            </div>
           </div>
 
           <h1 className="hm-display mt-6 text-2xl">{maskin.navn}</h1>
@@ -51,13 +62,14 @@ export default async function VerkstedMaskinSide(
               .filter(Boolean)
               .join(' · ') || maskin.qr_kode}
           </p>
-          <div className="mt-3">
-            {maskin.verksted_status ? (
-              <Merke type={VERKSTED_MERKE[maskin.verksted_status as VerkstedStatus]}>
-                {VERKSTED_STATUS_TEKST[maskin.verksted_status as VerkstedStatus]}
-              </Merke>
-            ) : (
-              <Merke type="nøytral">Ingen sak registrert</Merke>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Merke type={VERKSTED_MERKE[verkstedStatusAv(maskin.verksted_status)]}>
+              {VERKSTED_STATUS_TEKST[verkstedStatusAv(maskin.verksted_status)]}
+            </Merke>
+            {!kanLeiesUt(maskin.verksted_status) && (
+              <span className="text-xs font-bold tracking-wider text-hm-red uppercase">
+                Kan ikke leies ut
+              </span>
             )}
           </div>
         </div>

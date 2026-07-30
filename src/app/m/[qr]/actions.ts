@@ -10,6 +10,7 @@ import { BILDE_STI, MAKS_KOMMENTAR } from '@/lib/validering'
 import { bildeFinnes } from '@/lib/bilder'
 import { innenforGrense } from '@/lib/rategrense'
 import { varsleNyLeie } from '@/lib/epost/varsler'
+import { kanLeiesUt } from '@/lib/verksted'
 
 export type LeieTilstand = { feil?: string }
 
@@ -103,12 +104,23 @@ export async function startLeie(
 
   const { data: maskin } = await supabaseAdmin
     .from('maskiner')
-    .select('id, navn, status, aktiv')
+    .select('id, navn, status, aktiv, verksted_status')
     .eq('id', felter.data.maskin_id)
     .maybeSingle()
 
   if (!maskin || !maskin.aktiv || maskin.status !== 'ledig') {
     return { feil: 'Maskinen er ikke tilgjengelig for utleie akkurat nå.' }
+  }
+
+  /*
+   * Utstyr som venter på sveising eller deler skal ikke ut til kunde.
+   * Sjekken må stå her og ikke bare i visningen – server actions er
+   * POST-ruter som kan treffes direkte, uten å gå via siden.
+   */
+  if (!kanLeiesUt(maskin.verksted_status)) {
+    return {
+      feil: 'Denne står til reparasjon og kan ikke leies ut nå. Velg en annen, eller ta kontakt med utleier.',
+    }
   }
 
   const enhetsId = await sikreEnhetsId()

@@ -24,9 +24,9 @@ export function VerkstedSkjema({
   return (
     <form action={handling} className="space-y-4 p-5">
       <p className="text-sm text-[var(--blekk-svak)]">
-        Maskinene i disse kategoriene leies ikke ut. De deler én QR-kode som
-        viser hele lista, med statusoversikt over hva som må fikses. Fjern
-        haken for å ta en kategori ut igjen.
+        Maskinene i disse kategoriene får i tillegg en verkstedside, med
+        status på deler og hva som må fikses. De kan fortsatt leies ut som
+        vanlig. Fjern haken for å ta en kategori ut av verkstedet.
       </p>
 
       <fieldset>

@@ -37,24 +37,26 @@ export function grupperPaaType(
  * skuffene er interne, og QR-en henger på veggen i verkstedet.
  */
 export async function hentVerksted(): Promise<{
-  kategori: string | null
+  kategorier: string[]
   deler: Del[]
   maskiner: VerkstedMaskin[]
 }> {
-  const { data: innst } = await supabaseAdmin
-    .from('innstillinger')
-    .select('verksted_kategori')
-    .maybeSingle()
+  const { data: valgte } = await supabaseAdmin
+    .from('kategorier')
+    .select('navn')
+    .eq('er_verksted', true)
+    .order('rekkefolge')
+    .order('navn')
 
-  const kategori = innst?.verksted_kategori?.trim() || null
-  if (!kategori) return { kategori: null, deler: [], maskiner: [] }
+  const kategorier = (valgte ?? []).map((k) => k.navn as string)
+  if (kategorier.length === 0) return { kategorier: [], deler: [], maskiner: [] }
 
   const [{ data: delRader }, { data: maskinRader }] = await Promise.all([
     supabaseAdmin.from('verksted_deler').select('*').order('rekkefolge').order('navn'),
     supabaseAdmin
       .from('maskiner')
       .select('*')
-      .eq('kategori', kategori)
+      .in('kategori', kategorier)
       .eq('aktiv', true)
       .order('underkategori', { nullsFirst: false })
       .order('internnummer')
@@ -81,7 +83,7 @@ export async function hentVerksted(): Promise<{
   }
 
   return {
-    kategori,
+    kategorier,
     deler,
     maskiner: maskiner.map((m) => ({
       ...(m as VerkstedMaskin),

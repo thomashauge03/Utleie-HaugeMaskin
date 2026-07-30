@@ -22,7 +22,7 @@ export default async function InnstillingerSide() {
   const [{ data: innst }, { data: kategoriRader }, { data: maskiner }] =
     await Promise.all([
       supabase.from('innstillinger').select('*').maybeSingle(),
-      supabase.from('kategorier').select('id, navn').order('navn'),
+      supabase.from('kategorier').select('id, navn, er_verksted').order('navn'),
       supabase.from('maskiner').select('kategori').eq('aktiv', true),
     ])
 
@@ -67,7 +67,9 @@ export default async function InnstillingerSide() {
         <KortTittel>Verksted</KortTittel>
         <VerkstedSkjema
           kategorier={alleKategorier}
-          valgt={innst?.verksted_kategori ?? null}
+          valgte={(kategoriRader ?? [])
+            .filter((k) => k.er_verksted)
+            .map((k) => k.navn as string)}
         />
       </Kort>
 

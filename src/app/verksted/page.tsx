@@ -22,18 +22,18 @@ export const dynamic = 'force-dynamic'
  * skuffene har ikke hver sin kode.
  */
 export default async function VerkstedSide() {
-  const [{ kategori, deler, maskiner }, bruker] = await Promise.all([
+  const [{ kategorier, deler, maskiner }, bruker] = await Promise.all([
     hentVerksted(),
     hentAdmin(),
   ])
 
-  if (!kategori) {
+  if (kategorier.length === 0) {
     return (
       <main className="mx-auto w-full max-w-md flex-1 px-5 py-10">
         <HMLogo størrelse="sm" />
         <div className="mt-6">
           <TomTilstand tittel="Verkstedet er ikke satt opp">
-            En admin må velge hvilken kategori verkstedet gjelder, under
+            En admin må velge hvilke kategorier verkstedet gjelder, under
             Innstillinger → Verksted.
           </TomTilstand>
         </div>
@@ -72,7 +72,8 @@ export default async function VerkstedSide() {
             )}
           </div>
 
-          <h1 className="hm-display mt-6 text-3xl">{kategori}</h1>
+          <h1 className="hm-display mt-6 text-3xl">Verksted</h1>
+          <p className="mt-0.5 text-sm text-white/60">{kategorier.join(' · ')}</p>
           <p className="mt-1 text-sm text-white/70">
             {maskiner.length} i lista ·{' '}
             {trengerArbeid.length > 0 ? (
@@ -95,8 +96,9 @@ export default async function VerkstedSide() {
         )}
 
         {maskiner.length === 0 ? (
-          <TomTilstand tittel={`Ingen ${kategori.toLowerCase()} ennå`}>
-            Legg dem inn under Maskiner, med {kategori} som kategori.
+          <TomTilstand tittel="Ingenting i verkstedet ennå">
+            Legg inn maskiner under Maskiner, med {kategorier.join(' eller ')} som
+            kategori.
           </TomTilstand>
         ) : (
           <div className="space-y-7">

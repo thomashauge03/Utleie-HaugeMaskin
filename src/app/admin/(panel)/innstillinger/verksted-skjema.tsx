@@ -14,35 +14,47 @@ const start: Tilstand = {}
  */
 export function VerkstedSkjema({
   kategorier,
-  valgt,
+  valgte,
 }: {
   kategorier: string[]
-  valgt: string | null
+  valgte: string[]
 }) {
   const [tilstand, handling, venter] = useActionState(lagreVerkstedKategori, start)
 
   return (
     <form action={handling} className="space-y-4 p-5">
       <p className="text-sm text-[var(--blekk-svak)]">
-        Maskinene i denne kategorien leies ikke ut. De får én felles QR-kode
-        som viser hele lista, og en statusoversikt over hva som må fikses.
+        Maskinene i disse kategoriene leies ikke ut. De deler én QR-kode som
+        viser hele lista, med statusoversikt over hva som må fikses. Fjern
+        haken for å ta en kategori ut igjen.
       </p>
 
-      <label className="block">
-        <span className={ETIKETT}>Verkstedkategori</span>
-        <select
-          name="verksted_kategori"
-          defaultValue={valgt ?? ''}
-          className={FELT}
-        >
-          <option value="">Ingen — modulen er av</option>
-          {kategorier.map((k) => (
-            <option key={k} value={k}>
-              {k}
-            </option>
-          ))}
-        </select>
-      </label>
+      <fieldset>
+        <legend className={ETIKETT}>Kategorier i verkstedet</legend>
+        {kategorier.length === 0 ? (
+          <p className="text-sm text-[var(--blekk-svak)]">
+            Ingen kategorier ennå. Legg dem inn under Varetyper først.
+          </p>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {kategorier.map((k) => (
+              <label
+                key={k}
+                className="flex min-h-[2.75rem] cursor-pointer items-center gap-3 border-2 border-[var(--kant)] px-3"
+              >
+                <input
+                  type="checkbox"
+                  name="verksted"
+                  value={k}
+                  defaultChecked={valgte.includes(k)}
+                  className="size-5 shrink-0 accent-[var(--color-hm-red)]"
+                />
+                <span className="text-sm font-semibold">{k}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </fieldset>
 
       {tilstand.feil && (
         <p
@@ -70,7 +82,7 @@ export function VerkstedSkjema({
           {venter ? 'Lagrer …' : 'Lagre'}
         </button>
 
-        {valgt && (
+        {valgte.length > 0 && (
           <a
             href="/verksted"
             target="_blank"

@@ -84,7 +84,10 @@ export async function lagreMaskin(
 
   revalidatePath('/admin/maskiner')
   revalidatePath(`/admin/maskiner/${felter.data.id}`)
-  return { ok: 'Endringene er lagret.' }
+
+  // Tilbake til lista. redirect() kaster en kontrollflyt-exception, så
+  // ingenting under kjører – returtypen er kun for feiltilfellene over.
+  redirect('/admin/maskiner')
 }
 
 /**

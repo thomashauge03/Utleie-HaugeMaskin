@@ -64,22 +64,36 @@ export async function lagreVerkstedKategori(
 ): Promise<Tilstand> {
   await krevAdmin()
 
-  const kategori = String(formData.get('verksted_kategori') ?? '').trim()
+  // Avhukede bokser sendes ikke med i FormData, så vi nullstiller alle
+  // først og setter dem som faktisk står i innsendingen. Ellers ville
+  // en kategori aldri kunne tas ut av verkstedet igjen.
+  const valgte = formData.getAll('verksted').map((v) => String(v))
 
   const supabase = await lagServerKlient()
-  const { error } = await supabase
-    .from('innstillinger')
-    .update({ verksted_kategori: kategori || null })
-    .eq('id', true)
 
-  if (error) return { feil: `Kunne ikke lagre: ${error.message}` }
+  const { error: nullstill } = await supabase
+    .from('kategorier')
+    .update({ er_verksted: false })
+    .eq('er_verksted', true)
+
+  if (nullstill) return { feil: `Kunne ikke lagre: ${nullstill.message}` }
+
+  if (valgte.length > 0) {
+    const { error } = await supabase
+      .from('kategorier')
+      .update({ er_verksted: true })
+      .in('navn', valgte)
+
+    if (error) return { feil: `Kunne ikke lagre: ${error.message}` }
+  }
 
   revalidatePath('/admin/innstillinger')
   revalidatePath('/verksted')
   return {
-    ok: kategori
-      ? `${kategori} bruker nå verkstedflyten.`
-      : 'Verkstedmodulen er slått av.',
+    ok:
+      valgte.length > 0
+        ? `${valgte.join(', ')} bruker nå verkstedflyten.`
+        : 'Verkstedmodulen er slått av.',
   }
 }
 

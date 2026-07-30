@@ -6,6 +6,7 @@ import { env } from '@/lib/env'
 import { MASKIN_STATUS_TEKST, type Maskin } from '@/lib/types'
 import { prisEnhet } from '@/lib/pris'
 import { KNAPP_SEKUNDÆR, Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
+import { Søkefelt } from '@/components/sokefelt'
 import { KopierLenke } from './kopier-lenke'
 import { NyMaskin } from './ny-maskin'
 
@@ -21,8 +22,36 @@ const merkeType = {
 
 const UTEN = 'Uten kategori'
 
-export default async function MaskinerSide() {
+const STATUSFILTRE = [
+  { verdi: 'alle', tekst: 'Alle' },
+  { verdi: 'ledig', tekst: 'Ledige' },
+  { verdi: 'utleid', tekst: 'Utleid' },
+  { verdi: 'service', tekst: 'På service' },
+  { verdi: 'utrangert', tekst: 'Utrangert' },
+] as const
+
+/** Feltene et fritekstsøk skal treffe på. */
+function treffer(m: Maskin, søk: string): boolean {
+  const n = søk.toLowerCase().replace(/\s/g, '')
+  return [
+    m.navn,
+    m.qr_kode,
+    m.internnummer,
+    m.kategori,
+    m.underkategori,
+    m.notat,
+  ]
+    .filter(Boolean)
+    .some((v) => String(v).toLowerCase().replace(/\s/g, '').includes(n))
+}
+
+export default async function MaskinerSide(props: PageProps<'/admin/maskiner'>) {
   await krevAdmin()
+  const sp = await props.searchParams
+
+  const søk = typeof sp.q === 'string' ? sp.q.trim() : ''
+  const status = typeof sp.status === 'string' ? sp.status : 'alle'
+  const kategoriFilter = typeof sp.kategori === 'string' ? sp.kategori : ''
 
   const supabase = await lagServerKlient()
   const [{ data, error }, { data: kategoriRader }, { data: utAvBruk }] =
@@ -32,9 +61,47 @@ export default async function MaskinerSide() {
       supabase.from('maskiner').select('*').eq('aktiv', false).order('navn'),
     ])
 
-  const maskiner = (data ?? []) as Maskin[]
-  const inaktive = (utAvBruk ?? []) as Maskin[]
+  const alle = (data ?? []) as Maskin[]
   const kategoriListe = (kategoriRader ?? []).map((k) => k.navn as string)
+
+  /*
+   * Filtreres i minnet. Antallet maskiner er lite nok til at det ikke
+   * betyr noe, og søket spenner over seks felter – å bygge det som en
+   * databasespørring ville gitt mye mer kode uten merkbar gevinst.
+   */
+  let maskiner = alle
+  if (status !== 'alle') maskiner = maskiner.filter((m) => m.status === status)
+  if (kategoriFilter) {
+    maskiner = maskiner.filter((m) => (m.kategori?.trim() || UTEN) === kategoriFilter)
+  }
+  if (søk) maskiner = maskiner.filter((m) => treffer(m, søk))
+
+  // Søk treffer også maskiner ute av bruk – ellers ville en du leter
+  // etter være usynlig nettopp fordi den er tatt ut.
+  const inaktive = ((utAvBruk ?? []) as Maskin[]).filter(
+    (m) => !søk || treffer(m, søk),
+  )
+
+  // Kategoriene som faktisk finnes, til filtervelgeren.
+  const kategorierIBruk = [
+    ...new Set(alle.map((m) => m.kategori?.trim() || UTEN)),
+  ].sort((a, b) => (a === UTEN ? 1 : b === UTEN ? -1 : a.localeCompare(b, 'nb')))
+
+  const filtrerer = søk !== '' || status !== 'alle' || kategoriFilter !== ''
+
+  /** Bygger URL som beholder de andre valgene. */
+  const lenke = (endring: Record<string, string>) => {
+    const p = new URLSearchParams()
+    if (søk) p.set('q', søk)
+    if (status !== 'alle') p.set('status', status)
+    if (kategoriFilter) p.set('kategori', kategoriFilter)
+    for (const [k, v] of Object.entries(endring)) {
+      if (v) p.set(k, v)
+      else p.delete(k)
+    }
+    const s = p.toString()
+    return s ? `/admin/maskiner?${s}` : '/admin/maskiner'
+  }
 
   // Grupper maskinene under kategorien sin. Rekkefølgen følger den admin
   // har satt under Innstillinger; maskiner uten kategori havner sist.
@@ -59,12 +126,16 @@ export default async function MaskinerSide() {
     <div className="space-y-7">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <Seksjonstittel
-          under={`${maskiner.length} registrert · kopier lenken til QR-generatoren`}
+          under={
+            filtrerer
+              ? `${maskiner.length} av ${alle.length} maskiner`
+              : `${alle.length} registrert · kopier lenken til QR-generatoren`
+          }
         >
           Maskiner
         </Seksjonstittel>
 
-        {maskiner.length > 0 && (
+        {alle.length > 0 && (
           <a href="/api/maskiner/csv" className={KNAPP_SEKUNDÆR}>
             Last ned alle som CSV
           </a>
@@ -72,6 +143,63 @@ export default async function MaskinerSide() {
       </div>
 
       <NyMaskin kategorier={kategoriListe} />
+
+      <Søkefelt
+        verdi={søk}
+        plassholder="Søk på navn, kode, internnummer, kategori eller notat"
+      />
+
+      <div className="flex flex-wrap items-center gap-2">
+        {STATUSFILTRE.map((f) => {
+          const aktiv = status === f.verdi
+          return (
+            <Link
+              key={f.verdi}
+              href={lenke({ status: f.verdi === 'alle' ? '' : f.verdi })}
+              aria-current={aktiv ? 'true' : undefined}
+              className={`inline-flex min-h-[2.75rem] items-center border-2 px-4 text-xs font-bold tracking-wider uppercase transition-colors ${
+                aktiv
+                  ? 'border-[var(--kant-sterk)] bg-hm-black text-white'
+                  : 'border-[var(--kant)] bg-[var(--flate-opp)] hover:border-[var(--kant-sterk)]'
+              }`}
+            >
+              {f.tekst}
+            </Link>
+          )
+        })}
+
+        {kategorierIBruk.length > 1 && (
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold tracking-wider text-[var(--blekk-svak)] uppercase">
+              Kategori
+            </span>
+            <Link
+              href={lenke({ kategori: '' })}
+              className={`inline-flex min-h-[2.75rem] items-center border-2 px-3 text-xs font-bold tracking-wider uppercase ${
+                !kategoriFilter
+                  ? 'border-[var(--kant-sterk)] bg-hm-black text-white'
+                  : 'border-[var(--kant)] bg-[var(--flate-opp)]'
+              }`}
+            >
+              Alle
+            </Link>
+            {kategorierIBruk.map((k) => (
+              <Link
+                key={k}
+                href={lenke({ kategori: k })}
+                aria-current={kategoriFilter === k ? 'true' : undefined}
+                className={`inline-flex min-h-[2.75rem] items-center border-2 px-3 text-xs font-bold tracking-wider uppercase ${
+                  kategoriFilter === k
+                    ? 'border-[var(--kant-sterk)] bg-hm-black text-white'
+                    : 'border-[var(--kant)] bg-[var(--flate-opp)] hover:border-[var(--kant-sterk)]'
+                }`}
+              >
+                {k}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
 
       {error && (
         <p
@@ -83,10 +211,21 @@ export default async function MaskinerSide() {
       )}
 
       {!error && maskiner.length === 0 ? (
-        <TomTilstand tittel="Ingen maskiner ennå">
-          Legg inn den første, så får den en permanent URL du kan lage QR-kode
-          av.
-        </TomTilstand>
+        filtrerer ? (
+          <TomTilstand
+            tittel="Ingen treff"
+            handling={{ href: '/admin/maskiner', tekst: 'Nullstill' }}
+          >
+            {søk
+              ? `Fant ingen maskin som matcher «${søk}».`
+              : 'Ingen maskiner med dette filteret.'}
+          </TomTilstand>
+        ) : (
+          <TomTilstand tittel="Ingen maskiner ennå">
+            Legg inn den første, så får den en permanent URL du kan lage QR-kode
+            av.
+          </TomTilstand>
+        )
       ) : (
         /*
          * Én tabell for alle kategoriene, med overskriftsrader mellom.

@@ -111,9 +111,21 @@ export default async function VerkstedMaskinSide(
           </ul>
         </Kort>
 
-        {innlogget && (
-          <Kort>
-            <KortTittel>Kjeft-dimensjon</KortTittel>
+        {/* Kjeft-dimensjonen er også oppslagsverk – den skal kunne leses
+            uten innlogging, men bare endres av service og admin. */}
+        <Kort>
+          <KortTittel>Kjeft-dimensjon</KortTittel>
+          {!innlogget ? (
+            <p
+              className={`p-5 text-base ${
+                maskin.kjeft_dimensjon
+                  ? 'hm-display'
+                  : 'text-[var(--blekk-svak)] italic'
+              }`}
+            >
+              {maskin.kjeft_dimensjon || 'Ikke registrert ennå'}
+            </p>
+          ) : (
             <form
               action={async (fd: FormData) => {
                 'use server'
@@ -140,8 +152,8 @@ export default async function VerkstedMaskinSide(
                 Lagre
               </button>
             </form>
-          </Kort>
-        )}
+          )}
+        </Kort>
 
         {innlogget && (
           <Kort>

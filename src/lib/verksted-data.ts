@@ -10,6 +10,8 @@ export type VerkstedMaskin = Maskin & {
   verksted_status: string | null
   deler: Record<string, string>
   delMal: Record<string, string>
+  /** Satt når maskinen står ute hos kunde nå. */
+  utleie: { kunde: string | null; ventetTilbake: string } | null
 }
 
 export const UTEN_TYPE = 'Uten type'
@@ -76,6 +78,30 @@ export async function hentVerksted(): Promise<{
       maskiner.map((m) => m.id),
     )
 
+  /*
+   * Hvilke står ute hos kunde nå? Servicearbeideren må vite det – det
+   * er ingen vits i å planlegge sveising på noe som ikke er på plassen.
+   */
+  const { data: leier } = await supabaseAdmin
+    .from('leier')
+    .select('maskin_id, planlagt_slutt, kunder(navn)')
+    .in(
+      'maskin_id',
+      maskiner.map((m) => m.id),
+    )
+    .in('status', ['aktiv', 'venter_godkjenning'])
+
+  const utleiePerMaskin = new Map<
+    string,
+    { kunde: string | null; ventetTilbake: string }
+  >()
+  for (const l of leier ?? []) {
+    utleiePerMaskin.set(l.maskin_id, {
+      kunde: (l.kunder as unknown as { navn: string } | null)?.navn ?? null,
+      ventetTilbake: l.planlagt_slutt,
+    })
+  }
+
   const perMaskin = new Map<string, Record<string, string>>()
   const malPerMaskin = new Map<string, Record<string, string>>()
   for (const s of statuser ?? []) {
@@ -98,6 +124,7 @@ export async function hentVerksted(): Promise<{
       // Deler uten rad regnes som OK – ingen har meldt noe galt.
       deler: perMaskin.get(m.id) ?? {},
       delMal: malPerMaskin.get(m.id) ?? {},
+      utleie: utleiePerMaskin.get(m.id) ?? null,
     })),
   }
 }

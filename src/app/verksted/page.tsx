@@ -5,6 +5,7 @@ import { hentVerksted, grupperPaaType } from '@/lib/verksted-data'
 import { HMLogo } from '@/components/hm-logo'
 import { Merke, TomTilstand } from '@/components/ui'
 import { Søkefelt } from '@/components/sokefelt'
+import { dato } from '@/lib/dato'
 import {
   DEL_MERKE,
   DEL_STATUS_TEKST,
@@ -27,6 +28,7 @@ export default async function VerkstedSide(props: PageProps<'/verksted'>) {
   const sp = await props.searchParams
   const søk = typeof sp.q === 'string' ? sp.q.trim() : ''
   const kunArbeid = sp.filter === 'arbeid'
+  const kunHer = sp.filter === 'her'
 
   const [{ kategorier, deler, maskiner: alle }, bruker] = await Promise.all([
     hentVerksted(),
@@ -57,8 +59,11 @@ export default async function VerkstedSide(props: PageProps<'/verksted'>) {
 
   // Søket treffer også målene på delene, så «S70» finner alt med den
   // festetypen selv om den bare står registrert på tannholderen.
+  const utleide = alle.filter((m) => m.utleie).length
+
   let maskiner = alle
   if (kunArbeid) maskiner = maskiner.filter(harArbeid)
+  if (kunHer) maskiner = maskiner.filter((m) => !m.utleie)
   if (søk) {
     const n = søk.toLowerCase().replace(/\s/g, '')
     maskiner = maskiner.filter((m) =>
@@ -75,7 +80,7 @@ export default async function VerkstedSide(props: PageProps<'/verksted'>) {
     )
   }
 
-  const filtrerer = søk !== '' || kunArbeid
+  const filtrerer = søk !== '' || kunArbeid || kunHer
 
   return (
     <>
@@ -166,6 +171,17 @@ export default async function VerkstedSide(props: PageProps<'/verksted'>) {
             >
               Trenger arbeid ({trengerArbeid.length})
             </Link>
+            <Link
+              href={`/verksted?filter=her${søk ? `&q=${encodeURIComponent(søk)}` : ''}`}
+              aria-current={kunHer ? 'true' : undefined}
+              className={`inline-flex min-h-[2.75rem] items-center border-2 px-4 text-xs font-bold tracking-wider uppercase ${
+                kunHer
+                  ? 'border-[var(--kant-sterk)] bg-hm-black text-white'
+                  : 'border-[var(--kant)] bg-[var(--flate-opp)]'
+              }`}
+            >
+              På plassen ({alle.length - utleide})
+            </Link>
           </div>
         </div>
 
@@ -196,50 +212,89 @@ export default async function VerkstedSide(props: PageProps<'/verksted'>) {
                 </div>
 
                 <ul className="space-y-3">
-                  {liste.map((m) => {
-                    const åpneDeler = deler.filter(
-                      (d) => m.deler[d.id] && m.deler[d.id] !== 'ok',
-                    )
+                  {liste.map((m) => (
+                    <li key={m.id}>
+                      <Link
+                        href={`/verksted/${m.id}`}
+                        className="hm-trykk hm-kant-skygge-sm block border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-4"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <span className="hm-display block text-lg">{m.navn}</span>
+                            <span className="mt-0.5 block text-sm text-[var(--blekk-svak)]">
+                              {m.internnummer || m.qr_kode}
+                              {m.kjeft_dimensjon && (
+                                <>
+                                  {' · Kjeft '}
+                                  <span className="font-semibold text-[var(--blekk)]">
+                                    {m.kjeft_dimensjon}
+                                  </span>
+                                </>
+                              )}
+                            </span>
+                          </div>
 
-                    return (
-                      <li key={m.id}>
-                  <Link
-                    href={`/verksted/${m.id}`}
-                    className="hm-trykk hm-kant-skygge-sm block border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-4"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <span className="hm-display block text-lg">{m.navn}</span>
-                        <span className="mt-0.5 block text-sm text-[var(--blekk-svak)]">
-                          {[m.internnummer, m.kjeft_dimensjon]
-                            .filter(Boolean)
-                            .join(' · ') || m.qr_kode}
-                        </span>
-                      </div>
-
-                      <Merke type={VERKSTED_MERKE[verkstedStatusAv(m.verksted_status)]}>
-                        {VERKSTED_STATUS_TEKST[verkstedStatusAv(m.verksted_status)]}
-                      </Merke>
-                    </div>
-
-                    {åpneDeler.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-2 border-t-2 border-[var(--kant)] pt-3">
-                        {åpneDeler.map((d) => (
-                          <span
-                            key={d.id}
-                            className="text-[11px] font-bold tracking-wider uppercase"
-                          >
-                            <Merke type={DEL_MERKE[m.deler[d.id] as DelStatus]}>
-                              {d.navn}: {DEL_STATUS_TEKST[m.deler[d.id] as DelStatus]}
+                          <div className="flex flex-wrap items-center gap-2">
+                            {m.utleie && <Merke type="gul">Utleid</Merke>}
+                            <Merke type={VERKSTED_MERKE[verkstedStatusAv(m.verksted_status)]}>
+                              {VERKSTED_STATUS_TEKST[verkstedStatusAv(m.verksted_status)]}
                             </Merke>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                        </Link>
-                      </li>
-                    )
-                  })}
+                          </div>
+                        </div>
+
+                        {/* Står den ute hos kunde, er det ingen vits i å
+                            planlegge arbeid på den før den er tilbake. */}
+                        {m.utleie && (
+                          <p className="mt-2 border-l-4 border-hm-amber bg-[var(--flate-2)] px-3 py-2 text-sm">
+                            Ute hos {m.utleie.kunde ?? 'kunde'} · ventet tilbake{' '}
+                            <span className="font-semibold">
+                              {dato(m.utleie.ventetTilbake)}
+                            </span>
+                          </p>
+                        )}
+
+                        {/*
+                          Alle delene vises alltid, med målet under. Dette er
+                          oppslagsverket når noen skal bestille deler – da
+                          hjelper det ikke at målet ligger bak et klikk, eller
+                          bare dukker opp når noe er galt. Tomme felt vises
+                          også, så det er synlig hva som mangler.
+                        */}
+                        {deler.length > 0 && (
+                          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-t-2 border-[var(--kant)] pt-3 sm:grid-cols-4">
+                            {deler.map((d) => {
+                              const status = (m.deler[d.id] ?? 'ok') as DelStatus
+                              const mal = m.delMal[d.id]
+                              return (
+                                <div key={d.id} className="min-w-0">
+                                  <dt className="truncate text-[10px] font-bold tracking-widest text-[var(--blekk-svak)] uppercase">
+                                    {d.navn}
+                                  </dt>
+                                  <dd
+                                    className={`truncate text-sm ${
+                                      mal
+                                        ? 'font-semibold'
+                                        : 'text-[var(--blekk-svak)] italic'
+                                    }`}
+                                    title={mal ?? undefined}
+                                  >
+                                    {mal || 'mål mangler'}
+                                  </dd>
+                                  {status !== 'ok' && (
+                                    <dd className="mt-1">
+                                      <Merke type={DEL_MERKE[status]}>
+                                        {DEL_STATUS_TEKST[status]}
+                                      </Merke>
+                                    </dd>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </dl>
+                        )}
+                      </Link>
+                    </li>
+                  ))}
                 </ul>
               </section>
             ))}

@@ -64,6 +64,61 @@ export async function opprettBruker(
   return { ok: `${felter.data.navn} kan nå logge inn.` }
 }
 
+const endreSkjema = z.object({
+  navn: z.string().trim().min(2, 'Navn må fylles ut'),
+  rolle: z.enum(['admin', 'service']),
+})
+
+/**
+ * Endrer navn og rolle på en eksisterende bruker.
+ *
+ * Man kan ikke frata seg selv admintilgang. Er du siste admin og setter
+ * deg til service, er det ingen igjen som kan gi tilgangen tilbake –
+ * da må databasen redigeres direkte for å komme inn igjen.
+ */
+export async function endreBruker(brukerId: string, formData: FormData) {
+  const meg = await krevAdmin()
+
+  const felter = endreSkjema.safeParse({
+    navn: formData.get('navn'),
+    rolle: formData.get('rolle'),
+  })
+  if (!felter.success) return
+
+  if (brukerId === meg.id && felter.data.rolle !== 'admin') return
+
+  const supabase = await lagServerKlient()
+  await supabase
+    .from('admin_brukere')
+    .update({ navn: felter.data.navn, rolle: felter.data.rolle })
+    .eq('id', brukerId)
+
+  revalidatePath('/admin/brukere')
+}
+
+/**
+ * Setter nytt passord. Vi kan ikke lese det gamle, så dette er en
+ * overstyring – admin må formidle det nye videre selv.
+ */
+export async function settPassord(
+  brukerId: string,
+  formData: FormData,
+): Promise<BrukerTilstand> {
+  await krevAdmin()
+
+  const passord = String(formData.get('passord') ?? '')
+  if (passord.length < 8) return { feil: 'Passordet må være minst 8 tegn.' }
+
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(brukerId, {
+    password: passord,
+  })
+
+  if (error) return { feil: `Kunne ikke endre passord: ${error.message}` }
+
+  revalidatePath('/admin/brukere')
+  return { ok: 'Passordet er endret. Husk å gi det videre.' }
+}
+
 export async function settAktiv(brukerId: string, aktiv: boolean) {
   const admin = await krevAdmin()
 

@@ -51,6 +51,8 @@ export async function opprettBruker(
     navn: felter.data.navn,
     epost: felter.data.epost,
     rolle: felter.data.rolle,
+    // Passordet er midlertidig – brukeren må sette sitt eget først.
+    ma_bytte_passord: true,
   })
 
   if (radFeil) {
@@ -115,8 +117,17 @@ export async function settPassord(
 
   if (error) return { feil: `Kunne ikke endre passord: ${error.message}` }
 
+  // Også dette er et midlertidig passord: admin kjenner det, så
+  // brukeren må sette sitt eget ved neste innlogging.
+  await supabaseAdmin
+    .from('admin_brukere')
+    .update({ ma_bytte_passord: true })
+    .eq('id', brukerId)
+
   revalidatePath('/admin/brukere')
-  return { ok: 'Passordet er endret. Husk å gi det videre.' }
+  return {
+    ok: 'Midlertidig passord satt. Brukeren må velge sitt eget ved neste innlogging.',
+  }
 }
 
 export async function settAktiv(brukerId: string, aktiv: boolean) {

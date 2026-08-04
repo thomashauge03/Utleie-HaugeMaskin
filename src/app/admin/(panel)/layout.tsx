@@ -26,9 +26,12 @@ export default async function PanelLayout({
           </span>
 
           <div className="ml-auto flex items-center gap-4">
-            <span className="hidden text-sm text-white/60 sm:block">
+            <Link
+              href="/admin/bytt-passord"
+              className="hidden text-sm text-white/60 underline-offset-4 transition-colors hover:text-white hover:underline sm:block"
+            >
               {admin.navn}
-            </span>
+            </Link>
             <form action={loggUt}>
               <button
                 type="submit"

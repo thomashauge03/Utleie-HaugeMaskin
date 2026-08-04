@@ -97,6 +97,76 @@ export async function lagreVerkstedKategori(
   }
 }
 
+/* ═══ Verksteddeler ════════════════════════════════════════ */
+
+const delNavn = z.string().trim().min(2, 'Navnet må være minst to tegn').max(40)
+
+export async function opprettDel(
+  _forrige: Tilstand,
+  formData: FormData,
+): Promise<Tilstand> {
+  await krevAdmin()
+
+  const navn = delNavn.safeParse(formData.get('navn'))
+  if (!navn.success) return { feil: navn.error.issues[0].message }
+
+  const supabase = await lagServerKlient()
+
+  // Ny del havner sist i rekkefølgen.
+  const { data: siste } = await supabase
+    .from('verksted_deler')
+    .select('rekkefolge')
+    .order('rekkefolge', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const { error } = await supabase.from('verksted_deler').insert({
+    navn: navn.data,
+    rekkefolge: (siste?.rekkefolge ?? 0) + 1,
+  })
+
+  if (error) {
+    return {
+      feil:
+        error.code === '23505'
+          ? 'Denne delen finnes allerede.'
+          : `Kunne ikke lagre: ${error.message}`,
+    }
+  }
+
+  revalidatePath('/admin/innstillinger')
+  revalidatePath('/verksted')
+  return { ok: `«${navn.data}» er lagt til.` }
+}
+
+export async function endreDel(id: string, formData: FormData) {
+  await krevAdmin()
+
+  const navn = delNavn.safeParse(formData.get('navn'))
+  if (!navn.success) return
+
+  const supabase = await lagServerKlient()
+  await supabase.from('verksted_deler').update({ navn: navn.data }).eq('id', id)
+
+  revalidatePath('/admin/innstillinger')
+  revalidatePath('/verksted')
+}
+
+/**
+ * Sletter en del fra lista.
+ *
+ * Statusene og målene som er registrert på denne delen forsvinner med
+ * den, via cascade. Det er ikke reversibelt, så knappen bekreftes.
+ */
+export async function slettDel(id: string) {
+  await krevAdmin()
+  const supabase = await lagServerKlient()
+  await supabase.from('verksted_deler').delete().eq('id', id)
+
+  revalidatePath('/admin/innstillinger')
+  revalidatePath('/verksted')
+}
+
 /* ═══ Varsling ═════════════════════════════════════════════ */
 
 const av = z.union([z.literal('on'), z.null()]).transform((v) => v === 'on')

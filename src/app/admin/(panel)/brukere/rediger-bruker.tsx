@@ -10,6 +10,7 @@ export type Bruker = {
   epost: string
   aktiv: boolean
   rolle: 'admin' | 'service'
+  ma_bytte_passord: boolean
 }
 
 /**
@@ -93,6 +94,9 @@ export function RedigerBruker({ bruker, erMeg }: { bruker: Bruker; erMeg: boolea
           {bruker.rolle === 'admin' ? 'Admin' : 'Service'}
         </Merke>
         {!bruker.aktiv && <Merke type="nøytral">Deaktivert</Merke>}
+        {bruker.ma_bytte_passord && (
+          <Merke type="gul">Midlertidig passord</Merke>
+        )}
 
         <div className="ml-auto flex flex-wrap gap-2">
           <button

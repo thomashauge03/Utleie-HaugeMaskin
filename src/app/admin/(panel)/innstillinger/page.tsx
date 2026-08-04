@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
@@ -9,22 +10,90 @@ import { FirmaSkjema, type Innstillinger } from './firma-skjema'
 import { Kategorier, type Kategori } from './kategorier'
 import { VarselSkjema, type Varsling } from './varsel-skjema'
 import { VerkstedSkjema } from './verksted-skjema'
+import { Deler, type Del } from './deler'
 import { EpostStatus } from './epost-status'
 import { nyttIcalToken } from './actions'
 
 export const metadata: Metadata = { title: 'Innstillinger – HM Utleie' }
 export const dynamic = 'force-dynamic'
 
-export default async function InnstillingerSide() {
+const FANER = [
+  { verdi: 'firma', tekst: 'Firma' },
+  { verdi: 'varetyper', tekst: 'Varetyper' },
+  { verdi: 'verksted', tekst: 'Verksted' },
+  { verdi: 'varsling', tekst: 'Varsling' },
+  { verdi: 'kalender', tekst: 'Kalender' },
+] as const
+
+type Fane = (typeof FANER)[number]['verdi']
+
+function Faner({ valgt }: { valgt: Fane }) {
+  return (
+    <nav className="flex flex-wrap gap-2" aria-label="Innstillinger">
+      {FANER.map((f) => {
+        const aktiv = valgt === f.verdi
+        return (
+          <Link
+            key={f.verdi}
+            href={f.verdi === 'firma' ? '/admin/innstillinger' : `/admin/innstillinger?fane=${f.verdi}`}
+            aria-current={aktiv ? 'page' : undefined}
+            className={`inline-flex min-h-[2.75rem] items-center border-2 px-4 text-xs font-bold tracking-wider uppercase transition-colors ${
+              aktiv
+                ? 'border-[var(--kant-sterk)] bg-hm-black text-white'
+                : 'border-[var(--kant)] bg-[var(--flate-opp)] hover:border-[var(--kant-sterk)]'
+            }`}
+          >
+            {f.tekst}
+          </Link>
+        )
+      })}
+    </nav>
+  )
+}
+
+export default async function InnstillingerSide(
+  props: PageProps<'/admin/innstillinger'>,
+) {
   await krevAdmin()
+  const sp = await props.searchParams
+
+  const ønsket = typeof sp.fane === 'string' ? sp.fane : 'firma'
+  const fane: Fane = FANER.some((f) => f.verdi === ønsket)
+    ? (ønsket as Fane)
+    : 'firma'
+
   const supabase = await lagServerKlient()
 
-  const [{ data: innst }, { data: kategoriRader }, { data: maskiner }] =
-    await Promise.all([
-      supabase.from('innstillinger').select('*').maybeSingle(),
-      supabase.from('kategorier').select('id, navn, er_verksted').order('navn'),
-      supabase.from('maskiner').select('kategori').eq('aktiv', true),
-    ])
+  const [
+    { data: innst },
+    { data: kategoriRader },
+    { data: maskiner },
+    { data: delRader },
+    { data: delBruk },
+  ] = await Promise.all([
+    supabase.from('innstillinger').select('*').maybeSingle(),
+    supabase.from('kategorier').select('id, navn, er_verksted').order('navn'),
+    supabase.from('maskiner').select('kategori').eq('aktiv', true),
+    supabase
+      .from('verksted_deler')
+      .select('id, navn')
+      .order('rekkefolge')
+      .order('navn'),
+    supabase.from('maskin_delstatus').select('del_id'),
+  ])
+
+  // Hvor mange registreringer henger på hver del – så admin ser hva
+  // som forsvinner ved sletting.
+  const perDel = new Map<string, number>()
+  for (const r of delBruk ?? []) {
+    perDel.set(r.del_id, (perDel.get(r.del_id) ?? 0) + 1)
+  }
+
+  const deler: Del[] = (delRader ?? []).map((d) => ({
+    id: d.id,
+    navn: d.navn,
+    antallRegistrert: perDel.get(d.id) ?? 0,
+  }))
 
   // Tell maskiner per kategori, så admin ser konsekvensen av å slette.
   const antall = new Map<string, number>()
@@ -58,21 +127,35 @@ export default async function InnstillingerSide() {
         Innstillinger
       </Seksjonstittel>
 
-      <Kort>
-        <KortTittel>Varetyper</KortTittel>
-        <Kategorier kategorier={kategorier} />
-      </Kort>
+      <Faner valgt={fane} />
 
-      <Kort>
-        <KortTittel>Verksted</KortTittel>
-        <VerkstedSkjema
-          kategorier={alleKategorier}
-          valgte={(kategoriRader ?? [])
-            .filter((k) => k.er_verksted)
-            .map((k) => k.navn as string)}
-        />
-      </Kort>
+      {fane === 'varetyper' && (
+        <Kort>
+          <KortTittel>Varetyper</KortTittel>
+          <Kategorier kategorier={kategorier} />
+        </Kort>
+      )}
 
+      {fane === 'verksted' && (
+        <>
+          <Kort>
+            <KortTittel>Kategorier i verkstedet</KortTittel>
+            <VerkstedSkjema
+              kategorier={alleKategorier}
+              valgte={(kategoriRader ?? [])
+                .filter((k) => k.er_verksted)
+                .map((k) => k.navn as string)}
+            />
+          </Kort>
+
+          <Kort>
+            <KortTittel>Deler</KortTittel>
+            <Deler deler={deler} />
+          </Kort>
+        </>
+      )}
+
+      {fane === 'firma' && (
       <Kort>
         <KortTittel>Firma</KortTittel>
         <FirmaSkjema
@@ -84,7 +167,10 @@ export default async function InnstillingerSide() {
           }}
         />
       </Kort>
+      )}
 
+      {fane === 'varsling' && (
+        <>
       <Kort>
         <KortTittel>Varsling på e-post</KortTittel>
         <EpostStatus />
@@ -122,7 +208,10 @@ export default async function InnstillingerSide() {
           </a>
         </div>
       </Kort>
+        </>
+      )}
 
+      {fane === 'kalender' && (
       <Kort>
         <KortTittel>Kalenderabonnement</KortTittel>
         <div className="p-5">
@@ -150,6 +239,7 @@ export default async function InnstillingerSide() {
           </form>
         </div>
       </Kort>
+      )}
     </div>
   )
 }

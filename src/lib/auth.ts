@@ -9,7 +9,11 @@ export type AdminBruker = {
   navn: string
   epost: string
   rolle: Rolle
+  maByttePassord: boolean
 }
+
+/** Siden brukeren sendes til når passordet må byttes. */
+export const BYTT_PASSORD_STI = '/admin/bytt-passord'
 
 /** Henter innlogget bruker, eller null om ingen er logget inn. */
 export async function hentAdmin(): Promise<AdminBruker | null> {
@@ -20,9 +24,17 @@ export async function hentAdmin(): Promise<AdminBruker | null> {
   } = await supabase.auth.getUser()
   if (!user) return null
 
+  /*
+   * `select('*')` framfor navngitte kolonner med vilje.
+   *
+   * Ber vi om en kolonne som ennå ikke finnes, feiler hele spørringen,
+   * og da returnerer denne null – altså «ikke innlogget» for alle.
+   * Én ukjørt migrasjon ville låst hele systemet ute. Med * får vi det
+   * som finnes, og feltene under faller tilbake til trygge verdier.
+   */
   const { data } = await supabase
     .from('admin_brukere')
-    .select('id, navn, epost, rolle')
+    .select('*')
     .eq('id', user.id)
     .eq('aktiv', true)
     .single()
@@ -31,7 +43,25 @@ export async function hentAdmin(): Promise<AdminBruker | null> {
 
   // Faller tilbake til admin når rolle-kolonnen mangler, slik at
   // eksisterende brukere ikke låses ute før migrasjon 0005 er kjørt.
-  return { ...data, rolle: (data.rolle as Rolle) ?? 'admin' }
+  return {
+    id: data.id,
+    navn: data.navn,
+    epost: data.epost,
+    rolle: (data.rolle as Rolle) ?? 'admin',
+    maByttePassord: data.ma_bytte_passord ?? false,
+  }
+}
+
+/**
+ * Krever innlogget bruker, uten å tvinge passordbytte.
+ *
+ * Brukes av selve passordbyttesiden. Uten dette ville krevAdmin sendt
+ * brukeren dit den allerede står, i en evig omdirigering.
+ */
+export async function krevInnlogget(): Promise<AdminBruker> {
+  const bruker = await hentAdmin()
+  if (!bruker) redirect('/admin/logg-inn')
+  return bruker
 }
 
 /**
@@ -47,6 +77,8 @@ export async function hentAdmin(): Promise<AdminBruker | null> {
 export async function krevAdmin(): Promise<AdminBruker> {
   const bruker = await hentAdmin()
   if (!bruker) redirect('/admin/logg-inn')
+  // Midlertidig passord må byttes før man slipper videre.
+  if (bruker.maByttePassord) redirect(BYTT_PASSORD_STI)
   if (bruker.rolle === 'service') redirect('/verksted')
   return bruker
 }
@@ -64,5 +96,6 @@ export async function hentVerkstedBruker(): Promise<AdminBruker | null> {
 export async function krevVerkstedBruker(): Promise<AdminBruker> {
   const bruker = await hentAdmin()
   if (!bruker) redirect('/admin/logg-inn')
+  if (bruker.maByttePassord) redirect(BYTT_PASSORD_STI)
   return bruker
 }

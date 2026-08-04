@@ -12,6 +12,7 @@ import {
   kanLeiesUt,
   verkstedStatusAv,
 } from '@/lib/verksted'
+import { BrukerMeny } from '../bruker-meny'
 import { DelVelger, StatusVelger } from './status-velger'
 import { leggTilNotat, settKjeftDimensjon } from '../actions'
 
@@ -45,14 +46,7 @@ export default async function VerkstedMaskinSide(
               >
                 ← Hele lista
               </Link>
-              {bruker?.rolle === 'admin' && (
-                <Link
-                  href="/admin"
-                  className="border-2 border-white/25 px-3 py-1.5 text-xs font-bold tracking-wider text-white/80 uppercase transition-colors hover:border-white hover:text-white"
-                >
-                  Adminpanel
-                </Link>
-              )}
+              <BrukerMeny bruker={bruker} />
             </div>
           </div>
 

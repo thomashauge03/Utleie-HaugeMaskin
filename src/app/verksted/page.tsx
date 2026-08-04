@@ -6,6 +6,7 @@ import { HMLogo } from '@/components/hm-logo'
 import { Merke, TomTilstand } from '@/components/ui'
 import { Søkefelt } from '@/components/sokefelt'
 import { dato } from '@/lib/dato'
+import { BrukerMeny } from './bruker-meny'
 import {
   DEL_MERKE,
   DEL_STATUS_TEKST,
@@ -92,30 +93,7 @@ export default async function VerkstedSide(props: PageProps<'/verksted'>) {
         <div className="relative mx-auto max-w-3xl">
           <div className="flex items-start justify-between gap-4">
             <HMLogo størrelse="sm" />
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Verkstedet ligger utenfor adminlayouten, så uten denne
-                  står en admin uten vei tilbake til menyen. */}
-              {bruker?.rolle === 'admin' && (
-                <Link
-                  href="/admin"
-                  className="border-2 border-white/25 px-3 py-1.5 text-xs font-bold tracking-wider text-white/80 uppercase transition-colors hover:border-white hover:text-white"
-                >
-                  ← Adminpanel
-                </Link>
-              )}
-              {bruker ? (
-                <span className="text-xs font-bold tracking-widest text-white/60 uppercase">
-                  {bruker.navn}
-                </span>
-              ) : (
-                <Link
-                  href="/admin/logg-inn"
-                  className="border-2 border-white/25 px-3 py-1.5 text-xs font-bold tracking-wider text-white/80 uppercase"
-                >
-                  Logg inn
-                </Link>
-              )}
-            </div>
+            <BrukerMeny bruker={bruker} />
           </div>
 
           <h1 className="hm-display mt-6 text-3xl">Verksted</h1>

@@ -384,6 +384,24 @@ Kamera  →  komprimering i nettleseren (~1200 px, ~200 kB)
 
 Dette er også raskere for kunden, siden bildet ikke må innom vår server, og det er mønsteret Next-dokumentasjonen selv anbefaler for brukergenererte filer.
 
+### Hvorfor funksjonene kjører i Frankfurt
+
+`vercel.json` setter `"regions": ["fra1"]`. Uten det havner funksjonene i **iad1 (Washington DC)**, som er Vercels standard — mens både brukerne og Supabase er i Europa.
+
+Målt fra Norge:
+
+| Mål | Svartid |
+|---|---|
+| Supabase-prosjektet | 77 ms |
+| AWS eu-central-1 (Frankfurt) | 38 ms |
+| AWS us-east-1 (Virginia) | 337 ms |
+
+Databasen er altså i Europa. Med funksjonen i Washington krysset **hver eneste spørring** Atlanteren og tilbake — rundt 110 ms per tur, mot 5–15 ms innenfor Europa. Svarhodet avslørte det: `x-vercel-id: arn1::iad1::…` betyr at forespørselen kom inn i Stockholm, men ble kjørt i Washington.
+
+Frankfurt ligger nær Supabase-instansen og er samtidig ~35 ms fra Norge.
+
+**Merk:** `vercel.json` valideres mot et strengt skjema som avviser ukjente felt. Kommentarnøkler av typen `"//forklaring"` er *ikke* lov og gir `Build Failed` før bygget i det hele tatt starter. Derfor står forklaringen her og ikke i fila.
+
 ### Kostnadsbilde (ærlig)
 - **Domene:** ~150 kr/år
 - **Supabase gratis:** 500 MB database + 1 GB fillagring. Med komprimerte bilder holder 1 GB til ca. **5 000 bilder** – flere år med drift. *Merk: gratisplanen pauser prosjektet etter 7 dagers inaktivitet. Ikke et problem i daglig drift, men verdt å vite.*

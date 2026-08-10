@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import imageCompression from 'browser-image-compression'
 import { lagNettleserKlient } from '@/lib/supabase/client'
 import { lagreBildeSti, lesBildeSti } from '@/lib/kladd'
 import { ETIKETT } from '@/components/ui'
@@ -67,6 +66,19 @@ export function BildeOpplasting({
     spørOmPosisjon()
 
     try {
+      /*
+       * Komprimeringsbiblioteket er ~57 kB og hentes først her.
+       *
+       * Det koster ingenting i praksis: vi er inne i onChange, altså
+       * etter at kunden har tatt bildet i kameraappen, og nedlastingen
+       * skjer mens «Behandler bildet …» uansett står på skjermen. Til
+       * gjengjeld slipper QR-siden – den kunden åpner først, ute på
+       * plassen og ofte på mobildata – å laste den i det hele tatt.
+       */
+      const { default: imageCompression } = await import(
+        'browser-image-compression'
+      )
+
       const komprimert = await imageCompression(fil, {
         maxWidthOrHeight: 1200,
         maxSizeMB: 0.4,

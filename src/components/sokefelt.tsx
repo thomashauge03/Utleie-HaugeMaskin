@@ -26,23 +26,40 @@ export function Søkefelt({
   const params = useSearchParams()
   const [venter, startOvergang] = useTransition()
   const [tekst, settTekst] = useState(verdi)
-  const førsteRender = useRef(true)
 
-  // Nullstill feltet når URL-en endres utenfra (filterknapp, tilbake).
+  /*
+   * Siste søk denne komponenten selv la i URL-en.
+   *
+   * Uten dette kan vi ikke skille «URL-en endret seg fordi jeg nettopp
+   * søkte» fra «URL-en endret seg utenfra» – tilbake-knappen, en
+   * filterlenke, Nullstill. Feltet ble tidligere satt tilbake til
+   * serverens verdi hver gang et søk landet, og skrev du videre mens
+   * svaret var i lufta, forsvant bokstavene du hadde rukket å taste.
+   */
+  const egetSøk = useRef(verdi)
+
   useEffect(() => {
-    settTekst(verdi)
+    // Kom endringen utenfra? Bare da skal feltet følge etter.
+    if (verdi !== egetSøk.current) {
+      egetSøk.current = verdi
+      settTekst(verdi)
+    }
   }, [verdi])
 
   useEffect(() => {
-    if (førsteRender.current) {
-      førsteRender.current = false
-      return
-    }
-    if (tekst === verdi) return
+    /*
+     * Sammenlignes trimmet, fordi det er den trimmede teksten som
+     * havner i URL-en. Utrimmet ville «grav » aldri se likt ut som
+     * «grav», og feltet hadde søkt om igjen i det uendelige.
+     */
+    if (tekst.trim() === egetSøk.current) return
 
     const tidsavbrudd = setTimeout(() => {
+      const nytt = tekst.trim()
+      egetSøk.current = nytt
+
       const p = new URLSearchParams(params.toString())
-      if (tekst.trim()) p.set('q', tekst.trim())
+      if (nytt) p.set('q', nytt)
       else p.delete('q')
 
       startOvergang(() => {
@@ -52,9 +69,6 @@ export function Søkefelt({
     }, 250)
 
     return () => clearTimeout(tidsavbrudd)
-    // `verdi` bevisst utelatt: den endres som følge av navigasjonen
-    // under, og ville ellers startet en ny runde.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tekst, params, sti, router])
 
   return (

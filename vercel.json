@@ -1,5 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+
+  "//regions": "Uten dette kjører funksjonene i iad1 (Washington DC), mens både brukerne og databasen er i Europa. Hver spørring krysset da Atlanteren og tilbake: målt 110 ms per tur mot 5-15 ms innenfor Europa. Frankfurt ligger nær Supabase-instansen (målt 77 ms fra Norge, mot 337 ms til us-east-1) og er samtidig ~35 ms fra Vestlandet.",
+  "regions": ["fra1"],
+
   "crons": [
     {
       "path": "/api/varsler/forfalt",

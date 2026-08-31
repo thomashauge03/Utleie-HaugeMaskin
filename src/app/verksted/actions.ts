@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { hentAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sikreEnhetsId } from '@/lib/enhet'
+import { innenforGrense } from '@/lib/rategrense'
 import { kanSettesAvAlle, type VerkstedStatus } from '@/lib/verksted'
 
 export type VerkstedTilstand = { feil?: string; ok?: string }
@@ -31,6 +32,17 @@ export async function settVerkstedStatus(
 
   if (!bruker && !kanSettesAvAlle(gyldig.data as VerkstedStatus)) {
     return { feil: 'Du må være innlogget for å sette denne statusen.' }
+  }
+
+  /*
+   * Terskelen for å melde fra skal være lav, men ikke fraværende. «Må sveises»
+   * sperrer maskinen for utleie (se erUtleiesperret), så uten en brems kunne én
+   * uinnlogget klient gå gjennom hele maskinlista og stanse utleien helt – et
+   * stille inntektstap ingen får varsel om. Ti meldinger i timen holder til en
+   * ærlig dag på anlegget og stopper gjennomkjøringen.
+   */
+  if (!bruker && !(await innenforGrense('verksted-status', 10, 60 * 60 * 1000))) {
+    return { feil: 'For mange statusmeldinger på kort tid. Prøv igjen senere.' }
   }
 
   const { data: maskin } = await supabaseAdmin

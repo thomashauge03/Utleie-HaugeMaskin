@@ -99,9 +99,11 @@ export default async function PersonvernSide() {
         <Avsnitt tittel="Ansatte">
           For ansatte som står som ansvarlig for et av firmaets kjøretøy,
           lagrer vi navn og e-postadresse. Opplysningene er bare synlige for
-          innloggede brukere, brukes utelukkende til å holde oversikt over
-          frister som EU-kontroll, og slettes når kjøretøyet tas ut av
-          registeret.
+          innloggede brukere, og brukes til å holde oversikt over frister som
+          EU-kontroll. Navnet kan i tillegg søkes opp i kjøretøylista i
+          adminpanelet. Opplysningene blir stående så lenge kjøretøyet ligger
+          i registeret, og slettes når kjøretøyet slettes — å sette det til
+          solgt eller avskiltet er ikke en sletting.
         </Avsnitt>
       </div>
     </main>

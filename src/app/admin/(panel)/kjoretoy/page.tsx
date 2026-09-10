@@ -4,7 +4,7 @@ import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { vegvesenErSattOpp } from '@/lib/vegvesen'
 import { fristerFor } from '@/lib/frister'
-import { dagerTil, dato } from '@/lib/dato'
+import { dato } from '@/lib/dato'
 import {
   KJØRETØY_MERKE,
   KJØRETØY_STATUS_TEKST,
@@ -42,7 +42,12 @@ export default async function KjøretøySide(props: PageProps<'/admin/kjoretoy'>
 
   const alle = (data ?? []) as Kjøretøy[]
 
-  const normalisert = søk.toLowerCase().replace(/\s/g, '')
+  /*
+   * Bindestrek strippes, ikke bare mellomrom: skiltet står som
+   * «EK-12345» på vognkortet, men er lagret som «EK12345» av
+   * normaliserRegNr. Uten dette gir avskrift fra vognkortet null treff.
+   */
+  const normalisert = søk.toLowerCase().replace(/[\s-]/g, '')
   const treff = alle.filter((k) => {
     if (filter === 'frist') {
       if (k.status !== 'i_drift') return false
@@ -54,7 +59,7 @@ export default async function KjøretøySide(props: PageProps<'/admin/kjoretoy'>
     if (!normalisert) return true
     return [k.reg_nr, k.internt_navn, k.merke, k.modell, k.ansvarlig_navn]
       .filter(Boolean)
-      .some((v) => String(v).toLowerCase().replace(/\s/g, '').includes(normalisert))
+      .some((v) => String(v).toLowerCase().replace(/[\s-]/g, '').includes(normalisert))
   })
 
   const lenke = (verdi: string) => {
@@ -126,7 +131,7 @@ export default async function KjøretøySide(props: PageProps<'/admin/kjoretoy'>
                 <span className="hm-display min-w-0 flex-1 truncate text-base">
                   {k.internt_navn || [k.merke, k.modell].filter(Boolean).join(' ') || '–'}
                 </span>
-                <EuFrist frist={k.eu_frist} />
+                <NærmesteFrist kjøretøy={k} />
                 <Merke type={KJØRETØY_MERKE[k.status as KjøretøyStatus] ?? 'nøytral'}>
                   {KJØRETØY_STATUS_TEKST[k.status as KjøretøyStatus] ?? k.status}
                 </Merke>
@@ -146,24 +151,34 @@ export default async function KjøretøySide(props: PageProps<'/admin/kjoretoy'>
 /**
  * Fristen er det eneste tallet i lista folk faktisk leser, så den får
  * farge og ord – aldri farge alene, som ellers i appen.
+ *
+ * Viser den nærmeste fristen, ikke alltid EU-fristen. «Frist snart»
+ * filtrerer på alle fire fristtypene, så en bil kan ligge i lista på
+ * grunn av dekkskift. Sto det da en grå EU-dato langt fram i tid på
+ * raden, ville brukeren ikke se hvorfor bilen er der.
  */
-function EuFrist({ frist }: { frist: string | null }) {
-  if (!frist) {
+function NærmesteFrist({ kjøretøy }: { kjøretøy: Kjøretøy }) {
+  const frister = fristerFor(kjøretøy)
+  if (frister.length === 0) {
     return <span className="text-xs text-[var(--blekk-svak)]">EU-frist ukjent</span>
   }
 
-  const dager = dagerTil(frist)
+  const f = frister.reduce((a, b) => (b.dager < a.dager ? b : a))
   const stil =
-    dager < 0
+    f.dager < 0
       ? 'text-hm-red-ink font-bold'
-      : dager <= 30
+      : f.dager <= 30
         ? 'text-hm-amber font-bold'
         : 'text-[var(--blekk-svak)]'
 
   return (
     <span className={`hm-tall text-xs ${stil}`}>
-      EU {dato(frist)}
-      {dager < 0 ? ` · forfalt for ${Math.abs(dager)} d siden` : dager <= 30 ? ` · om ${dager} d` : ''}
+      {f.tekst} {dato(f.dato)}
+      {f.dager < 0
+        ? ` · forfalt for ${Math.abs(f.dager)} d siden`
+        : f.dager <= 30
+          ? ` · om ${f.dager} d`
+          : ''}
     </span>
   )
 }

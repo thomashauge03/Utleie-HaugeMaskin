@@ -23,7 +23,7 @@ export default async function VerkstedKjøretøySide() {
   const bruker = await krevVerkstedBruker()
 
   const supabase = await lagServerKlient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('kjoretoy')
     .select('*')
     .eq('status', 'i_drift')
@@ -70,7 +70,20 @@ export default async function VerkstedKjøretøySide() {
           ← Verkstedet
         </Link>
 
-        {alle.length === 0 ? (
+        {/* En feilet spørring – for eksempel før migrasjon 0009 er kjørt –
+            gir en tom liste. Vises den som «ingen kjøretøy registrert»,
+            tror servicearbeideren at parken er tom mens den i
+            virkeligheten er utilgjengelig. */}
+        {error && (
+          <p
+            role="alert"
+            className="mb-6 border-l-4 border-hm-red bg-hm-red/10 p-3 text-sm font-semibold text-hm-red-ink"
+          >
+            Kunne ikke hente kjøretøyene: {error.message}
+          </p>
+        )}
+
+        {error ? null : alle.length === 0 ? (
           <TomTilstand tittel="Ingen kjøretøy">
             Ingen kjøretøy er registrert ennå. En admin legger dem inn under
             Kjøretøy i adminpanelet.
@@ -111,6 +124,11 @@ export default async function VerkstedKjøretøySide() {
 
         <p className="mt-6 text-xs text-[var(--blekk-svak)]">
           Skrivebeskyttet. Endringer gjøres i adminpanelet.
+        </p>
+        {/* CC BY 4.0 krever kreditering der dataene vises – ikke bare på
+            adminlista, som viser de samme feltene. */}
+        <p className="mt-2 text-xs text-[var(--blekk-svak)]">
+          Kjøretøyopplysninger fra Statens vegvesen · CC BY 4.0
         </p>
       </main>
     </>

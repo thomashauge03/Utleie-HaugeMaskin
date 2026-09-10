@@ -1199,8 +1199,13 @@ prefiks av noen annen lenke, og `/admin/kunder` er ikke et prefiks av den
 ```bash
 npx next typegen && npx tsc --noEmit && npm run lint
 ```
-Forventet: ingen feil. Uten `typegen` finnes ikke `PageProps<'/admin/kjoretoy'>`,
-og `<Link href="/admin/kjoretoy">` avvises av typede ruter.
+Forventet: ingen feil. Uten `typegen` finnes ikke `PageProps<'/admin/kjoretoy'>`
+— den er generert fra rutene som fantes sist bygg kjørte.
+
+`href`-verdier er derimot **ikke** typesjekket i dette prosjektet:
+`.next/types/routes.d.ts` augmenterer ikke `next/link`, og `typedRoutes` er
+ikke satt i `next.config.ts`. Derfor er det greit at denne siden lenker til
+`/admin/kjoretoy/[id]`, som først opprettes i oppgave 5.
 
 - [ ] **Steg 7: Se at det virker**
 

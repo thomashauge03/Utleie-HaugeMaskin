@@ -95,6 +95,15 @@ export async function lagreKjøretøy(
       neste_dekkskift: felter.data.neste_dekkskift,
       status: felter.data.status,
       notat: felter.data.notat || null,
+      /*
+       * Kilden nullstilles fordi verdiene ikke lenger er Vegvesens.
+       * Sto svv_hentet igjen, ville detaljsiden påstått «Hentet fra
+       * Vegvesen 10.09.2026» over et merke eller en frist et menneske
+       * nettopp skrev inn. Som bonus faller bilen tilbake til prioritet
+       * 0 i cron-køen – aldri hentet – og blir bekreftet mot Vegvesen
+       * ved neste kjøring.
+       */
+      svv_hentet: null,
       // Skjemaet har ingen trigger for dette. Settes fra applikasjonen,
       // som resten av tabellene.
       oppdatert: new Date().toISOString(),
@@ -108,16 +117,29 @@ export async function lagreKjøretøy(
   return { ok: 'Lagret.' }
 }
 
+export type VegvesenTilstand = { feil?: string; ok?: string }
+
 /**
  * Henter fristen på nytt fra Vegvesen.
  *
- * Bundet action uten returverdi: knappen skal bare oppdatere siden.
  * Feiler oppslaget, står de gamle verdiene igjen – det er riktigere enn
- * å tømme felter fordi et API var nede.
+ * å tømme felter fordi et API var nede. Men utfallet må sies høyt:
+ * uten en melding rendres siden identisk enten oppslaget lyktes eller
+ * kvoten var tom, og admin trykker i blinde. Derfor `useActionState`
+ * framfor en bundet action uten returverdi.
+ *
+ * Formuleringene er de samme som ved opprettelse av kjøretøy. To ulike
+ * setninger om samme svar leses som to ulike feil.
  */
-export async function oppdaterFraVegvesen(id: string) {
+export async function oppdaterFraVegvesen(
+  id: string,
+  // Skjemaet har ingen felter – alt actionen trenger er id-en fra
+  // bind(). Tilstanden må stå i signaturen for useActionState-formen.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _forrige: VegvesenTilstand,
+): Promise<VegvesenTilstand> {
   await krevAdmin()
-  if (!z.uuid().safeParse(id).success) return
+  if (!z.uuid().safeParse(id).success) return { feil: 'Ukjent kjøretøy.' }
 
   const supabase = await lagServerKlient()
   const { data } = await supabase
@@ -126,12 +148,24 @@ export async function oppdaterFraVegvesen(id: string) {
     .eq('id', id)
     .maybeSingle()
 
-  if (!data?.reg_nr) return
+  if (!data?.reg_nr) return { feil: 'Ukjent kjøretøy.' }
 
   const oppslag = await hentKjøretøy(data.reg_nr as string)
-  if (oppslag.status !== 'ok') return
 
-  await supabase
+  if (oppslag.status !== 'ok') {
+    return {
+      feil:
+        oppslag.status === 'nøkkelfeil'
+          ? 'Vegvesen-oppslag er ikke satt opp — SVV_API_KEY mangler.'
+          : oppslag.status === 'ukjent'
+            ? 'Skiltet kunne ikke verifiseres hos Vegvesen — sjekk nummeret, og fyll inn fristen selv.'
+            : oppslag.status === 'kvote'
+              ? 'Vegvesen-kvoten er brukt opp for i dag — den nattlige jobben prøver igjen.'
+              : 'Vegvesen svarte ikke — prøv igjen om litt.',
+    }
+  }
+
+  const { error } = await supabase
     .from('kjoretoy')
     .update({
       ...bareUtfylte(oppslag.data),
@@ -140,8 +174,11 @@ export async function oppdaterFraVegvesen(id: string) {
     })
     .eq('id', id)
 
+  if (error) return { feil: `Kunne ikke lagre: ${error.message}` }
+
   revalidatePath('/admin/kjoretoy')
   revalidatePath(`/admin/kjoretoy/${id}`)
+  return { ok: 'Oppdatert fra Vegvesen.' }
 }
 
 export async function slettKjøretøy(id: string) {

@@ -373,10 +373,12 @@ import 'server-only'
 
 const BASE = 'https://akfell-datautlevering.atlas.vegvesen.no'
 
+// arsmodell hentes bevisst ikke: Vegvesens eneste årstall er
+// registrertForstegangNorgeDato, som for en bruktimportert bil er året
+// den kom til Norge – ikke årsmodellen. Kolonnen er rent manuell.
 export type Kjøretøydata = {
   merke: string | null
   modell: string | null
-  arsmodell: number | null
   kjoretoy_klasse: string | null
   eu_frist: string | null
   eu_sist_godkjent: string | null
@@ -427,14 +429,10 @@ function tolk(rad: Record<string, unknown>): Kjøretøydata {
 
   const generelt = r?.godkjenning?.tekniskGodkjenning?.tekniskeData?.generelt
   const pkk = r?.periodiskKjoretoyKontroll
-  const førstegang = somDato(
-    r?.forstegangsregistrering?.registrertForstegangNorgeDato,
-  )
 
   return {
     merke: generelt?.merke?.[0]?.merke ?? null,
     modell: generelt?.handelsbetegnelse?.[0] ?? null,
-    arsmodell: førstegang ? Number(førstegang.slice(0, 4)) : null,
     kjoretoy_klasse:
       r?.godkjenning?.tekniskGodkjenning?.kjoretoyklassifisering?.tekniskKode
         ?.kodeVerdi ?? null,

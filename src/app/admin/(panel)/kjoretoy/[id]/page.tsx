@@ -12,10 +12,11 @@ import {
   type Kjøretøy,
   type KjøretøyStatus,
 } from '@/lib/types'
-import { KNAPP_LITEN, Kort, KortTittel, Merke, Seksjonstittel } from '@/components/ui'
+import { Kort, KortTittel, Merke, Seksjonstittel } from '@/components/ui'
 import { BekreftKnapp } from '@/components/bekreft-knapp'
 import { RedigerSkjema } from './rediger-skjema'
-import { oppdaterFraVegvesen, slettKjøretøy } from './actions'
+import { OppdaterFraVegvesen } from './oppdater-fra-vegvesen'
+import { slettKjøretøy } from './actions'
 
 export const metadata: Metadata = { title: 'Kjøretøy – HM Utleie' }
 export const dynamic = 'force-dynamic'
@@ -105,13 +106,7 @@ export default async function KjøretøyDetaljSide(
               ? `Hentet fra Vegvesen ${tid(k.svv_hentet)}`
               : 'Lagt inn manuelt · aldri bekreftet mot Vegvesen'}
           </span>
-          {vegvesenErSattOpp() && (
-            <form action={oppdaterFraVegvesen.bind(null, k.id)}>
-              <button type="submit" className={KNAPP_LITEN}>
-                Oppdater fra Vegvesen
-              </button>
-            </form>
-          )}
+          {vegvesenErSattOpp() && <OppdaterFraVegvesen id={k.id} />}
         </div>
       </Kort>
 

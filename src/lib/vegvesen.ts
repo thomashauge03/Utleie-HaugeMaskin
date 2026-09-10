@@ -14,10 +14,18 @@ import 'server-only'
 
 const BASE = 'https://akfell-datautlevering.atlas.vegvesen.no'
 
+/**
+ * Feltene vi lar Vegvesen eie.
+ *
+ * `arsmodell` står bevisst ikke her. Det eneste årstallet Vegvesen gir
+ * oss er registrertForstegangNorgeDato, og for en bruktimportert bil er
+ * det året den kom til Norge – ikke årsmodellen. Hentet vi det, ville
+ * neste cron-kjøring skrevet feil årstall tilbake over rettingen admin
+ * nettopp gjorde, og admin kunne aldri vunnet. Kolonnen er manuell.
+ */
 export type Kjøretøydata = {
   merke: string | null
   modell: string | null
-  arsmodell: number | null
   kjoretoy_klasse: string | null
   eu_frist: string | null
   eu_sist_godkjent: string | null
@@ -43,6 +51,12 @@ export function normaliserRegNr(rå: string): string {
   return rå.replace(/[\s-]/g, '').toUpperCase()
 }
 
+/**
+ * Er nøkkelen på plass?
+ *
+ * Grensesnittet må kunne si fra at feltene fylles inn for hånd inntil
+ * SVV_API_KEY finnes, framfor å love et oppslag som aldri kommer.
+ */
 export function vegvesenErSattOpp(): boolean {
   return Boolean(process.env.SVV_API_KEY)
 }
@@ -68,14 +82,10 @@ function tolk(rad: Record<string, unknown>): Kjøretøydata {
 
   const generelt = r?.godkjenning?.tekniskGodkjenning?.tekniskeData?.generelt
   const pkk = r?.periodiskKjoretoyKontroll
-  const førstegang = somDato(
-    r?.forstegangsregistrering?.registrertForstegangNorgeDato,
-  )
 
   return {
     merke: generelt?.merke?.[0]?.merke ?? null,
     modell: generelt?.handelsbetegnelse?.[0] ?? null,
-    arsmodell: førstegang ? Number(førstegang.slice(0, 4)) : null,
     kjoretoy_klasse:
       r?.godkjenning?.tekniskGodkjenning?.kjoretoyklassifisering?.tekniskKode
         ?.kodeVerdi ?? null,
@@ -94,10 +104,15 @@ function tolk(rad: Record<string, unknown>): Kjøretøydata {
  * Spres resultatet rått inn i en update(), sletter et vellykket oppslag
  * en frist brukeren har lagt inn selv. Vi skriver derfor bare det
  * Vegvesen faktisk svarte på, og lar resten stå.
+ *
+ * Tom streng regnes som «ikke svart» på linje med null: svarer Vegvesen
+ * med '' for merke, ville et vellykket oppslag ellers overskrevet et
+ * riktig manuelt merke med ingenting – nøyaktig den feilklassen
+ * funksjonen finnes for å hindre.
  */
 export function bareUtfylte(data: Kjøretøydata): Partial<Kjøretøydata> {
   return Object.fromEntries(
-    Object.entries(data).filter(([, v]) => v !== null),
+    Object.entries(data).filter(([, v]) => v !== null && v !== ''),
   ) as Partial<Kjøretøydata>
 }
 

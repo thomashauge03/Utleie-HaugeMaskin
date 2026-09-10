@@ -17,6 +17,12 @@ import type { Kjøretøy } from '@/lib/types'
  */
 export const TERSKLER = [30, 14, 3] as const
 
+/**
+ * De fire fristene et kjøretøy kan ha.
+ *
+ * Lukket mengde framfor fritekst, slik at hver visning kan slå opp både
+ * navn og rekkefølge på den – da kan de ikke drifte fra hverandre.
+ */
 export type FristType = 'eu' | 'forsikring' | 'service' | 'dekkskift'
 
 export type Frist = {
@@ -45,6 +51,13 @@ const FELT: [FristType, keyof Kjøretøy][] = [
   ['dekkskift', 'neste_dekkskift'],
 ]
 
+/**
+ * Fristene som faktisk er lagt inn på ett kjøretøy, i fast rekkefølge.
+ *
+ * Tomme felter hoppes over framfor å gi en frist uten dato: en rad som
+ * sier «Service – ingen dato» er støy i en liste som skal svare på hva
+ * som haster.
+ */
 export function fristerFor(k: Kjøretøy): Frist[] {
   const ut: Frist[] = []
 

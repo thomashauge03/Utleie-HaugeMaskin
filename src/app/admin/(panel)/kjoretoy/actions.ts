@@ -86,19 +86,32 @@ export async function opprettKjøretøy(
     // 23505 er unik-brudd. Postgres sin egen tekst nevner indeksnavnet,
     // som ikke sier brukeren noe.
     if (error.code === '23505') {
-      return { feil: `${felter.data.reg_nr} er allerede registrert.` }
+      return { feil: `«${felter.data.reg_nr}» er allerede registrert.` }
     }
     return { feil: `Kunne ikke lagre kjøretøyet: ${error.message}` }
   }
 
   revalidatePath('/admin/kjoretoy')
 
+  /*
+   * Fire utfall, ikke tre: ved «ukjent» svarte Vegvesen faktisk – med
+   * HTTP 200 og tomt treff – og ved «kvote» med 429/422. Å slå dem
+   * sammen til «Vegvesen svarte ikke» er en usann beskjed, og den
+   * skjuler at de tre situasjonene krever hver sin handling.
+   *
+   * «Kunne ikke verifiseres», aldri «finnes ikke»: samme feilkode
+   * dekker skjermede skilt.
+   */
   const hale =
     oppslag.status === 'ok'
       ? ' Data er hentet fra Vegvesen.'
       : oppslag.status === 'nøkkelfeil'
         ? ''
-        : ' Vegvesen svarte ikke – fyll inn fristen selv, eller prøv igjen fra kjøretøysiden.'
+        : oppslag.status === 'ukjent'
+          ? ' Skiltet kunne ikke verifiseres hos Vegvesen — sjekk nummeret, og fyll inn fristen selv.'
+          : oppslag.status === 'kvote'
+            ? ' Vegvesen-kvoten er brukt opp for i dag — den nattlige jobben prøver igjen.'
+            : ' Vegvesen svarte ikke — fyll inn fristen selv, eller prøv igjen fra kjøretøysiden.'
 
   return { ok: `${felter.data.reg_nr} er lagt til.${hale}` }
 }

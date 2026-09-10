@@ -95,6 +95,14 @@ export default async function PersonvernSide() {
           Kun ansatte hos utleier med behov for det. Opplysningene lagres hos
           Supabase, med databaser i EU. Vi selger ikke opplysninger videre.
         </Avsnitt>
+
+        <Avsnitt tittel="Ansatte">
+          For ansatte som står som ansvarlig for et av firmaets kjøretøy,
+          lagrer vi navn og e-postadresse. Opplysningene er bare synlige for
+          innloggede brukere, brukes utelukkende til å holde oversikt over
+          frister som EU-kontroll, og slettes når kjøretøyet tas ut av
+          registeret.
+        </Avsnitt>
       </div>
     </main>
   )

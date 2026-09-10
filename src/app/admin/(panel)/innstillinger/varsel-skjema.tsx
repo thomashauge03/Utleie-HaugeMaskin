@@ -13,6 +13,7 @@ export type Varsling = {
   varsle_ny_leie: boolean
   varsle_retur: boolean
   varsle_forfalt: boolean
+  varsle_eu_kontroll: boolean
   kvittering_start: boolean
   kvittering_retur: boolean
   purring_forfalt: boolean
@@ -93,7 +94,7 @@ export function VarselSkjema({ varsling }: { varsling: Varsling }) {
 
       <div>
         <h3 className="hm-display mb-3 text-lg">Til dere</h3>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Bryter
             navn="varsle_ny_leie"
             tittel="Ny utleie"
@@ -111,6 +112,12 @@ export function VarselSkjema({ varsling }: { varsling: Varsling }) {
             tittel="Daglig oversikt over forfalte"
             beskrivelse="Én samlet e-post hver morgen, kun hvis noe faktisk er på overtid."
             standard={varsling.varsle_forfalt}
+          />
+          <Bryter
+            navn="varsle_eu_kontroll"
+            tittel="Frister på kjøretøy"
+            beskrivelse="EU-kontroll, forsikring, service og dekkskift. Sendes 30, 14 og 3 dager før, og når noe forfaller."
+            standard={varsling.varsle_eu_kontroll}
           />
         </div>
       </div>

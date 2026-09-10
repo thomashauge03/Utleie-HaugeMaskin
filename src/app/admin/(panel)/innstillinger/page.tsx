@@ -182,6 +182,7 @@ export default async function InnstillingerSide(
             varsle_ny_leie: innst?.varsle_ny_leie ?? true,
             varsle_retur: innst?.varsle_retur ?? true,
             varsle_forfalt: innst?.varsle_forfalt ?? true,
+            varsle_eu_kontroll: innst?.varsle_eu_kontroll ?? true,
             kvittering_start: innst?.kvittering_start ?? true,
             kvittering_retur: innst?.kvittering_retur ?? true,
             purring_forfalt: innst?.purring_forfalt ?? false,

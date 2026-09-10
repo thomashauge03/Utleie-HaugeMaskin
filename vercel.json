@@ -5,6 +5,10 @@
     {
       "path": "/api/varsler/forfalt",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/kjoretoy/oppdater",
+      "schedule": "0 6 * * *"
     }
   ]
 }

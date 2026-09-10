@@ -11,11 +11,14 @@ export const maxDuration = 60
 /** Så mange oppslag rekker vi trygt innenfor maxDuration. */
 const PER_KJØRING = 50
 
+/** Oppfriskingen får halve kjøretiden. Resten er varselets. */
+const TIDSBUDSJETT_MS = 30_000
+
 /**
  * Frisker opp kjøretøydata fra Vegvesen og sender fristvarselet.
  *
  * Kjøres daglig av Vercel Cron (se vercel.json), og kan kjøres manuelt
- * fra adminpanelet. Cron-kall autentiseres med CRON_SECRET. Uten den
+ * fra Innstillinger. Cron-kall autentiseres med CRON_SECRET. Uten den
  * sjekken kunne hvem som helst tømt API-kvoten deres.
  *
  * Hele parken friskes ikke opp hver natt. EU-fristen endres én gang
@@ -28,7 +31,14 @@ export async function GET(request: Request) {
   const header = request.headers.get('authorization')
   const fraCron = Boolean(hemmelighet) && header === `Bearer ${hemmelighet}`
 
-  if (!fraCron && !(await hentAdmin())) {
+  /*
+   * Strengere enn søsterruta /api/varsler/forfalt med vilje: den bare
+   * sender e-post, denne skriver til kjoretoy gjennom supabaseAdmin og
+   * bruker av Vegvesen-kvoten. Servicearbeidere har skrivebeskyttet
+   * tilgang, og hentAdmin() slipper dem gjennom – rollen må sjekkes.
+   */
+  const bruker = fraCron ? null : await hentAdmin()
+  if (!fraCron && bruker?.rolle !== 'admin') {
     return new Response(null, { status: 401 })
   }
 
@@ -67,7 +77,13 @@ export async function GET(request: Request) {
  * én enkel sammenligningsfunksjon er lettere å ha rett enn tre
  * spørringer som skal utfylle hverandre uten overlapp.
  */
-async function friskOpp(): Promise<{ forsøkt: number; endret: number; feilet: number }> {
+async function friskOpp(): Promise<{
+  plukket: number
+  endret: number
+  feilet: number
+  gjenstår: number
+  rakkHeleKøen: boolean
+}> {
   const { data } = await supabaseAdmin
     .from('kjoretoy')
     .select('*')
@@ -94,8 +110,24 @@ async function friskOpp(): Promise<{ forsøkt: number; endret: number; feilet: n
   let endret = 0
   let feilet = 0
   let behandlet = 0
+  let gjenstår = 0
+
+  const frist = Date.now() + TIDSBUDSJETT_MS
 
   for (const { k } of kø) {
+    /*
+     * 50 sekvensielle oppslag à 10 s timeout er 500 s i verste fall, mot
+     * maxDuration = 60. Blir ruta drept her inne, kjøres
+     * varsleEuKontroll() aldri – og fordi utløseren er et eksakt treff
+     * på 30/14/3 dager, er varselet for den terskelen tapt for godt.
+     * Køen er prioritert, så det som blir stående er det minst
+     * hastende, og neste kjøring plukker det opp av seg selv.
+     */
+    if (Date.now() >= frist) {
+      gjenstår = kø.length - behandlet
+      break
+    }
+
     const oppslag = await hentKjøretøy(k.reg_nr)
 
     if (oppslag.status === 'nøkkelfeil') {
@@ -129,5 +161,10 @@ async function friskOpp(): Promise<{ forsøkt: number; endret: number; feilet: n
     else endret++
   }
 
-  return { forsøkt: kø.length, endret, feilet }
+  /*
+   * `gjenstår` og `rakkHeleKøen` er med fordi et stille kutt ser ut som
+   * «ferdig». Regnestykket går alltid opp:
+   * endret + feilet + gjenstår === plukket.
+   */
+  return { plukket: kø.length, endret, feilet, gjenstår, rakkHeleKøen: gjenstår === 0 }
 }

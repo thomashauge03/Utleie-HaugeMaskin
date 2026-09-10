@@ -314,6 +314,10 @@ export default async function OversiktSide() {
           </ol>
         </Kort>
       )}
+
+      <p className="text-xs text-[var(--blekk-svak)]">
+        Kjøretøyopplysninger fra Statens vegvesen · CC BY 4.0
+      </p>
     </div>
   )
 }

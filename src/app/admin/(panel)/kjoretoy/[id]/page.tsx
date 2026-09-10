@@ -131,6 +131,10 @@ export default async function KjøretøyDetaljSide(
           </form>
         </div>
       </Kort>
+
+      <p className="text-xs text-[var(--blekk-svak)]">
+        Kjøretøyopplysninger fra Statens vegvesen · CC BY 4.0
+      </p>
     </div>
   )
 }

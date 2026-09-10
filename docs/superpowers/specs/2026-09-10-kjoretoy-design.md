@@ -47,7 +47,7 @@ og en utleiekatalog full av objekter som ikke kan leies.
 | `ansvarlig_epost` | `text` | manuelt |
 | `merke` | `text` | Vegvesen, manuell fallback |
 | `modell` | `text` | Vegvesen, manuell fallback |
-| `arsmodell` | `integer` | Vegvesen, manuell fallback |
+| `arsmodell` | `integer` | manuelt |
 | `kjoretoy_klasse` | `text` | Vegvesen |
 | `eu_frist` | `date` | Vegvesen, manuell fallback |
 | `eu_sist_godkjent` | `date` | Vegvesen |
@@ -120,7 +120,15 @@ Felt vi leser, alle relativt til `kjoretoydataListe[0]`:
 | Merke | `godkjenning.tekniskGodkjenning.tekniskeData.generelt.merke[0].merke` |
 | Modell | `godkjenning.tekniskGodkjenning.tekniskeData.generelt.handelsbetegnelse[0]` |
 | Kjøretøyklasse | `godkjenning.tekniskGodkjenning.kjoretoyklassifisering.tekniskKode.kodeVerdi` |
-| Førstegangsreg. | `forstegangsregistrering.registrertForstegangNorgeDato` |
+
+**Rettelse 2026-09-10, etter sluttgjennomgangen:** `arsmodell` hentes
+**ikke** fra Vegvesen, slik denne speccen opprinnelig sa. Feltet det ville
+kommet fra — `forstegangsregistrering.registrertForstegangNorgeDato` — er
+året kjøretøyet ble registrert i Norge, ikke årsmodellen. For en
+bruktimportert bil er de ulike, og siden `bareUtfylte()` bare dropper
+tomme verdier, ville et feil årstall blitt skrevet tilbake over admins
+egen retting ved neste oppfrisking. `arsmodell` er derfor et rent manuelt
+felt.
 
 ### Fem ting som styrer utformingen
 

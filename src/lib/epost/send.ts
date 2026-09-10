@@ -9,6 +9,7 @@ export type Varseltype =
   | 'kvittering_retur'
   | 'forfalt_admin'
   | 'forfalt_kunde'
+  | 'eu_kontroll_admin'
 
 export type Innstillinger = {
   firmanavn: string
@@ -21,6 +22,7 @@ export type Innstillinger = {
   kvittering_start: boolean
   kvittering_retur: boolean
   purring_forfalt: boolean
+  varsle_eu_kontroll: boolean
 }
 
 export async function hentVarselInnstillinger(): Promise<Innstillinger | null> {

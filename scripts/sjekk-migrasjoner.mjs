@@ -25,6 +25,7 @@ const MIGRASJONER = [
   { fil: '0006_flere_verkstedkategorier.sql', tabell: 'kategorier', kolonne: 'er_verksted' },
   { fil: '0007_delmal.sql', tabell: 'maskin_delstatus', kolonne: 'mal' },
   { fil: '0008_bytt_passord.sql', tabell: 'admin_brukere', kolonne: 'ma_bytte_passord' },
+  { fil: '0009_kjoretoy.sql', tabell: 'kjoretoy', kolonne: 'eu_frist' },
 ]
 
 const mangler = []

@@ -296,3 +296,60 @@ export function forfaltAdmin(
       `\n\n${nettadresse}/admin/leier?status=forfalt`,
   }
 }
+
+/* ── Til admin: frister på kjøretøy ─────────────────────── */
+
+/**
+ * Samleoversikt over frister på egne kjøretøy.
+ *
+ * Kolonnen «hva» finnes fordi e-posten dekker EU-kontroll, forsikring,
+ * service og dekkskift – uten den vet ikke mottakeren hvilken frist det
+ * gjelder, bare at noe forfaller.
+ */
+export function euKontrollAdmin(
+  firmanavn: string,
+  nettadresse: string,
+  rader: { reg_nr: string; navn: string; hva: string; frist: string; dager: number }[],
+): Mal {
+  const forfalte = rader.filter((r) => r.dager < 0).length
+  const emne =
+    forfalte > 0
+      ? `${forfalte} ${forfalte === 1 ? 'frist er' : 'frister er'} forfalt på kjøretøy`
+      : `${rader.length} ${rader.length === 1 ? 'frist' : 'frister'} nærmer seg på kjøretøy`
+
+  const dagerTekst = (d: number) =>
+    d < 0 ? `${Math.abs(d)} d over` : d === 0 ? 'i dag' : `${d} d`
+
+  return {
+    emne,
+    html: ramme(
+      'Frister på kjøretøy',
+      h1(emne) +
+        p('Fristene under gjelder kjøretøy som står som i drift.') +
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border:1px solid #e4e4e7">
+      <tr style="background:${SVART}">
+        <td style="padding:8px 10px;color:#fff;font-size:11px;letter-spacing:.8px">KJØRETØY</td>
+        <td style="padding:8px 10px;color:#fff;font-size:11px;letter-spacing:.8px">HVA</td>
+        <td style="padding:8px 10px;color:#fff;font-size:11px;letter-spacing:.8px;text-align:right">FRIST</td>
+      </tr>
+      ${rader
+        .map(
+          (r, i) => `<tr${i % 2 ? ' style="background:#fafafa"' : ''}>
+        <td style="padding:9px 10px;font-size:14px;font-weight:600">${esc(r.reg_nr)}<br><span style="color:#71717a;font-size:12px">${esc(r.navn)}</span></td>
+        <td style="padding:9px 10px;font-size:14px">${esc(r.hva)}</td>
+        <td style="padding:9px 10px;font-size:14px;text-align:right">${esc(dato(r.frist))}<br><span style="font-size:12px;font-weight:700;color:${r.dager < 0 ? RØD : '#71717a'}">${esc(dagerTekst(r.dager))}</span></td>
+      </tr>`,
+        )
+        .join('')}
+    </table>` +
+        knapp(`${nettadresse}/admin/kjoretoy?status=frist`, 'Se alle frister'),
+      firmanavn,
+    ),
+    tekst:
+      `${emne}:\n\n` +
+      rader
+        .map((r) => `- ${r.reg_nr} · ${r.hva} · ${dato(r.frist)} (${dagerTekst(r.dager)})`)
+        .join('\n') +
+      `\n\n${nettadresse}/admin/kjoretoy?status=frist`,
+  }
+}

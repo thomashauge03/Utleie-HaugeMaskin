@@ -373,10 +373,12 @@ import 'server-only'
 
 const BASE = 'https://akfell-datautlevering.atlas.vegvesen.no'
 
+// arsmodell hentes bevisst ikke: Vegvesens eneste årstall er
+// registrertForstegangNorgeDato, som for en bruktimportert bil er året
+// den kom til Norge – ikke årsmodellen. Kolonnen er rent manuell.
 export type Kjøretøydata = {
   merke: string | null
   modell: string | null
-  arsmodell: number | null
   kjoretoy_klasse: string | null
   eu_frist: string | null
   eu_sist_godkjent: string | null
@@ -427,14 +429,10 @@ function tolk(rad: Record<string, unknown>): Kjøretøydata {
 
   const generelt = r?.godkjenning?.tekniskGodkjenning?.tekniskeData?.generelt
   const pkk = r?.periodiskKjoretoyKontroll
-  const førstegang = somDato(
-    r?.forstegangsregistrering?.registrertForstegangNorgeDato,
-  )
 
   return {
     merke: generelt?.merke?.[0]?.merke ?? null,
     modell: generelt?.handelsbetegnelse?.[0] ?? null,
-    arsmodell: førstegang ? Number(førstegang.slice(0, 4)) : null,
     kjoretoy_klasse:
       r?.godkjenning?.tekniskGodkjenning?.kjoretoyklassifisering?.tekniskKode
         ?.kodeVerdi ?? null,
@@ -1199,8 +1197,13 @@ prefiks av noen annen lenke, og `/admin/kunder` er ikke et prefiks av den
 ```bash
 npx next typegen && npx tsc --noEmit && npm run lint
 ```
-Forventet: ingen feil. Uten `typegen` finnes ikke `PageProps<'/admin/kjoretoy'>`,
-og `<Link href="/admin/kjoretoy">` avvises av typede ruter.
+Forventet: ingen feil. Uten `typegen` finnes ikke `PageProps<'/admin/kjoretoy'>`
+— den er generert fra rutene som fantes sist bygg kjørte.
+
+`href`-verdier er derimot **ikke** typesjekket i dette prosjektet:
+`.next/types/routes.d.ts` augmenterer ikke `next/link`, og `typedRoutes` er
+ikke satt i `next.config.ts`. Derfor er det greit at denne siden lenker til
+`/admin/kjoretoy/[id]`, som først opprettes i oppgave 5.
 
 - [ ] **Steg 7: Se at det virker**
 
@@ -2181,7 +2184,7 @@ Opprett `src/app/api/kjoretoy/oppdater/route.ts`:
 ```ts
 import { hentAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { hentKjøretøy } from '@/lib/vegvesen'
+import { bareUtfylte, hentKjøretøy } from '@/lib/vegvesen'
 import { varsleEuKontroll } from '@/lib/epost/varsler'
 import { dagerTil, osloDag } from '@/lib/dato'
 import type { Kjøretøy } from '@/lib/types'
@@ -2214,7 +2217,21 @@ export async function GET(request: Request) {
   }
 
   const oppdatert = await friskOpp()
-  const varsel = await varsleEuKontroll()
+
+  /*
+   * Varselet er pakket inn, oppfriskingen ikke.
+   *
+   * Oppfriskingen har allerede skrevet til databasen når vi kommer hit.
+   * Velter e-postutsendingen etterpå, skal svaret fortsatt fortelle hva
+   * som faktisk ble oppdatert – ellers ser en cron-kjøring ut som en
+   * total fiasko fordi et varsel ikke gikk ut.
+   */
+  let varsel: unknown
+  try {
+    varsel = await varsleEuKontroll()
+  } catch (e) {
+    varsel = { feil: e instanceof Error ? e.message : 'Ukjent feil' }
+  }
 
   return Response.json({
     oppdatert,
@@ -2283,7 +2300,10 @@ async function friskOpp(): Promise<{ forsøkt: number; endret: number; feilet: n
     const { error } = await supabaseAdmin
       .from('kjoretoy')
       .update({
-        ...oppslag.data,
+        // bareUtfylte, ikke rå spread: tolk() gir null for felter
+        // Vegvesen mangler, og en nattlig jobb som skriver dem rått ville
+        // slettet manuelt innlagte frister på kjøretøy uten kontrollplikt.
+        ...bareUtfylte(oppslag.data),
         svv_hentet: new Date().toISOString(),
         oppdatert: new Date().toISOString(),
       })

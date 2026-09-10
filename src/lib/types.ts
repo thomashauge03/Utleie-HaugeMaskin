@@ -109,3 +109,52 @@ export const LEIE_MERKE: Record<LeieStatus, 'grønn' | 'gul' | 'nøytral' | 'rø
 export function erForfalt(leie: Pick<Leie, 'status' | 'planlagt_slutt'>): boolean {
   return leie.status === 'aktiv' && new Date(leie.planlagt_slutt).getTime() < Date.now()
 }
+
+/* ═══ Kjøretøy ═════════════════════════════════════════════ */
+
+export type KjøretøyStatus = 'i_drift' | 'avskiltet' | 'solgt'
+
+/** Speiler supabase/migrations/0009_kjoretoy.sql. */
+export type Kjøretøy = {
+  id: string
+  reg_nr: string
+  internt_navn: string | null
+  ansvarlig_navn: string | null
+  ansvarlig_epost: string | null
+  merke: string | null
+  modell: string | null
+  arsmodell: number | null
+  kjoretoy_klasse: string | null
+  /** yyyy-mm-dd. Neste EU-kontroll. */
+  eu_frist: string | null
+  eu_sist_godkjent: string | null
+  reg_status: string | null
+  /** Null = aldri hentet fra Vegvesen, altså manuelt innlagt. */
+  svv_hentet: string | null
+  km: number | null
+  forsikring_selskap: string | null
+  forsikring_forfall: string | null
+  neste_service: string | null
+  neste_dekkskift: string | null
+  status: KjøretøyStatus
+  notat: string | null
+  opprettet: string
+  oppdatert: string
+}
+
+export const KJØRETØY_STATUS_TEKST: Record<KjøretøyStatus, string> = {
+  i_drift: 'I drift',
+  avskiltet: 'Avskiltet',
+  solgt: 'Solgt',
+}
+
+/**
+ * Status → merketype. Merk at «forfalt» ikke finnes her: en passert
+ * frist er et avledet predikat, ikke en status – samme valg som for
+ * leier, se erForfalt over.
+ */
+export const KJØRETØY_MERKE: Record<KjøretøyStatus, 'grønn' | 'nøytral' | 'svart'> = {
+  i_drift: 'grønn',
+  avskiltet: 'nøytral',
+  solgt: 'svart',
+}

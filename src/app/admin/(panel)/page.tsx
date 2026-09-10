@@ -5,7 +5,8 @@ import { lagServerKlient } from '@/lib/supabase/server'
 import { visTelefon } from '@/lib/telefon'
 import { dato, dagerTil, tidKort } from '@/lib/dato'
 import { antallTekst, prisEnhet } from '@/lib/pris'
-import type { Kunde, Leie, Maskin } from '@/lib/types'
+import type { Kjøretøy, Kunde, Leie, Maskin } from '@/lib/types'
+import { kommendeFrister } from '@/lib/frister'
 import { Kort, KortTittel, Merke, Seksjonstittel } from '@/components/ui'
 
 export const metadata: Metadata = { title: 'Oversikt – HM Utleie' }
@@ -18,37 +19,45 @@ export default async function OversiktSide() {
   const supabase = await lagServerKlient()
   const nå = new Date().toISOString()
 
-  const [{ data: aktiveData }, { data: venterData }, { data: ufakturertData }, ledige, { data: hendelser }] =
-    await Promise.all([
-      supabase
-        .from('leier')
-        .select('*, maskiner(*), kunder(*)')
-        .eq('status', 'aktiv')
-        .order('planlagt_slutt'),
-      supabase
-        .from('leier')
-        .select('*, maskiner(*), kunder(*)')
-        .eq('status', 'venter_godkjenning')
-        .order('slutt_tid'),
-      supabase
-        .from('leier')
-        .select('*, maskiner(*), kunder(*)')
-        .eq('status', 'avsluttet')
-        .eq('fakturert', false)
-        .order('godkjent_tid', { ascending: false })
-        .limit(6),
-      supabase
-        .from('maskiner')
-        .select('id', { count: 'exact', head: true })
-        .eq('aktiv', true)
-        .eq('status', 'ledig'),
-      supabase.from('hendelser').select('*').order('tid', { ascending: false }).limit(8),
-    ])
+  const [
+    { data: aktiveData },
+    { data: venterData },
+    { data: ufakturertData },
+    ledige,
+    { data: hendelser },
+    { data: kjøretøyData },
+  ] = await Promise.all([
+    supabase
+      .from('leier')
+      .select('*, maskiner(*), kunder(*)')
+      .eq('status', 'aktiv')
+      .order('planlagt_slutt'),
+    supabase
+      .from('leier')
+      .select('*, maskiner(*), kunder(*)')
+      .eq('status', 'venter_godkjenning')
+      .order('slutt_tid'),
+    supabase
+      .from('leier')
+      .select('*, maskiner(*), kunder(*)')
+      .eq('status', 'avsluttet')
+      .eq('fakturert', false)
+      .order('godkjent_tid', { ascending: false })
+      .limit(6),
+    supabase
+      .from('maskiner')
+      .select('id', { count: 'exact', head: true })
+      .eq('aktiv', true)
+      .eq('status', 'ledig'),
+    supabase.from('hendelser').select('*').order('tid', { ascending: false }).limit(8),
+    supabase.from('kjoretoy').select('*').eq('status', 'i_drift').limit(500),
+  ])
 
   const aktive = (aktiveData ?? []) as Rad[]
   const venter = (venterData ?? []) as Rad[]
   const ufakturert = (ufakturertData ?? []) as Rad[]
   const forfalt = aktive.filter((l) => l.planlagt_slutt < nå)
+  const kjøretøyFrister = kommendeFrister((kjøretøyData ?? []) as Kjøretøy[], 30)
 
   const kort = [
     { tall: aktive.length, tekst: 'Utleid nå', href: '/admin/leier?status=aktiv', tone: 'nøytral' },
@@ -143,6 +152,41 @@ export default async function OversiktSide() {
                   <Merke type="rød">
                     {Math.abs(dagerTil(l.planlagt_slutt))} dager på overtid
                   </Merke>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Kort>
+      )}
+
+      {kjøretøyFrister.length > 0 && (
+        <Kort className="!border-hm-amber">
+          <h2 className="hm-display bg-hm-amber px-5 py-3 text-lg text-white">
+            Frister på kjøretøy · {kjøretøyFrister.length}
+          </h2>
+          <ul className="divide-y-2 divide-[var(--kant)]">
+            {kjøretøyFrister.map((f) => (
+              <li key={`${f.kjøretøy.id}-${f.type}`}>
+                <Link
+                  href={`/admin/kjoretoy/${f.kjøretøy.id}`}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4 transition-colors hover:bg-[var(--flate-2)]"
+                >
+                  <span className="hm-tall shrink-0 text-sm font-bold tracking-wider">
+                    {f.kjøretøy.reg_nr}
+                  </span>
+                  <span className="hm-display min-w-0 flex-1 truncate text-base">
+                    {f.tekst}
+                  </span>
+                  <span className="hm-tall text-xs text-[var(--blekk-svak)]">
+                    {dato(f.dato)}
+                  </span>
+                  <span
+                    className={`text-xs font-bold tracking-wider uppercase ${
+                      f.dager < 0 ? 'text-hm-red-ink' : 'text-hm-amber'
+                    }`}
+                  >
+                    {f.dager < 0 ? 'Forfalt →' : `Om ${f.dager} d →`}
+                  </span>
                 </Link>
               </li>
             ))}
@@ -270,6 +314,10 @@ export default async function OversiktSide() {
           </ol>
         </Kort>
       )}
+
+      <p className="text-xs text-[var(--blekk-svak)]">
+        Kjøretøyopplysninger fra Statens vegvesen · CC BY 4.0
+      </p>
     </div>
   )
 }

@@ -182,6 +182,7 @@ export default async function InnstillingerSide(
             varsle_ny_leie: innst?.varsle_ny_leie ?? true,
             varsle_retur: innst?.varsle_retur ?? true,
             varsle_forfalt: innst?.varsle_forfalt ?? true,
+            varsle_eu_kontroll: innst?.varsle_eu_kontroll ?? true,
             kvittering_start: innst?.kvittering_start ?? true,
             kvittering_retur: innst?.kvittering_retur ?? true,
             purring_forfalt: innst?.purring_forfalt ?? false,
@@ -205,6 +206,27 @@ export default async function InnstillingerSide(
             className="hm-trykk inline-flex min-h-[2.75rem] items-center border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] px-4 text-xs font-bold tracking-wider uppercase"
           >
             Send forfallsvarsel nå
+          </a>
+        </div>
+      </Kort>
+
+      <Kort>
+        <KortTittel>Kjør kjøretøyoppdatering manuelt</KortTittel>
+        <div className="p-5">
+          <p className="mb-4 text-sm text-[var(--blekk-svak)]">
+            EU-frister og tekniske data hentes fra Statens vegvesen hver morgen
+            kl. 06, og fristvarselet sendes i samme kjøring. Vil du utløse den
+            nå — for å teste, eller fordi du nettopp la inn en bil — kan du
+            kjøre den herfra. Svaret viser hvor mange kjøretøy som ble
+            oppdatert.
+          </p>
+          <a
+            href="/api/kjoretoy/oppdater"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hm-trykk inline-flex min-h-[2.75rem] items-center border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] px-4 text-xs font-bold tracking-wider uppercase"
+          >
+            Oppdater kjøretøy nå
           </a>
         </div>
       </Kort>

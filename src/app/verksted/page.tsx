@@ -98,6 +98,12 @@ export default async function VerkstedSide(props: PageProps<'/verksted'>) {
 
           <h1 className="hm-display mt-6 text-3xl">Verksted</h1>
           <p className="mt-0.5 text-sm text-white/60">{kategorier.join(' · ')}</p>
+          <Link
+            href="/verksted/kjoretoy"
+            className="mt-3 inline-flex min-h-[2.75rem] items-center border-2 border-white/30 px-4 text-xs font-bold tracking-wider text-white uppercase transition-colors hover:border-white"
+          >
+            Kjøretøy og frister →
+          </Link>
           <p className="mt-1 text-sm text-white/70">
             {filtrerer ? `${maskiner.length} av ${alle.length}` : `${alle.length} i lista`}{' '}
             ·{' '}

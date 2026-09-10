@@ -8,6 +8,7 @@ const lenker = [
   { href: '/admin/kalender', tekst: 'Kalender' },
   { href: '/admin/leier', tekst: 'Leier' },
   { href: '/admin/maskiner', tekst: 'Maskiner' },
+  { href: '/admin/kjoretoy', tekst: 'Kjøretøy' },
   { href: '/admin/kunder', tekst: 'Kunder' },
   { href: '/admin/brukere', tekst: 'Brukere' },
   { href: '/admin/innstillinger', tekst: 'Innstillinger' },

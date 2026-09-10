@@ -178,6 +178,7 @@ const varselSkjema = z.object({
   varsle_ny_leie: av,
   varsle_retur: av,
   varsle_forfalt: av,
+  varsle_eu_kontroll: av,
   kvittering_start: av,
   kvittering_retur: av,
   purring_forfalt: av,
@@ -204,6 +205,7 @@ export async function lagreVarsling(
     varsle_ny_leie: formData.get('varsle_ny_leie'),
     varsle_retur: formData.get('varsle_retur'),
     varsle_forfalt: formData.get('varsle_forfalt'),
+    varsle_eu_kontroll: formData.get('varsle_eu_kontroll'),
     kvittering_start: formData.get('kvittering_start'),
     kvittering_retur: formData.get('kvittering_retur'),
     purring_forfalt: formData.get('purring_forfalt'),
@@ -216,7 +218,10 @@ export async function lagreVarsling(
   if (!kopi.ok) return { feil: kopi.feil }
 
   const varslerAdmin =
-    felter.data.varsle_ny_leie || felter.data.varsle_retur || felter.data.varsle_forfalt
+    felter.data.varsle_ny_leie ||
+    felter.data.varsle_retur ||
+    felter.data.varsle_forfalt ||
+    felter.data.varsle_eu_kontroll
   if (varslerAdmin && !til.verdi) {
     return { feil: 'Du må oppgi minst én mottaker for å slå på varsler til admin.' }
   }
@@ -231,6 +236,7 @@ export async function lagreVarsling(
       varsle_ny_leie: felter.data.varsle_ny_leie,
       varsle_retur: felter.data.varsle_retur,
       varsle_forfalt: felter.data.varsle_forfalt,
+      varsle_eu_kontroll: felter.data.varsle_eu_kontroll,
       kvittering_start: felter.data.kvittering_start,
       kvittering_retur: felter.data.kvittering_retur,
       purring_forfalt: felter.data.purring_forfalt,

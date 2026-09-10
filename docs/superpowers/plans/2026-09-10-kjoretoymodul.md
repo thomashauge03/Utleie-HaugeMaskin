@@ -2186,7 +2186,7 @@ Opprett `src/app/api/kjoretoy/oppdater/route.ts`:
 ```ts
 import { hentAdmin } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { hentKjøretøy } from '@/lib/vegvesen'
+import { bareUtfylte, hentKjøretøy } from '@/lib/vegvesen'
 import { varsleEuKontroll } from '@/lib/epost/varsler'
 import { dagerTil, osloDag } from '@/lib/dato'
 import type { Kjøretøy } from '@/lib/types'
@@ -2219,7 +2219,21 @@ export async function GET(request: Request) {
   }
 
   const oppdatert = await friskOpp()
-  const varsel = await varsleEuKontroll()
+
+  /*
+   * Varselet er pakket inn, oppfriskingen ikke.
+   *
+   * Oppfriskingen har allerede skrevet til databasen når vi kommer hit.
+   * Velter e-postutsendingen etterpå, skal svaret fortsatt fortelle hva
+   * som faktisk ble oppdatert – ellers ser en cron-kjøring ut som en
+   * total fiasko fordi et varsel ikke gikk ut.
+   */
+  let varsel: unknown
+  try {
+    varsel = await varsleEuKontroll()
+  } catch (e) {
+    varsel = { feil: e instanceof Error ? e.message : 'Ukjent feil' }
+  }
 
   return Response.json({
     oppdatert,
@@ -2288,7 +2302,10 @@ async function friskOpp(): Promise<{ forsøkt: number; endret: number; feilet: n
     const { error } = await supabaseAdmin
       .from('kjoretoy')
       .update({
-        ...oppslag.data,
+        // bareUtfylte, ikke rå spread: tolk() gir null for felter
+        // Vegvesen mangler, og en nattlig jobb som skriver dem rått ville
+        // slettet manuelt innlagte frister på kjøretøy uten kontrollplikt.
+        ...bareUtfylte(oppslag.data),
         svv_hentet: new Date().toISOString(),
         oppdatert: new Date().toISOString(),
       })

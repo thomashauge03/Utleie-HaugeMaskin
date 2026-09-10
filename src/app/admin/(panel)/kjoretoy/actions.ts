@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
-import { hentKjøretøy, normaliserRegNr } from '@/lib/vegvesen'
+import { bareUtfylte, hentKjøretøy, normaliserRegNr } from '@/lib/vegvesen'
 
 /*
  * 2–7 tegn er Vegvesens egen grense på kjennemerke-parameteren. Vi
@@ -69,7 +69,7 @@ export async function opprettKjøretøy(
   const oppslag = await hentKjøretøy(felter.data.reg_nr)
   const fraSvv =
     oppslag.status === 'ok'
-      ? { ...oppslag.data, svv_hentet: new Date().toISOString() }
+      ? { ...bareUtfylte(oppslag.data), svv_hentet: new Date().toISOString() }
       : {}
 
   const supabase = await lagServerKlient()

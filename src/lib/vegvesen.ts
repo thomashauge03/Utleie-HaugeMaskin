@@ -86,6 +86,21 @@ function tolk(rad: Record<string, unknown>): Kjøretøydata {
   /* eslint-enable @typescript-eslint/no-explicit-any */
 }
 
+/**
+ * Fjerner feltene Vegvesen ikke hadde data for.
+ *
+ * `tolk()` gir null for alt som mangler i responsen, og et kjøretøy uten
+ * kontrollplikt har ingen `periodiskKjoretoyKontroll` i det hele tatt.
+ * Spres resultatet rått inn i en update(), sletter et vellykket oppslag
+ * en frist brukeren har lagt inn selv. Vi skriver derfor bare det
+ * Vegvesen faktisk svarte på, og lar resten stå.
+ */
+export function bareUtfylte(data: Kjøretøydata): Partial<Kjøretøydata> {
+  return Object.fromEntries(
+    Object.entries(data).filter(([, v]) => v !== null),
+  ) as Partial<Kjøretøydata>
+}
+
 export async function hentKjøretøy(kjennemerke: string): Promise<Oppslag> {
   const nøkkel = process.env.SVV_API_KEY
   if (!nøkkel) return { status: 'nøkkelfeil' }

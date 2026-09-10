@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
-import { hentKjøretøy } from '@/lib/vegvesen'
+import { bareUtfylte, hentKjøretøy } from '@/lib/vegvesen'
 
 const valgfriDato = z
   .string()
@@ -134,7 +134,7 @@ export async function oppdaterFraVegvesen(id: string) {
   await supabase
     .from('kjoretoy')
     .update({
-      ...oppslag.data,
+      ...bareUtfylte(oppslag.data),
       svv_hentet: new Date().toISOString(),
       oppdatert: new Date().toISOString(),
     })

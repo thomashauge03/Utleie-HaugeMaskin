@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono, Barlow_Condensed } from 'next/font/google'
 import './globals.css'
+import { Lukkar } from '@/components/Lukkar'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -43,7 +44,11 @@ export default function RootLayout({
       lang="nb"
       className={`${geistSans.variable} ${geistMono.variable} ${barlow.variable} h-full`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {/* Først i body, så platene er malt før noe annet rekker å vises. */}
+        <Lukkar />
+        {children}
+      </body>
     </html>
   )
 }

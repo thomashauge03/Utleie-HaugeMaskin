@@ -1,6 +1,10 @@
 -- ═══════════════════════════════════════════════════════════
 --  Kjøretøy med EU-kontroll og andre frister
 --
+--  UTFASET – registeret er flyttet ut av appen, og 0010 river
+--  både tabellen og kolonnen på innstillinger. Fila beholdes
+--  for historikk. Ikke kjør den alene.
+--
 --  Egen tabell framfor kolonner på maskiner: et kjøretøy har
 --  skilt og en offentlig frist, ikke QR-kode og døgnpris. Å
 --  presse begge inn i maskiner ville gitt en tabell der halve

@@ -1,9 +1,18 @@
 # Kjøretøymodul — implementasjonsplan
 
-> **For agentiske arbeidere:** PÅKREVD UNDERFERDIGHET: Bruk
-> superpowers:subagent-driven-development (anbefalt) eller
-> superpowers:executing-plans til å gjennomføre planen oppgave for oppgave.
-> Stegene bruker avkryssingsbokser (`- [ ]`).
+> **UTGÅTT 2026-09-21. IKKE GJENNOMFØR DENNE PLANEN.**
+>
+> Kjøretøyregisteret er flyttet ut av denne appen og fjernet fra koden.
+> Migrasjon `0010_fjern_kjoretoy.sql` river tabellen og kolonnen planen
+> ber om at du oppretter.
+>
+> Dokumentet beholdes som historikk over hvordan modulen var bygd.
+> Avkryssingsboksene under er døde: `- [ ]` betyr her «ble gjort den
+> gangen», ikke «gjør dette». Det samme gjelder hvert kommandoeksempel
+> og hvert steg som ber noen kjøre SQL eller legge inn nøkler.
+>
+> Skal registeret noen gang tilbake, skriv en ny plan mot koden slik den
+> står da — ikke følg denne.
 
 **Mål:** Et internt kjøretøyregister i adminpanelet med registreringsnummer,
 EU-kontroll og andre frister, automatisk oppslag mot Statens vegvesen, og
@@ -316,18 +325,15 @@ npx tsc --noEmit
 ```
 Forventet: ingen feil.
 
-- [ ] **Steg 6: Kjør migrasjonen i Supabase**
+- [ ] **Steg 6: Kjør migrasjonen i Supabase** — ~~UTGÅTT, IKKE GJØR DETTE~~
 
-Dette steget gjøres av eier, ikke av en agent. Åpne Supabase → SQL Editor,
-lim inn hele `supabase/KJOR-DENNE.sql`, kjør. Den er trygg å kjøre flere
-ganger.
-
-Verifiser etterpå:
-
-```bash
-node --env-file=.env.local scripts/sjekk-migrasjoner.mjs
-```
-Forventet: `✓ 0009_kjoretoy.sql` og «Alle migrasjoner er kjørt.»
+> Steget opprettet tabellen `kjoretoy` og kolonnen
+> `innstillinger.varsle_eu_kontroll`. Begge er fjernet igjen av
+> `0010_fjern_kjoretoy.sql`. Kjører du det på nytt, gjenoppretter du et
+> skjema ingen kode skriver til.
+>
+> `scripts/sjekk-migrasjoner.mjs` har heller ingen rad for 0009 lenger, så
+> den forventede utskriften under stemmer ikke.
 
 - [ ] **Steg 7: Commit**
 
@@ -2599,21 +2605,20 @@ git commit -m "Kjøretøyfrister på dashbordet, og personvern oppdatert"
 
 ---
 
-## Etter at planen er kjørt
+## Etter at planen er kjørt — ~~UTGÅTT, IKKE GJØR NOE AV DETTE~~
 
-To ting gjenstår som ikke er kode, og som eier må gjøre:
+> Avsnittet under beskrev oppsett for en modul som ikke lenger finnes.
+> `SVV_API_KEY` skal tvert imot **fjernes** fra Vercel, og
+> `scripts/sjekk-vegvesen.mjs` og `src/lib/vegvesen.ts` er slettet.
+> `RESEND_API_KEY` og `VARSEL_FRA` skal bli stående — de brukes fortsatt
+> av forfallsvarslene på utleie.
 
-1. **Migrasjonen** limes inn i Supabase SQL Editor (oppgave 1, steg 6).
-2. **Nøklene** legges inn i Vercel: `SVV_API_KEY` for Vegvesen-oppslaget,
-   og `RESEND_API_KEY` + `VARSEL_FRA` for at e-postene faktisk skal gå ut.
-   Modulen virker uten begge, men da manuelt og uten varsel.
+~~To ting gjenstår som ikke er kode, og som eier må gjøre:~~
 
-Første gang `SVV_API_KEY` finnes:
+1. ~~**Migrasjonen** limes inn i Supabase SQL Editor (oppgave 1, steg 6).~~
+2. ~~**Nøklene** legges inn i Vercel: `SVV_API_KEY` for Vegvesen-oppslaget,
+   og `RESEND_API_KEY` + `VARSEL_FRA` for at e-postene faktisk skal gå ut.~~
 
-```bash
-node --env-file=.env.local scripts/sjekk-vegvesen.mjs EK12345
-```
-
-Les utskriften og sammenlign med det speccen lister som ikke verifisert —
-særlig formatet på `kontrollfrist` og hva et ukjent skilt faktisk svarer.
-Avviker noe, er `src/lib/vegvesen.ts` det eneste stedet som må rettes.
+~~Første gang `SVV_API_KEY` finnes, kjørte man `scripts/sjekk-vegvesen.mjs`
+og sammenlignet utskriften med det speccen listet som ikke verifisert —
+særlig formatet på `kontrollfrist`. Skriptet er slettet.~~

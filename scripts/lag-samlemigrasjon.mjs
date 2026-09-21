@@ -19,18 +19,46 @@ const filer = readdirSync(mappe)
   .filter((f) => f.endsWith('.sql') && Number(f.slice(0, 4)) > 2)
   .sort()
 
+const innhold = new Map(
+  filer.map((f) => [f, readFileSync(path.join(mappe, f), 'utf8').trimEnd()]),
+)
+
+/*
+ * Idempotent er ikke det samme som ufarlig. En migrasjon som dropper en
+ * tabell eller kolonne gir samme sluttilstand hver gang den kjores, men
+ * den forste kjoringen kan ta data som ikke finnes noe annet sted. Den
+ * som limer inn fila for a fikse en helt annen manglende migrasjon, skal
+ * se det for han trykker Run - ikke tre hundre linjer lenger nede.
+ *
+ * Bare de fire verbene som tar DATA teller. «drop policy» og «drop
+ * index» star i nesten hver migrasjon som del av idempotens-monsteret
+ * drop-sa-create, og ville gjort advarselen til stoy alle ignorerer.
+ */
+const RIVER = /^\s*(drop\s+(table|column)|delete\s+from|truncate)\b/im
+const river = filer.filter((f) => RIVER.test(innhold.get(f)))
+
 const deler = [
   '-- ============================================================',
   '-- Migrasjoner etter 0002, samlet.',
   '-- Lim inn hele fila i Supabase SQL Editor og trykk Run.',
   '-- Trygg a kjore flere ganger - alt er idempotent.',
-  '-- ============================================================',
-  '',
 ]
+
+if (river.length) {
+  deler.push(
+    '--',
+    '-- ADVARSEL: fila fjerner ogsa data. Disse migrasjonene river:',
+    ...river.map((f) => `--   ${f}`),
+    '-- Idempotent betyr lik sluttilstand, ikke at ingenting gar tapt.',
+    '-- Sjekk at det som droppes er tatt vare pa for du kjorer.',
+  )
+}
+
+deler.push('-- ============================================================', '')
 
 for (const f of filer) {
   deler.push(`-- >>>>>>>>>>  ${f}  <<<<<<<<<<`)
-  deler.push(readFileSync(path.join(mappe, f), 'utf8').trimEnd())
+  deler.push(innhold.get(f))
   deler.push('')
 }
 

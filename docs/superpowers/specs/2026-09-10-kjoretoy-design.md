@@ -1,7 +1,10 @@
 # Kjøretøymodul — design
 
 Dato: 2026-09-10
-Status: godkjent av eier 2026-09-10
+Status: UTGÅTT 2026-09-21 — registeret er flyttet ut av appen og modulen
+er fjernet fra koden (se `supabase/migrations/0010_fjern_kjoretoy.sql`).
+Dokumentet beholdes som historikk. Kapittel 4 foreskriver endringer i
+delt e-postkode som fortsatt finnes — de er reversert, ikke gjeldende.
 
 Internt kjøretøyregister i adminpanelet: registreringsnummer, EU-kontroll og
 andre frister, med automatisk oppslag mot Statens vegvesen og e-postpåminnelse

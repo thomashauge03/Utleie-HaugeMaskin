@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState, useSyncExternalStore } from 'react'
 import { lagNettleserKlient } from '@/lib/supabase/client'
 import { lagreBildeSti, lesBildeSti } from '@/lib/kladd'
 import { ETIKETT } from '@/components/ui'
@@ -14,6 +14,15 @@ type Props = {
   /** Slås mellomlagring på, overlever bildet at kunden forlater siden. */
   kladdNøkkel?: string
 }
+
+/*
+ * Til useSyncExternalStore: false på serveren og under hydrering, true
+ * ellers. Det er ingenting å abonnere på – svaret endrer seg ikke etter
+ * at siden er hydrert.
+ */
+const ingenAbonnement = () => () => {}
+const iNettleseren = () => true
+const påServeren = () => false
 
 /**
  * Tar bilde med telefonkameraet, komprimerer det, og laster det opp
@@ -40,15 +49,24 @@ export function BildeOpplasting({
    * Bildet ligger allerede i Storage, så det er nok å hente fram stien.
    * Miniatyrbildet er borte – blob-URL-en døde med forrige sidevisning –
    * men kunden slipper å ta bildet på nytt, som er det som betyr noe.
+   *
+   * Stien ligger i sessionStorage, som serveren ikke ser. Den første
+   * renderingen i nettleseren må vise det samme som serveren sendte,
+   * ellers feiler hydreringen. Stien hentes derfor først når vi vet at vi
+   * er i nettleseren, én gang per nøkkel – rett i renderingen, uten en
+   * ekstra runde via en effekt:
+   * https://react.dev/reference/react/useState#storing-information-from-previous-renders
    */
-  useEffect(() => {
-    if (!kladdNøkkel) return
-    const lagret = lesBildeSti(kladdNøkkel)
+  const erINettleseren = useSyncExternalStore(ingenAbonnement, iNettleseren, påServeren)
+  const [kladdLestFor, settKladdLestFor] = useState<string>()
+  if (erINettleseren && kladdNøkkel !== kladdLestFor) {
+    settKladdLestFor(kladdNøkkel)
+    const lagret = kladdNøkkel ? lesBildeSti(kladdNøkkel) : null
     if (lagret) {
       settSti(lagret)
       settStatus('ferdig')
     }
-  }, [kladdNøkkel])
+  }
 
   /** Posisjon er frivillig – leien skal fungere om kunden sier nei. */
   function spørOmPosisjon() {

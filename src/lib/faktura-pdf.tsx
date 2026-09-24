@@ -105,6 +105,8 @@ function Dokument({ leie, kunde, maskin, firmanavn, bilder, logo }: FakturaData 
       <Page size="A4" style={s.side}>
         <View style={s.topp}>
           <View>
+            {/* Regelen tror dette er next/image. @react-pdf sin Image har ingen alt. */}
+            {/* eslint-disable-next-line jsx-a11y/alt-text */}
             {logo && <Image src={logo} style={s.logo} />}
             {firmanavn ? <Text style={{ marginTop: 8, ...s.sterk }}>{firmanavn}</Text> : null}
           </View>
@@ -211,6 +213,8 @@ function Dokument({ leie, kunde, maskin, firmanavn, bilder, logo }: FakturaData 
             <View style={s.bilder}>
               {bilder.map((b, i) => (
                 <View key={i} style={s.bilde}>
+                  {/* Som logoen: @react-pdf sin Image har ingen alt. */}
+                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
                   <Image src={b.data} />
                   <Text style={{ fontSize: 7.5, color: GRÅ, padding: 4 }}>
                     {b.type === 'henting' ? 'Ved henting' : 'Ved levering'}

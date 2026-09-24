@@ -15,7 +15,6 @@ import {
   krevesArbeid,
   verkstedStatusAv,
   type DelStatus,
-  type VerkstedStatus,
 } from '@/lib/verksted'
 
 export const metadata: Metadata = { title: 'Verksted – HM' }

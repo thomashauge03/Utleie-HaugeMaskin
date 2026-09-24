@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
-import { ETIKETT, FELT } from '@/components/ui'
+import { ETIKETT } from '@/components/ui'
 import { lagreVerkstedKategori, type Tilstand } from './actions'
 
 const start: Tilstand = {}

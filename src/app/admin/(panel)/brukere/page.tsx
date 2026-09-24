@@ -36,11 +36,3 @@ export default async function BrukereSide() {
     </div>
   )
 }
-
-function Th({ children }: { children: React.ReactNode }) {
-  return (
-    <th className="px-4 py-2.5 text-left text-[11px] font-bold tracking-widest uppercase">
-      {children}
-    </th>
-  )
-}

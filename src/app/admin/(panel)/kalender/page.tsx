@@ -43,6 +43,11 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
   await krevAdmin()
   const sp = await props.searchParams
 
+  /*
+   * Ett felles «nå» for hele siden: hvilken måned som vises, hvilken rute
+   * som er i dag, og hvor langt aktive leier strekkes. Da er de alltid
+   * enige. Date.now() midt i renderingen avvises av react-hooks/purity.
+   */
   const nå = new Date()
   const år = Number(sp.ar) || nå.getFullYear()
   const måned = sp.mnd !== undefined ? Number(sp.mnd) : nå.getMonth()
@@ -61,7 +66,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
   const leier = ((data ?? []) as Rad[]).filter((l) => {
     const slutt =
       l.status === 'aktiv'
-        ? new Date(Math.max(new Date(l.planlagt_slutt).getTime(), Date.now()))
+        ? new Date(Math.max(new Date(l.planlagt_slutt).getTime(), nå.getTime()))
         : new Date(l.slutt_tid ?? l.planlagt_slutt)
     return slutt >= førsteIMnd
   })
@@ -73,7 +78,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
   const førFørste = ukedagIndeks(førsteIMnd)
   const totaltRuter = Math.ceil((førFørste + antallDager) / 7) * 7
 
-  const iDag = osloDag(new Date())
+  const iDag = osloDag(nå)
 
   const ruter = Array.from({ length: totaltRuter }, (_, i) => {
     const d = new Date(år, måned, i - førFørste + 1)
@@ -89,7 +94,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
        */
       const til =
         l.status === 'aktiv'
-          ? osloDag(new Date(Math.max(new Date(l.planlagt_slutt).getTime(), Date.now())))
+          ? osloDag(new Date(Math.max(new Date(l.planlagt_slutt).getTime(), nå.getTime())))
           : osloDag(l.slutt_tid ?? l.planlagt_slutt)
       // ISO-datoer kan sammenlignes som tekst.
       return dag >= fra && dag <= til

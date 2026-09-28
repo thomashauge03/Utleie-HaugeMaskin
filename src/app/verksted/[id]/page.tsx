@@ -12,7 +12,7 @@ import {
   kanLeiesUt,
   verkstedStatusAv,
 } from '@/lib/verksted'
-import { BrukerMeny } from '../bruker-meny'
+import { BrukerMeny } from '@/components/bruker-meny'
 import { DelVelger, StatusVelger } from './status-velger'
 import { leggTilNotat, settKjeftDimensjon } from '../actions'
 
@@ -48,7 +48,7 @@ export default async function VerkstedMaskinSide(
               >
                 ← Hele lista
               </Link>
-              <BrukerMeny bruker={bruker} />
+              <BrukerMeny bruker={bruker} her="verksted" />
             </div>
           </div>
 

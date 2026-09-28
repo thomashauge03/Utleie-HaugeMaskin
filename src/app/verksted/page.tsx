@@ -6,7 +6,7 @@ import { HMLogo } from '@/components/hm-logo'
 import { Merke, TomTilstand } from '@/components/ui'
 import { Søkefelt } from '@/components/sokefelt'
 import { dato } from '@/lib/dato'
-import { BrukerMeny } from './bruker-meny'
+import { BrukerMeny } from '@/components/bruker-meny'
 import {
   DEL_MERKE,
   DEL_STATUS_TEKST,
@@ -92,7 +92,7 @@ export default async function VerkstedSide(props: PageProps<'/verksted'>) {
         <div className="relative mx-auto max-w-3xl">
           <div className="flex items-start justify-between gap-4">
             <HMLogo størrelse="sm" />
-            <BrukerMeny bruker={bruker} />
+            <BrukerMeny bruker={bruker} her="verksted" />
           </div>
 
           <h1 className="hm-display mt-6 text-3xl">Verksted</h1>

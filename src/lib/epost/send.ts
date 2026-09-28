@@ -9,6 +9,7 @@ export type Varseltype =
   | 'kvittering_retur'
   | 'forfalt_admin'
   | 'forfalt_kunde'
+  | 'merknad_intern'
 
 export type Innstillinger = {
   firmanavn: string

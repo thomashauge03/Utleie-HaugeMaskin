@@ -63,3 +63,27 @@ export function leietakerTekst(l: LeietakerKilde): string {
   const t = leietaker(l)
   return t.prosjekt ? `${t.navn} · ${t.prosjekt}` : t.navn
 }
+
+/**
+ * Hvorfor en maskin ikke kan tas ut – eller null når den er ledig.
+ *
+ * Ansatte ser hvilken kollega som har utstyret, så de vet hvem de skal
+ * spørre. Kundens navn vises aldri – der står det bare «Utleid».
+ */
+export function opptattGrunn(m: {
+  status: string
+  påVerksted: boolean
+  leie: { ansatt_id: string | null; ansattNavn: string | null; prosjekt: string | null } | null
+  megId: string
+}): string | null {
+  if (m.leie) {
+    if (!m.leie.ansatt_id) return 'Utleid'
+    const hvem =
+      m.leie.ansatt_id === m.megId ? 'Hos deg' : `Hos ${m.leie.ansattNavn ?? 'en kollega'}`
+    return m.leie.prosjekt ? `${hvem} · ${m.leie.prosjekt}` : hvem
+  }
+  if (m.status === 'service') return 'Ute av drift'
+  if (m.påVerksted) return 'Til reparasjon'
+  if (m.status !== 'ledig') return 'Utleid'
+  return null
+}

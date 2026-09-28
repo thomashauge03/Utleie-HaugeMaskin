@@ -3,6 +3,7 @@ import { env } from '@/lib/env'
 import type { Kunde, Leie, Maskin } from '@/lib/types'
 import { adresser, hentVarselInnstillinger, sendEpost } from './send'
 import * as maler from './maler'
+import { LEIETAKER_FELT, leietaker, type LeietakerKilde } from '@/lib/leietaker'
 import 'server-only'
 
 /**
@@ -109,6 +110,54 @@ export async function varsleRetur(leieId: string) {
     }
   } catch {
     /* som over */
+  }
+}
+
+/**
+ * En ansatt skrev noe i «Noe som bør fikses?» ved levering.
+ *
+ * Internleier går rett tilbake i drift uten godkjenning, så uten denne
+ * ville ingen sett merknaden. Styres av samme bryter som returvarsler.
+ */
+export async function varsleMerknadIntern(leieId: string) {
+  try {
+    const innst = await hentVarselInnstillinger()
+    if (!innst?.varsle_retur) return
+
+    const { data } = await supabaseAdmin
+      .from('leier')
+      .select(`id, ansatt_id, kommentar_retur, maskiner(navn), ${LEIETAKER_FELT}`)
+      .eq('id', leieId)
+      .maybeSingle()
+
+    const leie = data as unknown as
+      | (LeietakerKilde & { kommentar_retur: string | null; maskiner: { navn: string } | null })
+      | null
+    if (!leie?.kommentar_retur) return
+
+    const t = leietaker(leie)
+    const m = maler.merknadIntern({
+      maskin: leie.maskiner?.navn ?? 'Ukjent maskin',
+      ansatt: t.navn,
+      prosjekt: t.prosjekt ?? '–',
+      merknad: leie.kommentar_retur,
+      leieId,
+      firmanavn: innst.firmanavn ?? '',
+      nettadresse: env.NEXT_PUBLIC_SITE_URL,
+    })
+
+    await sendEpost({
+      type: 'merknad_intern',
+      til: adresser(innst.varsel_epost),
+      kopi: adresser(innst.varsel_kopi),
+      emne: m.emne,
+      html: m.html,
+      tekst: m.tekst,
+      leieId,
+      avsenderNavn: innst.avsender_navn,
+    })
+  } catch {
+    // Varsling skal aldri velte leveringen.
   }
 }
 

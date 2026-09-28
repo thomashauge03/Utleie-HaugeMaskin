@@ -203,6 +203,48 @@ ${url}`,
   }
 }
 
+/* ── Til admin: en ansatt meldte fra ved levering ───────── */
+
+export function merknadIntern(s: {
+  maskin: string
+  ansatt: string
+  prosjekt: string
+  merknad: string
+  leieId: string
+  firmanavn: string
+  nettadresse: string
+}): Mal {
+  const url = `${s.nettadresse}/admin/leier/${s.leieId}`
+
+  return {
+    emne: `Merknad ved levering: ${s.maskin}`,
+    html: ramme(
+      'Merknad ved levering',
+      h1('Merknad ved levering') +
+        fakta([
+          ['Maskin', s.maskin],
+          ['Levert av', s.ansatt],
+          ['Prosjekt', s.prosjekt],
+        ]) +
+        p(`<em>«${esc(s.merknad)}»</em>`) +
+        p('Maskinen er allerede ledig igjen – internleier godkjennes ikke.') +
+        knapp(url, 'Se leien'),
+      s.firmanavn,
+    ),
+    tekst: `Merknad ved levering.
+
+Maskin: ${s.maskin}
+Levert av: ${s.ansatt}
+Prosjekt: ${s.prosjekt}
+
+«${s.merknad}»
+
+Maskinen er allerede ledig igjen – internleier godkjennes ikke.
+
+${url}`,
+  }
+}
+
 /* ── Til kunden: innlevering mottatt ────────────────────── */
 
 export function kvitteringRetur(s: Sammenheng): Mal {

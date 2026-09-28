@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
-import { internleieRad, summerInternleie, type InternleieRad } from '@/lib/pris'
+import { internleieRad, kroner, summerInternleie, type InternleieRad } from '@/lib/pris'
 import type { Prosjekt } from '@/lib/types'
 import { Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
 import { NyttProsjekt } from './nytt-prosjekt'
@@ -17,8 +17,6 @@ type Rad = {
   belop: number | null
   maskiner: { dogn_pris: number | null; pris_enhet: string | null } | null
 }
-
-const kr = (n: number) => `${n.toLocaleString('nb-NO')} kr`
 
 export default async function ProsjekterSide() {
   await krevAdmin()
@@ -91,10 +89,10 @@ export default async function ProsjekterSide() {
                     </td>
                     <td className="hm-tall px-4 py-3">{s.ute}</td>
                     <td className="hm-tall px-4 py-3 whitespace-nowrap">
-                      {kr(s.levert + s.løpende)}
+                      {kroner(s.levert + s.løpende)}
                       {s.løpende > 0 && (
                         <span className="block text-xs text-[var(--blekk-svak)]">
-                          herav {kr(s.løpende)} løpende
+                          herav {kroner(s.løpende)} løpende
                         </span>
                       )}
                       {s.manglerPris && (

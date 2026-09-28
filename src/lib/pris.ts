@@ -32,6 +32,9 @@ export function antallTekst(antall: number, e: PrisEnhet): string {
 /** Kolonneoverskrift i fakturagrunnlaget. */
 export const enhetKolonne = (e: PrisEnhet) => (e === 'time' ? 'TIMER' : 'DØGN')
 
+/** «12 500 kr» – kronebeløp med tusenskille, brukt på prosjektsidene. */
+export const kroner = (n: number) => `${n.toLocaleString('nb-NO')} kr`
+
 /**
  * Antall enheter mellom to tidspunkt, der påbegynt enhet teller som hel.
  *

@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
-import { antallTekst, beregnPris, internleieRad, prisEnhet, summerInternleie } from '@/lib/pris'
+import { antallTekst, beregnPris, internleieRad, kroner, prisEnhet, summerInternleie } from '@/lib/pris'
 import { dato } from '@/lib/dato'
 import type { Prosjekt } from '@/lib/types'
 import { Kort, KortTittel, Merke, TomTilstand } from '@/components/ui'
@@ -27,8 +27,6 @@ type Rad = {
   maskiner: { navn: string; dogn_pris: number | null; pris_enhet: string | null } | null
   ansatt: { navn: string } | null
 }
-
-const kr = (n: number) => `${n.toLocaleString('nb-NO')} kr`
 
 export default async function ProsjektSide(props: PageProps<'/admin/prosjekter/[id]'>) {
   await krevAdmin()
@@ -113,7 +111,7 @@ export default async function ProsjektSide(props: PageProps<'/admin/prosjekter/[
                       {antall !== null ? antallTekst(antall, enhet) : '–'}
                     </span>
                     <span className="hm-tall shrink-0 text-right font-semibold">
-                      {belop !== null ? kr(belop) : 'mangler pris'}
+                      {belop !== null ? kroner(belop) : 'mangler pris'}
                       {anslag && (
                         <span className="block text-[10px] font-bold tracking-wider text-[var(--blekk-svak)] uppercase">
                           Løpende
@@ -136,10 +134,10 @@ export default async function ProsjektSide(props: PageProps<'/admin/prosjekter/[
       <Kort>
         <KortTittel>Internleie hittil</KortTittel>
         <div className="p-5">
-          <p className="hm-display hm-tall text-4xl">{kr(sum.levert + sum.løpende)}</p>
+          <p className="hm-display hm-tall text-4xl">{kroner(sum.levert + sum.løpende)}</p>
           <p className="mt-1 text-sm text-[var(--blekk-svak)]">
-            {kr(sum.levert)} levert
-            {sum.ute > 0 && ` · ${kr(sum.løpende)} løpende på ${sum.ute} ting som er ute`}
+            {kroner(sum.levert)} levert
+            {sum.ute > 0 && ` · ${kroner(sum.løpende)} løpende på ${sum.ute} ting som er ute`}
           </p>
           {sum.manglerPris && (
             <p className="mt-3 border-l-4 border-hm-amber bg-[var(--flate-2)] p-3 text-sm">

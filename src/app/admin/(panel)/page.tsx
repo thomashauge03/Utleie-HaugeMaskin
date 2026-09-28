@@ -6,7 +6,7 @@ import { visTelefon } from '@/lib/telefon'
 import { dagerTil, returDato, tidKort } from '@/lib/dato'
 import { antallTekst, prisEnhet } from '@/lib/pris'
 import { erForfalt, type LeieRad } from '@/lib/types'
-import { LEIETAKER_FELT, leietaker, leietakerTekst } from '@/lib/leietaker'
+import { LEIETAKER_FELT, leietaker, leietakerLinje, leietakerTekst } from '@/lib/leietaker'
 import { Kort, KortTittel, Merke, Seksjonstittel } from '@/components/ui'
 
 export const metadata: Metadata = { title: 'Oversikt – HM Utleie' }
@@ -144,7 +144,7 @@ export default async function OversiktSide() {
                     </span>
                     <span className="text-sm">
                       <span className="inline-flex flex-wrap items-center gap-2">
-                        {t.prosjekt ? `${t.navn} · ${t.prosjekt}` : t.navn}
+                        {leietakerLinje(t)}
                         {t.intern && <Merke>Intern</Merke>}
                       </span>
                       {t.telefon && (
@@ -188,7 +188,7 @@ export default async function OversiktSide() {
                         </span>
                         <span className="flex min-w-0 items-center gap-2 text-sm text-[var(--blekk-svak)]">
                           <span className="truncate">
-                            {t.prosjekt ? `${t.navn} · ${t.prosjekt}` : t.navn}
+                            {leietakerLinje(t)}
                           </span>
                           {t.intern && (
                             <span className="shrink-0">

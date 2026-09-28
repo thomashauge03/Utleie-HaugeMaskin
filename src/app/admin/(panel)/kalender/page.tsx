@@ -5,7 +5,7 @@ import { lagServerKlient } from '@/lib/supabase/server'
 import { visTelefon } from '@/lib/telefon'
 import { datoKort, osloDag } from '@/lib/dato'
 import { LEIE_STATUS_TEKST, erForfalt, type Leie, type LeieRad } from '@/lib/types'
-import { LEIETAKER_FELT, leietaker, leietakerTekst } from '@/lib/leietaker'
+import { LEIETAKER_FELT, leietaker, leietakerLinje, leietakerTekst } from '@/lib/leietaker'
 import { Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
 
 export const metadata: Metadata = { title: 'Kalender – HM Utleie' }
@@ -268,7 +268,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
                         </span>
                         <span className="block text-sm text-[var(--blekk-svak)]">
                           <span className="inline-flex flex-wrap items-center gap-2">
-                            {t.prosjekt ? `${t.navn} · ${t.prosjekt}` : t.navn}
+                            {leietakerLinje(t)}
                             {t.intern && <Merke>Intern</Merke>}
                           </span>
                           {t.telefon && ` · ${visTelefon(t.telefon)}`}

@@ -6,7 +6,7 @@ import { lagServerKlient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
 import { dato } from '@/lib/dato'
 import { LEIE_STATUS_TEKST, MASKIN_STATUS_TEKST, type LeieRad, type Maskin } from '@/lib/types'
-import { LEIETAKER_FELT, leietaker } from '@/lib/leietaker'
+import { LEIETAKER_FELT, leietaker, leietakerLinje } from '@/lib/leietaker'
 import { Kort, KortTittel, Merke } from '@/components/ui'
 import { KopierLenke } from '../kopier-lenke'
 import { RedigerSkjema } from './rediger-skjema'
@@ -159,7 +159,7 @@ export default async function MaskinDetaljSide(props: PageProps<'/admin/maskiner
                     </span>
                     <span className="flex min-w-0 flex-1 items-center gap-2 font-semibold">
                       <span className="truncate">
-                        {t.prosjekt ? `${t.navn} · ${t.prosjekt}` : t.navn}
+                        {leietakerLinje(t)}
                       </span>
                       {t.intern && (
                         <span className="shrink-0">

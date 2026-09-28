@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { leietaker, leietakerTekst, opptattGrunn, prosjektNavn } from './leietaker.ts'
+import { leietaker, leietakerLinje, leietakerTekst, opptattGrunn, prosjektNavn } from './leietaker.ts'
 
 const ola = { navn: 'Ola Nordmann', telefon: null }
 const kvamsøy = { navn: 'Kvamsøy bru', nummer: 'P-2317' }
@@ -43,6 +43,20 @@ test('på én linje', () => {
   assert.equal(leietakerTekst({ kunder: { navn: 'Kari', telefon: '1' } }), 'Kari')
 })
 
+test('leietakerLinje – med prosjekt', () => {
+  assert.equal(
+    leietakerLinje({ intern: true, navn: 'Ola Nordmann', telefon: null, prosjekt: 'Kvamsøy bru' }),
+    'Ola Nordmann · Kvamsøy bru',
+  )
+})
+
+test('leietakerLinje – uten prosjekt', () => {
+  assert.equal(
+    leietakerLinje({ intern: false, navn: 'Kari Kunde', telefon: '90000000', prosjekt: null }),
+    'Kari Kunde',
+  )
+})
+
 const meg = 'meg'
 const ledig = { status: 'ledig', påVerksted: false, leie: null, megId: meg }
 
@@ -74,4 +88,8 @@ test('hos en kollega, så du vet hvem du skal spørre', () => {
 test('verksted og service', () => {
   assert.equal(opptattGrunn({ ...ledig, påVerksted: true }), 'Til reparasjon')
   assert.equal(opptattGrunn({ ...ledig, status: 'service' }), 'Ute av drift')
+})
+
+test('utleid uten leieoppslag og uten verksted er en trygg reserve', () => {
+  assert.equal(opptattGrunn({ ...ledig, status: 'utleid' }), 'Utleid')
 })

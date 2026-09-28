@@ -58,10 +58,17 @@ export function leietaker(l: LeietakerKilde): Leietaker {
   }
 }
 
-/** «Ola Nordmann · Kvamsøy bru» eller «Kari Kunde» – der det er plass til én linje. */
-export function leietakerTekst(l: LeietakerKilde): string {
-  const t = leietaker(l)
+/**
+ * «Ola Nordmann · Kvamsøy bru» eller «Kari Kunde» – der det er plass til
+ * én linje, fra en allerede utregnet Leietaker.
+ */
+export function leietakerLinje(t: Leietaker): string {
   return t.prosjekt ? `${t.navn} · ${t.prosjekt}` : t.navn
+}
+
+/** Som leietakerLinje, men regner ut Leietaker fra kilden først. */
+export function leietakerTekst(l: LeietakerKilde): string {
+  return leietakerLinje(leietaker(l))
 }
 
 /**

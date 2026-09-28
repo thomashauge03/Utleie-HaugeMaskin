@@ -33,6 +33,7 @@ const MIGRASJONER = [
   { fil: '0007_delmal.sql', tabell: 'maskin_delstatus', kolonne: 'mal' },
   { fil: '0008_bytt_passord.sql', tabell: 'admin_brukere', kolonne: 'ma_bytte_passord' },
   { fil: '0010_fjern_kjoretoy.sql', tabell: 'kjoretoy', kolonne: 'eu_frist', borte: true },
+  { fil: '0011_ansatt.sql', tabell: 'prosjekter', kolonne: 'id' },
 ]
 
 /*

@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { slettLeierMedFiler } from '@/lib/slett'
+import { avsluttInternLeie } from '@/lib/intern-leie'
 
 export type GodkjennTilstand = { feil?: string; ok?: string }
 
@@ -111,6 +112,23 @@ export async function registrerLeveringManuelt(leieId: string) {
   const admin = await krevAdmin()
   const supabase = await lagServerKlient()
 
+  const { data: leie } = await supabase
+    .from('leier')
+    .select('ansatt_id')
+    .eq('id', leieId)
+    .maybeSingle()
+  if (!leie) return
+
+  // Internleier har ingen godkjenning å gå til. De avsluttes med utregnet
+  // pris, akkurat som når den ansatte leverer selv.
+  if (leie.ansatt_id) {
+    await avsluttInternLeie({ leieId, aktor: `admin:${admin.epost}` })
+    revalidatePath('/admin')
+    revalidatePath('/admin/leier')
+    revalidatePath(`/admin/leier/${leieId}`)
+    return
+  }
+
   // `.eq('status','aktiv')` gjør det trygt om kunden rakk å levere selv i
   // mellomtiden – da treffer vi ingen rad og gjør ingenting.
   const { data: oppdatert } = await supabase
@@ -212,4 +230,54 @@ export async function settFakturert(leieId: string, fakturert: boolean) {
   })
 
   revalidatePath(`/admin/leier/${leieId}`)
+}
+
+const rettSkjema = z.object({
+  antall_dogn: desimal,
+  belop: desimal,
+})
+
+/**
+ * Retter antall og beløp på en levert internleie.
+ *
+ * Internleier regnes ut automatisk ved levering uten at noen ser over
+ * dem, så dette er stedet admin overstyrer – for eksempel når maskinen
+ * manglet pris.
+ */
+export async function rettInternpris(
+  leieId: string,
+  _forrige: GodkjennTilstand,
+  formData: FormData,
+): Promise<GodkjennTilstand> {
+  const admin = await krevAdmin()
+
+  const felter = rettSkjema.safeParse(Object.fromEntries(formData))
+  if (!felter.success) return { feil: felter.error.issues[0].message }
+
+  const supabase = await lagServerKlient()
+  const { data: oppdatert, error } = await supabase
+    .from('leier')
+    .update({
+      antall_dogn: felter.data.antall_dogn,
+      belop: felter.data.belop,
+      manuelt_justert: true,
+    })
+    .eq('id', leieId)
+    .eq('status', 'avsluttet')
+    .not('ansatt_id', 'is', null)
+    .select('id')
+
+  if (error) return { feil: `Kunne ikke lagre: ${error.message}` }
+  if (!oppdatert?.length) return { feil: 'Fant ikke en levert internleie å rette.' }
+
+  await supabase.from('hendelser').insert({
+    leie_id: leieId,
+    type: 'justert',
+    beskrivelse: 'Antall og beløp rettet',
+    aktor: `admin:${admin.epost}`,
+  })
+
+  revalidatePath(`/admin/leier/${leieId}`)
+  revalidatePath('/admin/prosjekter', 'layout')
+  return { ok: 'Lagret.' }
 }

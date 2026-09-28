@@ -9,15 +9,18 @@ import { registrerLeveringManuelt } from './actions'
  * får levert selv i appen. Krever ett bekreftelsestrykk, siden det
  * stopper klokka og fører leien til godkjenning.
  */
-export function ManuellLevering({ leieId }: { leieId: string }) {
+export function ManuellLevering({ leieId, intern }: { leieId: string; intern: boolean }) {
   const [bekrefter, settBekrefter] = useState(false)
 
   return (
     <section className="border-2 border-[var(--kant)] bg-[var(--flate-opp)] p-5">
-      <h2 className="hm-display text-lg">Kunden får ikke levert selv?</h2>
+      <h2 className="hm-display text-lg">
+        {intern ? 'Levert uten at det er registrert?' : 'Kunden får ikke levert selv?'}
+      </h2>
       <p className="mt-1 mb-4 text-sm text-[var(--blekk-svak)]">
-        Du kan registrere leveringen på kundens vegne. Klokka stopper nå, og
-        leien går til godkjenning der du setter døgn og beløp.
+        {intern
+          ? 'Du kan registrere leveringen på den ansattes vegne. Klokka stopper nå, prisen føres på prosjektet, og maskinen blir ledig.'
+          : 'Du kan registrere leveringen på kundens vegne. Klokka stopper nå, og leien går til godkjenning der du setter døgn og beløp.'}
       </p>
 
       {bekrefter ? (

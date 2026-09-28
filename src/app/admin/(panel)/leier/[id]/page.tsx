@@ -4,14 +4,16 @@ import { notFound } from 'next/navigation'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { signertBildeUrl } from '@/lib/bilder'
-import { antallEtikett, antallTekst, beregnAntall, prisEnhet } from '@/lib/pris'
+import { antallEtikett, antallTekst, beregnPris, prisEnhet } from '@/lib/pris'
 import { visTelefon } from '@/lib/telefon'
 import { returDato, tid } from '@/lib/dato'
-import { LEIE_STATUS_TEKST, type Bilde, type Kunde, type Leie, type Maskin } from '@/lib/types'
+import { LEIE_STATUS_TEKST, type Bilde, type LeieRad } from '@/lib/types'
+import { LEIETAKER_FELT, leietaker } from '@/lib/leietaker'
 import { KNAPP_SEKUNDÆR, Kort, KortTittel, Merke } from '@/components/ui'
 import { GodkjennSkjema } from './godkjenn-skjema'
 import { ManuellLevering } from './manuell-levering'
 import { SlettLeie } from './slett-leie'
+import { RettInternpris } from './rett-internpris'
 import { settFakturert } from './actions'
 
 export const metadata: Metadata = { title: 'Leie – HM Utleie' }
@@ -31,12 +33,15 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
   const supabase = await lagServerKlient()
   const { data } = await supabase
     .from('leier')
-    .select('*, maskiner(*), kunder(*)')
+    .select(`*, maskiner(*), ${LEIETAKER_FELT}`)
     .eq('id', id)
     .maybeSingle()
 
   if (!data) notFound()
-  const leie = data as Leie & { maskiner: Maskin | null; kunder: Kunde | null }
+  const leie = data as unknown as LeieRad
+  // Internleier har ansatt og prosjekt i stedet for kunde, og faktureres ikke.
+  const intern = Boolean(leie.ansatt_id)
+  const t = leietaker(leie)
 
   const { data: bilderData } = await supabase
     .from('bilder')
@@ -55,12 +60,14 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
     .eq('leie_id', leie.id)
     .order('tid', { ascending: false })
 
-  const sluttForBeregning = leie.slutt_tid ?? new Date().toISOString()
   const enhet = prisEnhet(leie.maskiner?.pris_enhet)
-  const foreslattDogn = beregnAntall(leie.start_tid, sluttForBeregning, enhet)
-  const foreslattBelop = leie.maskiner?.dogn_pris
-    ? Math.round(foreslattDogn * leie.maskiner.dogn_pris)
-    : null
+  // Samme regel som når en ansatt leverer – se beregnPris.
+  const { antall: foreslattDogn, belop: foreslattBelop } = beregnPris(
+    leie.start_tid,
+    leie.slutt_tid ?? new Date().toISOString(),
+    enhet,
+    leie.maskiner?.dogn_pris ?? null,
+  )
 
   const fakturagrunnlag = [
     leie.kunder?.navn,
@@ -107,7 +114,7 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
         />
       )}
 
-      {leie.status === 'aktiv' && <ManuellLevering leieId={leie.id} />}
+      {leie.status === 'aktiv' && <ManuellLevering leieId={leie.id} intern={intern} />}
 
       <Kort>
         <KortTittel>Bilder</KortTittel>
@@ -161,9 +168,25 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Kort>
-          <KortTittel>Kunde</KortTittel>
+          <KortTittel>{intern ? 'Ansatt og prosjekt' : 'Kunde'}</KortTittel>
           <div className="p-5">
-            {leie.kunder ? (
+            {intern ? (
+              <dl className="space-y-2.5 text-sm">
+                <Rad navn="Ansatt" verdi={t.navn} />
+                <Rad navn="Mobil" verdi={t.telefon ? visTelefon(t.telefon) : '–'} />
+                <Rad
+                  navn="Prosjekt"
+                  verdi={
+                    <Link
+                      href={`/admin/prosjekter/${leie.prosjekt_id}`}
+                      className="underline underline-offset-4"
+                    >
+                      {t.prosjekt ?? 'Prosjekt'}
+                    </Link>
+                  }
+                />
+              </dl>
+            ) : leie.kunder ? (
               <dl className="space-y-2.5 text-sm">
                 <Rad navn="Navn" verdi={leie.kunder.navn} />
                 <Rad navn="Mobil" verdi={visTelefon(leie.kunder.telefon)} />
@@ -227,7 +250,16 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
         </Kort>
       )}
 
-      {leie.status === 'avsluttet' && (
+      {leie.status === 'avsluttet' && intern && (
+        <RettInternpris
+          leieId={leie.id}
+          antall={leie.antall_dogn}
+          belop={leie.belop}
+          antallEtikett={antallEtikett(enhet)}
+        />
+      )}
+
+      {leie.status === 'avsluttet' && !intern && (
         <Kort>
           <KortTittel>Fakturagrunnlag</KortTittel>
           <div className="p-5">

@@ -1,11 +1,12 @@
 import { createEvents, type EventAttributes } from 'ics'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { visTelefon } from '@/lib/telefon'
-import { erForfalt, type Kunde, type Leie, type Maskin } from '@/lib/types'
+import { erForfalt, type LeieRad } from '@/lib/types'
+import { LEIETAKER_FELT, leietaker, leietakerTekst } from '@/lib/leietaker'
 
 export const dynamic = 'force-dynamic'
 
-type Rad = Leie & { maskiner: Maskin | null; kunder: Kunde | null }
+type Rad = LeieRad
 
 /**
  * Sammenligner to hemmeligheter i konstant tid, så svartiden ikke
@@ -62,7 +63,7 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/ical/[fil]'
 
   const { data } = await supabaseAdmin
     .from('leier')
-    .select('*, maskiner(*), kunder(*)')
+    .select(`*, maskiner(*), ${LEIETAKER_FELT}`)
     .in('status', ['aktiv', 'venter_godkjenning', 'avsluttet'])
     .order('start_tid', { ascending: false })
     .limit(500)
@@ -74,9 +75,11 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/ical/[fil]'
     const slutt = l.slutt_tid ?? l.planlagt_slutt ?? new Date().toISOString()
     const forfalt = erForfalt(l)
 
+    const t = leietaker(l)
     const beskrivelse = [
-      l.kunder ? `Kunde: ${l.kunder.navn}` : null,
-      l.kunder ? `Mobil: ${visTelefon(l.kunder.telefon)}` : null,
+      t.intern ? `Intern: ${t.navn}` : `Kunde: ${t.navn}`,
+      t.prosjekt ? `Prosjekt: ${t.prosjekt}` : null,
+      t.telefon ? `Mobil: ${visTelefon(t.telefon)}` : null,
       l.kunder ? `E-post: ${l.kunder.epost}` : null,
       `Referanse: ${l.referanse}`,
       l.status === 'venter_godkjenning' ? 'Venter på godkjenning' : null,
@@ -88,7 +91,7 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/ical/[fil]'
 
     return {
       uid: `${l.id}@utleie`,
-      title: `${forfalt ? '⚠ ' : ''}${l.maskiner?.navn ?? 'Maskin'} – ${l.kunder?.navn ?? 'ukjent'}`,
+      title: `${forfalt ? '⚠ ' : ''}${l.maskiner?.navn ?? 'Maskin'} – ${leietakerTekst(l)}`,
       start: tilDatoArray(l.start_tid),
       startInputType: 'utc',
       end: tilDatoArray(slutt),

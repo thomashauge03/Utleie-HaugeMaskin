@@ -28,6 +28,11 @@ export async function GET(request: Request, ctx: RouteContext<'/api/faktura/[id]
 
   const leie = data as Leie & { maskiner: Maskin | null; kunder: Kunde | null }
 
+  // Internleier faktureres ikke – de føres på prosjektet.
+  if (leie.ansatt_id) {
+    return new Response('Internleier har ikke fakturagrunnlag.', { status: 404 })
+  }
+
   if (leie.status !== 'avsluttet') {
     return new Response(
       'Fakturagrunnlag lages først når leien er godkjent og avsluttet.',

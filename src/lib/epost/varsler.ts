@@ -1,9 +1,14 @@
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { env } from '@/lib/env'
-import type { Kunde, Leie, Maskin } from '@/lib/types'
+import type { Kunde, Leie, LeieRad, Maskin } from '@/lib/types'
 import { adresser, hentVarselInnstillinger, sendEpost } from './send'
 import * as maler from './maler'
-import { LEIETAKER_FELT, leietaker, type LeietakerKilde } from '@/lib/leietaker'
+import {
+  LEIETAKER_FELT,
+  leietaker,
+  leietakerTekst,
+  type LeietakerKilde,
+} from '@/lib/leietaker'
 import 'server-only'
 
 /**
@@ -177,15 +182,14 @@ export async function varsleForfalte(): Promise<{
 
   const { data } = await supabaseAdmin
     .from('leier')
-    .select('*, maskiner(*), kunder(*)')
+    .select(`*, maskiner(*), ${LEIETAKER_FELT}`)
     .eq('status', 'aktiv')
     .lt('planlagt_slutt', new Date().toISOString())
     .order('planlagt_slutt')
 
-  const forfalte = (data ?? []) as (Leie & {
-    maskiner: Maskin | null
-    kunder: Kunde | null
-  })[]
+  // Internleier med passert dato er med – admin vil vite at en ansatt har
+  // noe på overtid. Purringen under går bare til kunder.
+  const forfalte = (data ?? []) as unknown as LeieRad[]
 
   if (forfalte.length === 0) return { forfalte: 0, adminSendt: false, purringer: 0 }
 
@@ -203,8 +207,8 @@ export async function varsleForfalte(): Promise<{
       env.NEXT_PUBLIC_SITE_URL,
       forfalte.map((l) => ({
         maskin: l.maskiner?.navn ?? 'Ukjent',
-        kunde: l.kunder?.navn ?? '–',
-        telefon: l.kunder?.telefon ?? '–',
+        kunde: leietakerTekst(l),
+        telefon: leietaker(l).telefon ?? '–',
         dager: dagerOver(l),
         ref: l.referanse,
       })),

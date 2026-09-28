@@ -152,14 +152,16 @@ datoen – ikke gjette.
 
 ## 2. Roller og tilgang
 
-| Rolle | Kommer inn på | Kan ta ut utstyr |
+| Rolle | Kommer inn på | Havner på etter innlogging |
 |---|---|---|
-| admin | alt | ja |
-| service | `/verksted` | ja |
-| ansatt | `/ansatt` | ja |
+| admin | alt | `/admin` |
+| service | `/verksted` og `/ansatt` | `/verksted` |
+| ansatt | `/ansatt` | `/ansatt` |
 
-Alle roller er egne folk, så alle kan ta ut utstyr. Rollen `ansatt` skiller
-seg ut ved å *bare* komme inn på sin egen side.
+Alle roller er egne folk, og **alle kan gjøre alt en ansatt kan**: ta ut
+utstyr, levere, bruke det korte skjemaet på maskinens QR-kode og bli sendt
+videre fra `/retur`. Service har i tillegg verkstedet, admin har alt.
+Rollen `ansatt` skiller seg ut ved å *bare* komme inn på sin egen side.
 
 ### 2.1 `src/lib/auth.ts`
 
@@ -186,9 +188,27 @@ seg ut ved å *bare* komme inn på sin egen side.
 
 - «Ny bruker» får valget *Ansatt – kan ta ut utstyr til prosjekter* og et
   valgfritt felt *Mobilnummer*. Midlertidig passord og tvunget bytte som i dag.
+- Teksten for servicearbeider endres fra «kun verkstedet» til «verkstedet,
+  og kan ta ut utstyr til prosjekter».
 - Redigering får samme rollevalg og mobilnummer.
 - Lista viser rollen, og for brukere med utstyr ute: «2 ting ute». Det er
   det admin trenger å se før noen deaktiveres.
+
+### 2.4 Meny mellom sidene
+
+`BrukerMeny` fra verkstedhodet (`src/app/verksted/bruker-meny.tsx`) blir
+felles meny øverst på både `/verksted` og `/ansatt`:
+
+| Lenke | Vises for |
+|---|---|
+| Adminpanel | admin |
+| Verksted | admin, service |
+| Ta ut utstyr | alle |
+| Bytt passord | alle |
+| Logg ut | alle |
+
+Lenken til siden man står på vises ikke. Rolleetiketten får «Ansatt» i
+tillegg til «Admin» og «Servicearbeider».
 
 ---
 
@@ -196,8 +216,8 @@ seg ut ved å *bare* komme inn på sin egen side.
 
 ### 3.1 Siden `/ansatt`
 
-Laget for mobil, i samme stil som `/verksted`. Topp med logo, navn og
-utlogging. Ikke inni adminpanelets layout.
+Laget for mobil, i samme stil som `/verksted`. Topp med logo og den felles
+menyen (se 2.4). Ikke inni adminpanelets layout.
 
 **«Hos deg nå»** – den innloggedes aktive internleier:
 
@@ -404,6 +424,8 @@ kjørt:
    «Intern», «Ikke fakturert» viser dem ikke.
 7. Som testbrukeren: `/admin` sender til `/ansatt`. Direkte oppslag mot
    `kunder` med brukerens egen sesjon gir ingen rader.
+8. Som en servicebruker: havner på `/verksted`, «Ta ut utstyr» i menyen,
+   ta ut og lever én ting. Menyen på `/ansatt` fører tilbake til verkstedet.
 
 Testdataene ryddes målrettet etterpå – testbrukeren, testprosjektet og
 leiene deres. **Aldri** med `scripts/slett-testdata.mjs`, som tømmer alle
@@ -430,6 +452,7 @@ leier og kunder.
 - `src/app/admin/(panel)/leier/page.tsx`, `leier/[id]/*`, `maskiner/[id]/page.tsx`
 - `src/app/m/[qr]/page.tsx`, `actions.ts`
 - `src/app/retur/page.tsx`
+- `src/app/verksted/bruker-meny.tsx`
 - `src/app/api/faktura/[id]/route.ts`, `api/ical/[fil]/route.ts`
 - `scripts/sjekk-migrasjoner.mjs`, `supabase/KJOR-DENNE.sql`, `package.json`
 - `README.md` (roller, migrasjon)

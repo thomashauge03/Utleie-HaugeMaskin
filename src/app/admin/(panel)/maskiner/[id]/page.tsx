@@ -5,7 +5,8 @@ import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
 import { dato } from '@/lib/dato'
-import { LEIE_STATUS_TEKST, MASKIN_STATUS_TEKST, type Leie, type Kunde, type Maskin } from '@/lib/types'
+import { LEIE_STATUS_TEKST, MASKIN_STATUS_TEKST, type LeieRad, type Maskin } from '@/lib/types'
+import { LEIETAKER_FELT, leietakerTekst } from '@/lib/leietaker'
 import { Kort, KortTittel, Merke } from '@/components/ui'
 import { KopierLenke } from '../kopier-lenke'
 import { RedigerSkjema } from './rediger-skjema'
@@ -35,7 +36,7 @@ export default async function MaskinDetaljSide(props: PageProps<'/admin/maskiner
       supabase.from('kategorier').select('navn').order('navn'),
       supabase
         .from('leier')
-        .select('*, kunder(*)')
+        .select(`*, ${LEIETAKER_FELT}`)
         .eq('maskin_id', maskin.id)
         .order('start_tid', { ascending: false })
         .limit(10),
@@ -60,7 +61,7 @@ export default async function MaskinDetaljSide(props: PageProps<'/admin/maskiner
     ),
   ].sort((a, b) => a.localeCompare(b, 'nb'))
 
-  const leier = (leieRader ?? []) as (Leie & { kunder: Kunde | null })[]
+  const leier = (leieRader ?? []) as unknown as Omit<LeieRad, 'maskiner'>[]
   const utleid = leier.some(
     (l) => l.status === 'aktiv' || l.status === 'venter_godkjenning',
   )
@@ -155,7 +156,7 @@ export default async function MaskinDetaljSide(props: PageProps<'/admin/maskiner
                     {l.referanse}
                   </span>
                   <span className="min-w-0 flex-1 truncate font-semibold">
-                    {l.kunder?.navn ?? '–'}
+                    {leietakerTekst(l)}
                   </span>
                   <span className="hm-tall text-sm text-[var(--blekk-svak)]">
                     {dato(l.start_tid)}

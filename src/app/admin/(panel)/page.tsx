@@ -5,13 +5,14 @@ import { lagServerKlient } from '@/lib/supabase/server'
 import { visTelefon } from '@/lib/telefon'
 import { dagerTil, returDato, tidKort } from '@/lib/dato'
 import { antallTekst, prisEnhet } from '@/lib/pris'
-import { erForfalt, type Kunde, type Leie, type Maskin } from '@/lib/types'
+import { erForfalt, type LeieRad } from '@/lib/types'
+import { LEIETAKER_FELT, leietaker, leietakerTekst } from '@/lib/leietaker'
 import { Kort, KortTittel, Merke, Seksjonstittel } from '@/components/ui'
 
 export const metadata: Metadata = { title: 'Oversikt – HM Utleie' }
 export const dynamic = 'force-dynamic'
 
-type Rad = Leie & { maskiner: Maskin | null; kunder: Kunde | null }
+type Rad = LeieRad
 
 export default async function OversiktSide() {
   const admin = await krevAdmin()
@@ -26,19 +27,21 @@ export default async function OversiktSide() {
   ] = await Promise.all([
     supabase
       .from('leier')
-      .select('*, maskiner(*), kunder(*)')
+      .select(`*, maskiner(*), ${LEIETAKER_FELT}`)
       .eq('status', 'aktiv')
       .order('planlagt_slutt'),
     supabase
       .from('leier')
-      .select('*, maskiner(*), kunder(*)')
+      .select(`*, maskiner(*), ${LEIETAKER_FELT}`)
       .eq('status', 'venter_godkjenning')
       .order('slutt_tid'),
     supabase
       .from('leier')
-      .select('*, maskiner(*), kunder(*)')
+      .select(`*, maskiner(*), ${LEIETAKER_FELT}`)
       .eq('status', 'avsluttet')
       .eq('fakturert', false)
+      // Internleier faktureres ikke – de føres på prosjektet.
+      .is('ansatt_id', null)
       .order('godkjent_tid', { ascending: false })
       .limit(6),
     supabase
@@ -110,7 +113,7 @@ export default async function OversiktSide() {
                     {l.maskiner?.navn ?? 'Ukjent maskin'}
                   </span>
                   <span className="text-sm text-[var(--blekk-svak)]">
-                    {l.kunder?.navn ?? '–'}
+                    {leietakerTekst(l)}
                   </span>
                   <span className="hm-tall text-xs text-[var(--blekk-svak)]">
                     Levert {l.slutt_tid ? tidKort(l.slutt_tid) : '–'}
@@ -138,11 +141,11 @@ export default async function OversiktSide() {
                     {l.maskiner?.navn ?? 'Ukjent maskin'}
                   </span>
                   <span className="text-sm">
-                    {l.kunder?.navn ?? '–'}
-                    {l.kunder && (
+                    {leietakerTekst(l)}
+                    {leietaker(l).telefon && (
                       <span className="hm-tall text-[var(--blekk-svak)]">
                         {' · '}
-                        {visTelefon(l.kunder.telefon)}
+                        {visTelefon(leietaker(l).telefon!)}
                       </span>
                     )}
                   </span>
@@ -177,7 +180,7 @@ export default async function OversiktSide() {
                           {l.maskiner?.navn ?? 'Ukjent'}
                         </span>
                         <span className="block truncate text-sm text-[var(--blekk-svak)]">
-                          {l.kunder?.navn ?? '–'}
+                          {leietakerTekst(l)}
                         </span>
                       </span>
                       <span className="shrink-0 text-right">

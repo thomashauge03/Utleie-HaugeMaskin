@@ -4,13 +4,14 @@ import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { visTelefon } from '@/lib/telefon'
 import { datoKort, osloDag } from '@/lib/dato'
-import { LEIE_STATUS_TEKST, erForfalt, type Kunde, type Leie, type Maskin } from '@/lib/types'
+import { LEIE_STATUS_TEKST, erForfalt, type Leie, type LeieRad } from '@/lib/types'
+import { LEIETAKER_FELT, leietaker, leietakerTekst } from '@/lib/leietaker'
 import { Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
 
 export const metadata: Metadata = { title: 'Kalender – HM Utleie' }
 export const dynamic = 'force-dynamic'
 
-type Rad = Leie & { maskiner: Maskin | null; kunder: Kunde | null }
+type Rad = LeieRad
 
 const MND = [
   'januar', 'februar', 'mars', 'april', 'mai', 'juni',
@@ -81,7 +82,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
   const supabase = await lagServerKlient()
   const { data } = await supabase
     .from('leier')
-    .select('*, maskiner(*), kunder(*)')
+    .select(`*, maskiner(*), ${LEIETAKER_FELT}`)
     .lte('start_tid', new Date(år, måned + 1, 0, 23, 59, 59).toISOString())
     .order('start_tid')
 
@@ -200,7 +201,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
                         <li key={l.id}>
                           <Link
                             href={`/admin/leier/${l.id}`}
-                            title={`${l.maskiner?.navn} · ${l.kunder?.navn ?? ''} · ${datoKort(l.start_tid)}–${tilTekst(l)}`}
+                            title={`${l.maskiner?.navn} · ${leietakerTekst(l)} · ${datoKort(l.start_tid)}–${tilTekst(l)}`}
                             className={`block truncate border border-[var(--kant-sterk)] px-1.5 py-1 text-[11px] leading-tight font-bold ${farge(l)}`}
                           >
                             {påOvertid && '⚠ '}
@@ -264,8 +265,8 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
                         {l.maskiner?.navn ?? 'Ukjent maskin'}
                       </span>
                       <span className="block text-sm text-[var(--blekk-svak)]">
-                        {l.kunder?.navn ?? '–'}
-                        {l.kunder && ` · ${visTelefon(l.kunder.telefon)}`}
+                        {leietakerTekst(l)}
+                        {leietaker(l).telefon && ` · ${visTelefon(leietaker(l).telefon!)}`}
                       </span>
                     </span>
 

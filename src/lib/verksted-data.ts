@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import type { Maskin } from '@/lib/types'
+import { leietakerTekst, type LeietakerKilde } from '@/lib/leietaker'
 import 'server-only'
 
 export type Del = { id: string; navn: string; rekkefolge: number }
@@ -87,7 +88,9 @@ export async function hentVerksted(): Promise<{
      */
     supabaseAdmin
       .from('leier')
-      .select('maskin_id, planlagt_slutt, kunder(navn)')
+      .select(
+        'maskin_id, planlagt_slutt, ansatt_id, kunder(navn, telefon), ansatt:admin_brukere!leier_ansatt_id_fkey(navn, telefon), prosjekter(navn, nummer)',
+      )
       .in('status', ['aktiv', 'venter_godkjenning']),
   ])
 
@@ -107,7 +110,8 @@ export async function hentVerksted(): Promise<{
   >()
   for (const l of leier ?? []) {
     utleiePerMaskin.set(l.maskin_id, {
-      kunde: (l.kunder as unknown as { navn: string } | null)?.navn ?? null,
+      // Kunden, eller «Ola Nordmann · Kvamsøy bru» for internleier.
+      kunde: leietakerTekst(l as unknown as LeietakerKilde),
       ventetTilbake: l.planlagt_slutt,
     })
   }

@@ -4,21 +4,15 @@ import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { visTelefon } from '@/lib/telefon'
 import { returDato } from '@/lib/dato'
-import {
-  LEIE_MERKE,
-  LEIE_STATUS_TEKST,
-  erForfalt,
-  type Leie,
-  type Kunde,
-  type Maskin,
-} from '@/lib/types'
+import { LEIE_MERKE, LEIE_STATUS_TEKST, erForfalt, type LeieRad } from '@/lib/types'
+import { LEIETAKER_FELT, leietaker } from '@/lib/leietaker'
 import { Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
 import { Søkefelt } from '@/components/sokefelt'
 
 export const metadata: Metadata = { title: 'Leier – HM Utleie' }
 export const dynamic = 'force-dynamic'
 
-type Rad = Leie & { maskiner: Maskin | null; kunder: Kunde | null }
+type Rad = LeieRad
 
 const FILTRE = [
   { verdi: 'alle', tekst: 'Alle' },
@@ -39,7 +33,7 @@ export default async function LeierSide(props: PageProps<'/admin/leier'>) {
   const supabase = await lagServerKlient()
   let spørring = supabase
     .from('leier')
-    .select('*, maskiner(*), kunder(*)')
+    .select(`*, maskiner(*), ${LEIETAKER_FELT}`)
     .order('start_tid', { ascending: false })
     .limit(500)
 
@@ -50,7 +44,8 @@ export default async function LeierSide(props: PageProps<'/admin/leier'>) {
   } else if (valgt === 'forfalt') {
     spørring = spørring.eq('status', 'aktiv').lt('planlagt_slutt', new Date().toISOString())
   } else if (valgt === 'ufakturert') {
-    spørring = spørring.eq('status', 'avsluttet').eq('fakturert', false)
+    // Internleier faktureres ikke – de føres på prosjektet.
+    spørring = spørring.eq('status', 'avsluttet').eq('fakturert', false).is('ansatt_id', null)
   } else if (valgt === 'fakturert') {
     spørring = spørring.eq('fakturert', true)
   }
@@ -76,6 +71,9 @@ export default async function LeierSide(props: PageProps<'/admin/leier'>) {
         l.kunder?.navn,
         l.kunder?.telefon,
         l.kunder?.epost,
+        l.ansatt?.navn,
+        l.prosjekter?.navn,
+        l.prosjekter?.nummer,
       ]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().replace(/\s/g, '').includes(n)),
@@ -104,7 +102,7 @@ export default async function LeierSide(props: PageProps<'/admin/leier'>) {
 
       <Søkefelt
         verdi={søk}
-        plassholder="Søk på navn, referanse, maskin eller telefon"
+        plassholder="Søk på navn, referanse, maskin, telefon eller prosjekt"
       />
 
       <div className="flex flex-wrap gap-2">
@@ -140,7 +138,7 @@ export default async function LeierSide(props: PageProps<'/admin/leier'>) {
               <tr>
                 <Th>Referanse</Th>
                 <Th>Maskin</Th>
-                <Th>Kunde</Th>
+                <Th>Leietaker</Th>
                 <Th>Levering</Th>
                 <Th>Status</Th>
               </tr>
@@ -161,12 +159,7 @@ export default async function LeierSide(props: PageProps<'/admin/leier'>) {
                   </td>
                   <td className="px-4 py-3 font-semibold">{l.maskiner?.navn ?? '–'}</td>
                   <td className="px-4 py-3">
-                    <div>{l.kunder?.navn ?? '–'}</div>
-                    {l.kunder && (
-                      <div className="hm-tall text-xs text-[var(--blekk-svak)]">
-                        {visTelefon(l.kunder.telefon)}
-                      </div>
-                    )}
+                    <Leietaker l={l} />
                   </td>
                   <td className="hm-tall px-4 py-3 whitespace-nowrap">
                     {returDato(l.planlagt_slutt)}
@@ -182,6 +175,7 @@ export default async function LeierSide(props: PageProps<'/admin/leier'>) {
                         {LEIE_STATUS_TEKST[l.status]}
                       </Merke>
                       {l.status === 'avsluttet' &&
+                        !l.ansatt_id &&
                         (l.fakturert ? (
                           <span className="text-[10px] font-bold tracking-wider text-hm-green uppercase">
                             ✓ Fakturert
@@ -208,5 +202,27 @@ function Th({ children }: { children: React.ReactNode }) {
     <th className="px-4 py-2.5 text-left text-[11px] font-bold tracking-widest uppercase">
       {children}
     </th>
+  )
+}
+
+/** Kunden med telefon, eller den ansatte med prosjektet. */
+function Leietaker({ l }: { l: Rad }) {
+  const t = leietaker(l)
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        {t.navn}
+        {t.intern && <Merke>Intern</Merke>}
+      </div>
+      {t.prosjekt ? (
+        <div className="text-xs text-[var(--blekk-svak)]">{t.prosjekt}</div>
+      ) : (
+        t.telefon && (
+          <div className="hm-tall text-xs text-[var(--blekk-svak)]">
+            {visTelefon(t.telefon)}
+          </div>
+        )
+      )}
+    </>
   )
 }

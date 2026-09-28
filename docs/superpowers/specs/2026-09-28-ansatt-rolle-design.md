@@ -121,6 +121,18 @@ en ikke-admin sin sesjon mot tabellene.
 Alt de ansatte gjør, går gjennom server actions med `supabaseAdmin`, som
 selv sjekker at leien tilhører den innloggede.
 
+Fem steder i koden sjekker i dag bare «innlogget», ikke rolle. Det var
+greit så lenge alle innloggede var admin eller service, men ikke med
+ansatte:
+
+- `/api/faktura/[id]` (kundens navn, adresse og bilder), `/api/maskiner/csv`
+  og den manuelle utløseren i `/api/varsler/forfalt` (sender e-post til
+  kunder) krever admin – ny `hentFullAdmin()` i `auth.ts`.
+- Verkstedets endringer i `src/app/verksted/actions.ts` (status, deler,
+  mål, notater) og redigeringen på verkstedsidene krever admin eller
+  service – ny `kanEndreVerksted()`. En innlogget ansatt kan melde
+  «må sveises» som alle andre, men logges med navn i stedet for enhets-ID.
+
 ### 1.5 Rekkefølge
 
 Migrasjonen kjøres i Supabase **før** koden deployes. Den er trygg å kjøre
@@ -183,6 +195,12 @@ Rollen `ansatt` skiller seg ut ved å *bare* komme inn på sin egen side.
 - Maskinsiden og `/retur` får en liten lenke «Ansatt? Logg inn» med `neste`
   satt tilbake til siden. Uten den ville en ansatt som ikke har logget inn
   på telefonen ennå, fått kundeskjemaet og kanskje fylt det ut.
+- `src/proxy.ts` frisker i dag bare opp sesjonen under `/admin`. Server
+  components kan ikke skrive informasjonskapsler, så på `/verksted` – og
+  nå `/ansatt`, `/m/…` og `/retur` – ble en utløpt sesjon aldri fornyet, og
+  brukeren ble logget ut etter omtrent en time. Matcheren utvides til de
+  fire, og proxyen hopper rett videre når forespørselen ikke har noen
+  Supabase-informasjonskapsel – kunder betaler ingenting for dette.
 
 ### 2.3 Brukere (`/admin/brukere`)
 
@@ -272,7 +290,7 @@ legge inn prosjekter først», og knappen er av.
 
 1. `krevAnsatt()`.
 2. Leien må ha `ansatt_id` = den innloggede og `status = 'aktiv'`.
-3. Klokka stopper nå (servertid). `internPris()` gir antall og beløp.
+3. Klokka stopper nå (servertid). `beregnPris()` gir antall og beløp.
 4. Oppdater leien til `avsluttet` med `slutt_tid`, `antall_dogn`, `belop`
    og ev. `kommentar_retur` – med `.eq('status', 'aktiv')` som lås mot
    dobbeltsending, som i kundereturen.
@@ -322,7 +340,7 @@ ved siden av «Verksted».
 **Lista:** navn, nummer, status, antall ute nå, og **internleie hittil**:
 
 - sum av `belop` for leverte leier
-- pluss et løpende anslag for det som er ute (`internPris` fram til nå),
+- pluss et løpende anslag for det som er ute (`beregnPris` fram til nå),
   merket «løpende»
 - «mangler pris» hvis noen maskin på prosjektet ikke har pris
 
@@ -403,8 +421,9 @@ TypeScript direkte). Filer `*.test.mjs` ved siden av modulen, kjørt med
 bare ha `import type` fra relative stier – Node løser ikke opp
 `'./pris'` uten filendelse.
 
-- `internPris()` i `src/lib/pris.ts` – døgn og time, påbegynt enhet teller
-  som hel, minst én, uten pris gir `belop: null`, avrunding til øre
+- `beregnPris()` i `src/lib/pris.ts` – døgn og time, påbegynt enhet teller
+  som hel, minst én, uten pris gir `belop: null`, hele kroner som forslaget
+  på godkjenningssiden i dag (som også tar den i bruk, så regelen står ett sted)
 - `leietaker()` – begge former, manglende innbygde rader
 - `norskSluttAvDag()` – vinter- og sommertid, ugyldig input
 - `trygtNeste()` – lokale stier godtas; `//evil.no`, `/\evil.no`,
@@ -412,8 +431,16 @@ bare ha `import type` fra relative stier – Node løser ikke opp
 
 **Statisk:** `tsc --noEmit`, `npm run lint`, `npm run build`.
 
-**Hele flyten i nettleseren** mot dev-serveren, etter at migrasjonen er
-kjørt:
+**Spørringene** – hver ny `select` med innbygging kjøres mot databasen med
+service role i et engangsskript, så en feil i fremmednøkkel-hintet
+oppdages før adminpanelet i produksjon gjør det.
+
+**Uinnlogget i nettleseren:** maskinsiden viser kundeskjemaet og «Ansatt?
+Logg inn», `/retur` likeså, og `/ansatt` sender til innlogging med `neste`.
+
+**Hele flyten innlogget** gjør Thomas. Innlogging går mot Supabase Auth,
+en tjeneste utenfor maskinen, og Claude logger ikke inn med passord der på
+noens vegne. Sjekklista, etter at migrasjonen er kjørt:
 
 1. Admin oppretter et testprosjekt og en testbruker med rollen ansatt.
 2. Logg inn som testbrukeren → tvunget passordbytte → havner på `/ansatt`.
@@ -447,13 +474,14 @@ leier og kunder.
 
 - `src/lib/auth.ts`, `types.ts`, `pris.ts` (+ test), `dato.ts` (+ test)
 - `src/lib/verksted-data.ts`, `src/lib/epost/varsler.ts`, `maler.ts`
-- `src/app/admin/logg-inn/*`, `src/app/admin/bytt-passord/actions.ts`
+- `src/app/admin/logg-inn/*`, `src/app/admin/bytt-passord/actions.ts`, `src/proxy.ts`
 - `src/app/admin/(panel)/brukere/*`, `meny.tsx`, `page.tsx`, `kalender/page.tsx`
 - `src/app/admin/(panel)/leier/page.tsx`, `leier/[id]/*`, `maskiner/[id]/page.tsx`
 - `src/app/m/[qr]/page.tsx`, `actions.ts`
 - `src/app/retur/page.tsx`
-- `src/app/verksted/bruker-meny.tsx`
-- `src/app/api/faktura/[id]/route.ts`, `api/ical/[fil]/route.ts`
+- `src/app/verksted/bruker-meny.tsx`, `actions.ts`, `page.tsx`, `[id]/page.tsx`
+- `src/app/api/faktura/[id]/route.ts`, `api/ical/[fil]/route.ts`,
+  `api/maskiner/csv/route.ts`, `api/varsler/forfalt/route.ts`
 - `scripts/sjekk-migrasjoner.mjs`, `supabase/KJOR-DENNE.sql`, `package.json`
 - `README.md` (roller, migrasjon)
 

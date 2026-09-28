@@ -10,7 +10,7 @@ import {
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { visTelefon } from '@/lib/telefon'
-import { dato, tid } from '@/lib/dato'
+import { dato, returDato, tid } from '@/lib/dato'
 import { enhetKolonne, prisEnhet } from '@/lib/pris'
 import type { Kunde, Leie, Maskin } from '@/lib/types'
 import 'server-only'
@@ -144,7 +144,7 @@ function Dokument({ leie, kunde, maskin, firmanavn, bilder, logo }: FakturaData 
               <Text style={s.sterk}>{leie.slutt_tid ? tid(leie.slutt_tid) : '–'}</Text>
             </Text>
             <Text style={s.linje}>
-              Avtalt levering: {dato(leie.planlagt_slutt)}
+              Avtalt levering: {returDato(leie.planlagt_slutt)}
             </Text>
             {leie.godkjent_tid && (
               <Text style={[s.linje, { color: GRÅ }]}>

@@ -6,7 +6,7 @@ import { lagServerKlient } from '@/lib/supabase/server'
 import { signertBildeUrl } from '@/lib/bilder'
 import { antallEtikett, antallTekst, beregnAntall, prisEnhet } from '@/lib/pris'
 import { visTelefon } from '@/lib/telefon'
-import { dato, tid } from '@/lib/dato'
+import { returDato, tid } from '@/lib/dato'
 import { LEIE_STATUS_TEKST, type Bilde, type Kunde, type Leie, type Maskin } from '@/lib/types'
 import { KNAPP_SEKUNDÆR, Kort, KortTittel, Merke } from '@/components/ui'
 import { GodkjennSkjema } from './godkjenn-skjema'
@@ -186,7 +186,7 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
           <div className="p-5">
             <dl className="space-y-2.5 text-sm">
               <Rad navn="Startet" verdi={tid(leie.start_tid)} />
-              <Rad navn="Forventet levering" verdi={dato(leie.planlagt_slutt)} />
+              <Rad navn="Forventet levering" verdi={returDato(leie.planlagt_slutt)} />
               <Rad navn="Levert" verdi={leie.slutt_tid ? tid(leie.slutt_tid) : '–'} />
               <Rad
                 navn={enhet === 'time' ? 'Timer' : 'Døgn'}

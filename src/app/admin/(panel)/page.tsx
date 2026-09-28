@@ -3,9 +3,9 @@ import Link from 'next/link'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { visTelefon } from '@/lib/telefon'
-import { dato, dagerTil, tidKort } from '@/lib/dato'
+import { dagerTil, returDato, tidKort } from '@/lib/dato'
 import { antallTekst, prisEnhet } from '@/lib/pris'
-import type { Kunde, Leie, Maskin } from '@/lib/types'
+import { erForfalt, type Kunde, type Leie, type Maskin } from '@/lib/types'
 import { Kort, KortTittel, Merke, Seksjonstittel } from '@/components/ui'
 
 export const metadata: Metadata = { title: 'Oversikt – HM Utleie' }
@@ -16,7 +16,6 @@ type Rad = Leie & { maskiner: Maskin | null; kunder: Kunde | null }
 export default async function OversiktSide() {
   const admin = await krevAdmin()
   const supabase = await lagServerKlient()
-  const nå = new Date().toISOString()
 
   const [
     { data: aktiveData },
@@ -53,7 +52,9 @@ export default async function OversiktSide() {
   const aktive = (aktiveData ?? []) as Rad[]
   const venter = (venterData ?? []) as Rad[]
   const ufakturert = (ufakturertData ?? []) as Rad[]
-  const forfalt = aktive.filter((l) => l.planlagt_slutt < nå)
+  // erForfalt slipper bare gjennom leier med dato, så planlagt_slutt er
+  // satt for alle i denne lista.
+  const forfalt = aktive.filter(erForfalt)
 
   const kort = [
     { tall: aktive.length, tekst: 'Utleid nå', href: '/admin/leier?status=aktiv', tone: 'nøytral' },
@@ -146,7 +147,7 @@ export default async function OversiktSide() {
                     )}
                   </span>
                   <Merke type="rød">
-                    {Math.abs(dagerTil(l.planlagt_slutt))} dager på overtid
+                    {Math.abs(dagerTil(l.planlagt_slutt!))} dager på overtid
                   </Merke>
                 </Link>
               </li>
@@ -166,7 +167,8 @@ export default async function OversiktSide() {
           ) : (
             <ul className="divide-y-2 divide-[var(--kant)]">
               {aktive.slice(0, 8).map((l) => {
-                const dager = dagerTil(l.planlagt_slutt)
+                // Internleier uten dato står ute «til videre» – ingen nedtelling.
+                const dager = l.planlagt_slutt ? dagerTil(l.planlagt_slutt) : null
                 return (
                   <li key={l.id}>
                     <Link href={`/admin/leier/${l.id}`} className="flex items-center gap-3 p-4 transition-colors hover:bg-[var(--flate-2)]">
@@ -180,25 +182,27 @@ export default async function OversiktSide() {
                       </span>
                       <span className="shrink-0 text-right">
                         <span className="hm-tall block text-sm font-semibold">
-                          {dato(l.planlagt_slutt)}
+                          {returDato(l.planlagt_slutt)}
                         </span>
-                        <span
-                          className={`block text-xs font-bold tracking-wider uppercase ${
-                            dager < 0
-                              ? 'text-hm-red'
-                              : dager <= 1
-                                ? 'text-hm-amber'
-                                : 'text-[var(--blekk-svak)]'
-                          }`}
-                        >
-                          {dager < 0
-                            ? `${Math.abs(dager)} d på overtid`
-                            : dager === 0
-                              ? 'I dag'
-                              : dager === 1
-                                ? 'I morgen'
-                                : `om ${dager} dager`}
-                        </span>
+                        {dager !== null && (
+                          <span
+                            className={`block text-xs font-bold tracking-wider uppercase ${
+                              dager < 0
+                                ? 'text-hm-red'
+                                : dager <= 1
+                                  ? 'text-hm-amber'
+                                  : 'text-[var(--blekk-svak)]'
+                            }`}
+                          >
+                            {dager < 0
+                              ? `${Math.abs(dager)} d på overtid`
+                              : dager === 0
+                                ? 'I dag'
+                                : dager === 1
+                                  ? 'I morgen'
+                                  : `om ${dager} dager`}
+                          </span>
+                        )}
                       </span>
                     </Link>
                   </li>

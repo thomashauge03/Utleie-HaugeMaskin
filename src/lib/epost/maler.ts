@@ -1,5 +1,5 @@
 import { visTelefon } from '@/lib/telefon'
-import { dato, tid } from '@/lib/dato'
+import { dato, returDato, tid } from '@/lib/dato'
 import { perEnhet, prisEnhet } from '@/lib/pris'
 import type { Kunde, Leie, Maskin } from '@/lib/types'
 import 'server-only'
@@ -104,7 +104,7 @@ export function kvitteringStart(s: Sammenheng): Mal {
         fakta([
           ['Referanse', s.leie.referanse],
           ['Hentet', tid(s.leie.start_tid)],
-          ['Forventet levering', dato(s.leie.planlagt_slutt)],
+          ['Forventet levering', returDato(s.leie.planlagt_slutt)],
           ...(s.maskin?.vis_pris && s.maskin.dogn_pris
             ? ([
                 [
@@ -123,7 +123,7 @@ export function kvitteringStart(s: Sammenheng): Mal {
 ${maskin}
 Referanse: ${s.leie.referanse}
 Hentet: ${tid(s.leie.start_tid)}
-Forventet levering: ${dato(s.leie.planlagt_slutt)}
+Forventet levering: ${returDato(s.leie.planlagt_slutt)}
 
 Se leien: ${url}`,
   }
@@ -151,7 +151,7 @@ export function nyLeieAdmin(s: Sammenheng): Mal {
           ['E-post', s.kunde?.epost ?? '–'],
           ['Adresse', s.kunde?.adresse ?? '–'],
           ['Hentet', tid(s.leie.start_tid)],
-          ['Forventet levering', dato(s.leie.planlagt_slutt)],
+          ['Forventet levering', returDato(s.leie.planlagt_slutt)],
           ['Referanse', s.leie.referanse],
         ]) +
         (s.leie.kommentar_start ? p(`<em>«${esc(s.leie.kommentar_start)}»</em>`) : '') +
@@ -163,7 +163,7 @@ export function nyLeieAdmin(s: Sammenheng): Mal {
 Maskin: ${maskin}
 Kunde: ${s.kunde?.navn ?? '–'} (${s.kunde ? visTelefon(s.kunde.telefon) : '–'})
 Hentet: ${tid(s.leie.start_tid)}
-Forventet levering: ${dato(s.leie.planlagt_slutt)}
+Forventet levering: ${returDato(s.leie.planlagt_slutt)}
 Referanse: ${s.leie.referanse}
 
 ${url}`,
@@ -242,17 +242,17 @@ export function forfaltKunde(s: Sammenheng, dagerOver: number): Mal {
     html: ramme(
       'Påminnelse om levering',
       h1('Vennlig påminnelse') +
-        p(`Hei ${esc(s.kunde?.navn?.split(' ')[0])}! Ifølge systemet vårt har du fortsatt <strong>${esc(maskin)}</strong>, som var ventet tilbake ${dato(s.leie.planlagt_slutt)}.`) +
+        p(`Hei ${esc(s.kunde?.navn?.split(' ')[0])}! Ifølge systemet vårt har du fortsatt <strong>${esc(maskin)}</strong>, som var ventet tilbake ${returDato(s.leie.planlagt_slutt)}.`) +
         fakta([
           ['Referanse', s.leie.referanse],
-          ['Avtalt levering', dato(s.leie.planlagt_slutt)],
+          ['Avtalt levering', returDato(s.leie.planlagt_slutt)],
           ['Dager over', String(dagerOver)],
         ]) +
         p('Leien løper videre til maskinen er levert. Har du allerede levert den, eller trenger du den lenger, er det bare å ta kontakt.') +
         knapp(`${s.nettadresse}/leie/${s.leie.referanse}`, 'Lever tilbake'),
       s.firmanavn,
     ),
-    tekst: `Påminnelse: ${maskin} var ventet tilbake ${dato(s.leie.planlagt_slutt)} (${dagerOver} dager siden).
+    tekst: `Påminnelse: ${maskin} var ventet tilbake ${returDato(s.leie.planlagt_slutt)} (${dagerOver} dager siden).
 
 Leien løper videre til maskinen er levert.
 ${s.nettadresse}/leie/${s.leie.referanse}`,

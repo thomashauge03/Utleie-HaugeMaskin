@@ -223,10 +223,17 @@ export default async function VerkstedSide(props: PageProps<'/verksted'>) {
                             planlegge arbeid på den før den er tilbake. */}
                         {m.utleie && (
                           <p className="mt-2 border-l-4 border-hm-amber bg-[var(--flate-2)] px-3 py-2 text-sm">
-                            Ute hos {m.utleie.kunde ?? 'kunde'} · ventet tilbake{' '}
-                            <span className="font-semibold">
-                              {dato(m.utleie.ventetTilbake)}
-                            </span>
+                            Ute hos {m.utleie.kunde ?? 'kunde'}
+                            {m.utleie.ventetTilbake ? (
+                              <>
+                                {' · ventet tilbake '}
+                                <span className="font-semibold">
+                                  {dato(m.utleie.ventetTilbake)}
+                                </span>
+                              </>
+                            ) : (
+                              ' · til videre'
+                            )}
                           </p>
                         )}
 

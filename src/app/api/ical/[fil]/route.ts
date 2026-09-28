@@ -1,7 +1,7 @@
 import { createEvents, type EventAttributes } from 'ics'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { visTelefon } from '@/lib/telefon'
-import type { Kunde, Leie, Maskin } from '@/lib/types'
+import { erForfalt, type Kunde, type Leie, type Maskin } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,9 +70,9 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/ical/[fil]'
   const leier = (data ?? []) as Rad[]
 
   const hendelser: EventAttributes[] = leier.map((l) => {
-    const slutt = l.slutt_tid ?? l.planlagt_slutt
-    const forfalt =
-      l.status === 'aktiv' && new Date(l.planlagt_slutt).getTime() < Date.now()
+    // Internleier uten dato står ute til de leveres – vis dem fram til nå.
+    const slutt = l.slutt_tid ?? l.planlagt_slutt ?? new Date().toISOString()
+    const forfalt = erForfalt(l)
 
     const beskrivelse = [
       l.kunder ? `Kunde: ${l.kunder.navn}` : null,

@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { visTelefon } from '@/lib/telefon'
-import { dato } from '@/lib/dato'
+import { returDato } from '@/lib/dato'
 import {
   LEIE_MERKE,
   LEIE_STATUS_TEKST,
@@ -169,7 +169,7 @@ export default async function LeierSide(props: PageProps<'/admin/leier'>) {
                     )}
                   </td>
                   <td className="hm-tall px-4 py-3 whitespace-nowrap">
-                    {dato(l.planlagt_slutt)}
+                    {returDato(l.planlagt_slutt)}
                     {erForfalt(l) && (
                       <span className="ml-2 inline-block bg-hm-red px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
                         Forfalt

@@ -10,8 +10,8 @@ export type VerkstedMaskin = Maskin & {
   verksted_status: string | null
   deler: Record<string, string>
   delMal: Record<string, string>
-  /** Satt når maskinen står ute hos kunde nå. */
-  utleie: { kunde: string | null; ventetTilbake: string } | null
+  /** Satt når maskinen er ute nå. Uten dato står den ute «til videre». */
+  utleie: { kunde: string | null; ventetTilbake: string | null } | null
 }
 
 export const UTEN_TYPE = 'Uten type'
@@ -103,7 +103,7 @@ export async function hentVerksted(): Promise<{
 
   const utleiePerMaskin = new Map<
     string,
-    { kunde: string | null; ventetTilbake: string }
+    { kunde: string | null; ventetTilbake: string | null }
   >()
   for (const l of leier ?? []) {
     utleiePerMaskin.set(l.maskin_id, {

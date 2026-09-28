@@ -6,7 +6,7 @@ import { hentEnhetsId } from '@/lib/enhet'
 import type { Leie, Maskin } from '@/lib/types'
 import { HMLogo } from '@/components/hm-logo'
 import { KNAPP_PRIMÆR, Merke } from '@/components/ui'
-import { dato } from '@/lib/dato'
+import { dato, returDato } from '@/lib/dato'
 import { krPer, prisEnhet } from '@/lib/pris'
 import { kanLeiesUt, verkstedStatusAv } from '@/lib/verksted'
 import { LeieSkjema } from './leie-skjema'
@@ -112,7 +112,7 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
           <div className="space-y-5">
             <Beskjed tittel="Leien din er i gang">
               Startet {dato(aktiv.start_tid)}. Forventet levering{' '}
-              {dato(aktiv.planlagt_slutt)}.
+              {returDato(aktiv.planlagt_slutt)}.
             </Beskjed>
             <Link href={`/leie/${aktiv.referanse}`} className={KNAPP_PRIMÆR}>
               Se leien og lever
@@ -120,8 +120,9 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
           </div>
         ) : aktiv ? (
           <Beskjed tittel="Maskinen er utleid">
-            Den er ventet tilbake {dato(aktiv.planlagt_slutt)}. Ta kontakt med
-            utleier hvis du trenger den før det.
+            {aktiv.planlagt_slutt
+              ? `Den er ventet tilbake ${dato(aktiv.planlagt_slutt)}. Ta kontakt med utleier hvis du trenger den før det.`
+              : 'Ta kontakt med utleier hvis du trenger den.'}
           </Beskjed>
         ) : (
           <LeieSkjema maskinId={maskin.id} maskinNavn={maskin.navn} />

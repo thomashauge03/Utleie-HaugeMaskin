@@ -48,10 +48,16 @@ export type Leie = {
   id: string
   referanse: string
   maskin_id: string
-  kunde_id: string
+  /** Null på internleier. */
+  kunde_id: string | null
+  /** Internleie: den ansatte som tok ut utstyret. Null på kundeleier. */
+  ansatt_id: string | null
+  /** Internleie: prosjektet leien føres på. Null på kundeleier. */
+  prosjekt_id: string | null
   enhets_id: string | null
   status: LeieStatus
-  planlagt_slutt: string
+  /** Null bare på internleier uten dato – «til videre». */
+  planlagt_slutt: string | null
   start_tid: string
   slutt_tid: string | null
   godkjent_tid: string | null
@@ -65,6 +71,29 @@ export type Leie = {
   admin_notat: string | null
   avvik: string | null
   opprettet: string
+}
+
+export type Prosjekt = {
+  id: string
+  navn: string
+  nummer: string | null
+  /** false = avsluttet. */
+  aktiv: boolean
+  opprettet: string
+}
+
+/** Den ansatte slik leiespørringene bygger den inn – se LEIETAKER_FELT. */
+export type AnsattInnbygd = { navn: string; telefon: string | null; epost: string }
+
+/** Prosjektet slik leiespørringene bygger det inn. */
+export type ProsjektInnbygd = { navn: string; nummer: string | null }
+
+/** En leie med maskin og leietaker, slik adminsidene henter den. */
+export type LeieRad = Leie & {
+  maskiner: Maskin | null
+  kunder: Kunde | null
+  ansatt: AnsattInnbygd | null
+  prosjekter: ProsjektInnbygd | null
 }
 
 export type Bilde = {
@@ -105,7 +134,14 @@ export const LEIE_MERKE: Record<LeieStatus, 'grønn' | 'gul' | 'nøytral' | 'rø
   avvist: 'rød',
 }
 
-/** En aktiv leie hvis avtalte leveringsdato er passert. */
+/**
+ * En aktiv leie hvis avtalte leveringsdato er passert. En internleie
+ * uten dato står ute «til videre» og blir aldri forfalt.
+ */
 export function erForfalt(leie: Pick<Leie, 'status' | 'planlagt_slutt'>): boolean {
-  return leie.status === 'aktiv' && new Date(leie.planlagt_slutt).getTime() < Date.now()
+  return (
+    leie.status === 'aktiv' &&
+    leie.planlagt_slutt !== null &&
+    new Date(leie.planlagt_slutt).getTime() < Date.now()
+  )
 }

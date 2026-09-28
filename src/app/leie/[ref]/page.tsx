@@ -7,7 +7,7 @@ import type { Leie, Maskin } from '@/lib/types'
 import { HMLogo } from '@/components/hm-logo'
 import { TømBildekladd } from '@/components/tom-bildekladd'
 import { KNAPP_PRIMÆR, Merke } from '@/components/ui'
-import { dato, tid } from '@/lib/dato'
+import { returDato, tid } from '@/lib/dato'
 import { antallTekst, perEnhet, prisEnhet } from '@/lib/pris'
 
 export const dynamic = 'force-dynamic'
@@ -72,7 +72,7 @@ export default async function LeieSide(props: PageProps<'/leie/[ref]'>) {
       <main className="mx-auto w-full max-w-md flex-1 px-5 py-7">
         <dl className="border-2 border-[var(--kant)]">
           <Rad navn="Startet" verdi={tid(leie.start_tid)} />
-          <Rad navn="Forventet levering" verdi={dato(leie.planlagt_slutt)} />
+          <Rad navn="Forventet levering" verdi={returDato(leie.planlagt_slutt)} />
           {leie.slutt_tid && <Rad navn="Levert" verdi={tid(leie.slutt_tid)} />}
           {maskin.vis_pris && maskin.dogn_pris !== null && (
             <Rad

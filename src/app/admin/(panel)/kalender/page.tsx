@@ -39,6 +39,29 @@ function farge(l: Leie) {
   return 'bg-hm-500 text-white'
 }
 
+/**
+ * Siste dag leien skal tegnes på.
+ *
+ * En aktiv leie står ute til den faktisk leveres. Stoppet vi på avtalt
+ * dato, ville nettopp de dagene maskinen er på overtid mangle i
+ * kalenderen – som er de dagene man trenger å se. Internleier uten dato
+ * står ute «til videre», og tegnes også fram til i dag.
+ */
+function sluttFor(l: Leie, nå: Date): Date {
+  if (l.status === 'aktiv') {
+    return l.planlagt_slutt
+      ? new Date(Math.max(new Date(l.planlagt_slutt).getTime(), nå.getTime()))
+      : nå
+  }
+  return new Date(l.slutt_tid ?? l.planlagt_slutt ?? nå)
+}
+
+/** Sluttdatoen slik den skrives ut: levert, avtalt, eller «til videre». */
+function tilTekst(l: Leie): string {
+  if (l.slutt_tid) return datoKort(l.slutt_tid)
+  return l.planlagt_slutt ? datoKort(l.planlagt_slutt) : 'til videre'
+}
+
 export default async function KalenderSide(props: PageProps<'/admin/kalender'>) {
   await krevAdmin()
   const sp = await props.searchParams
@@ -62,14 +85,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
     .lte('start_tid', new Date(år, måned + 1, 0, 23, 59, 59).toISOString())
     .order('start_tid')
 
-  // Aktive leier regnes som pågående til i dag, ikke bare til avtalt dato.
-  const leier = ((data ?? []) as Rad[]).filter((l) => {
-    const slutt =
-      l.status === 'aktiv'
-        ? new Date(Math.max(new Date(l.planlagt_slutt).getTime(), nå.getTime()))
-        : new Date(l.slutt_tid ?? l.planlagt_slutt)
-    return slutt >= førsteIMnd
-  })
+  const leier = ((data ?? []) as Rad[]).filter((l) => sluttFor(l, nå) >= førsteIMnd)
 
   /*
    * Rutenettet starter på mandagen i uka der den 1. faller, og fylles
@@ -87,15 +103,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
 
     const påDagen = leier.filter((l) => {
       const fra = osloDag(l.start_tid)
-      /*
-       * En aktiv leie står ute til den faktisk leveres. Stoppet vi på
-       * avtalt dato, ville nettopp de dagene maskinen er på overtid
-       * mangle i kalenderen – som er de dagene man trenger å se.
-       */
-      const til =
-        l.status === 'aktiv'
-          ? osloDag(new Date(Math.max(new Date(l.planlagt_slutt).getTime(), nå.getTime())))
-          : osloDag(l.slutt_tid ?? l.planlagt_slutt)
+      const til = osloDag(sluttFor(l, nå))
       // ISO-datoer kan sammenlignes som tekst.
       return dag >= fra && dag <= til
     })
@@ -184,13 +192,15 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
                     {påDagen.slice(0, 3).map((l) => {
                       // Er dagen etter avtalt levering, står maskinen på overtid.
                       const påOvertid =
-                        l.status === 'aktiv' && dag > osloDag(l.planlagt_slutt)
+                        l.status === 'aktiv' &&
+                        l.planlagt_slutt !== null &&
+                        dag > osloDag(l.planlagt_slutt)
 
                       return (
                         <li key={l.id}>
                           <Link
                             href={`/admin/leier/${l.id}`}
-                            title={`${l.maskiner?.navn} · ${l.kunder?.navn ?? ''} · ${datoKort(l.start_tid)}–${datoKort(l.slutt_tid ?? l.planlagt_slutt)}`}
+                            title={`${l.maskiner?.navn} · ${l.kunder?.navn ?? ''} · ${datoKort(l.start_tid)}–${tilTekst(l)}`}
                             className={`block truncate border border-[var(--kant-sterk)] px-1.5 py-1 text-[11px] leading-tight font-bold ${farge(l)}`}
                           >
                             {påOvertid && '⚠ '}
@@ -245,7 +255,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
                       className={`hm-display hm-tall shrink-0 border-2 border-[var(--kant-sterk)] px-3 py-1.5 text-base whitespace-nowrap ${farge(l)}`}
                     >
                       {datoKort(l.start_tid)} →{' '}
-                      {l.slutt_tid ? datoKort(l.slutt_tid) : datoKort(l.planlagt_slutt)}
+                      {tilTekst(l)}
                       {erForfalt(l) && ' ⚠'}
                     </span>
 

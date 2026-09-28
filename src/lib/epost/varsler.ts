@@ -140,10 +140,11 @@ export async function varsleForfalte(): Promise<{
 
   if (forfalte.length === 0) return { forfalte: 0, adminSendt: false, purringer: 0 }
 
+  // lt() over slipper aldri gjennom en leie uten dato, så datoen er satt.
   const dagerOver = (l: Leie) =>
     Math.max(
       1,
-      Math.floor((Date.now() - new Date(l.planlagt_slutt).getTime()) / 86_400_000),
+      Math.floor((Date.now() - new Date(l.planlagt_slutt!).getTime()) / 86_400_000),
     )
 
   let adminSendt = false

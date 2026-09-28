@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { beregnPris } from './pris.ts'
+import { beregnPris, internleieRad, summerInternleie } from './pris.ts'
 
 const start = '2026-09-01T08:00:00.000Z'
 
@@ -34,4 +34,42 @@ test('uten pris blir beløpet null, ikke 0', () => {
 
 test('hele kroner, som forslaget på godkjenningssiden', () => {
   assert.equal(beregnPris(start, '2026-09-02T08:00:00.000Z', 'dogn', 333.33).belop, 333)
+})
+
+test('levert og løpende summeres hver for seg', () => {
+  const sum = summerInternleie(
+    [
+      { status: 'avsluttet', start_tid: '2026-08-01T08:00:00.000Z', belop: 900, pris: 450, enhet: 'dogn' },
+      { status: 'aktiv', start_tid: '2026-09-01T08:00:00.000Z', belop: null, pris: 450, enhet: 'dogn' },
+    ],
+    '2026-09-03T08:00:00.000Z',
+  )
+  assert.deepEqual(sum, { levert: 900, løpende: 900, ute: 1, manglerPris: false })
+})
+
+test('maskin uten pris sier fra i stedet for å telle 0 kr', () => {
+  const sum = summerInternleie(
+    [
+      { status: 'aktiv', start_tid: '2026-09-01T08:00:00.000Z', belop: null, pris: null, enhet: 'dogn' },
+      { status: 'avsluttet', start_tid: '2026-08-01T08:00:00.000Z', belop: null, pris: null, enhet: 'dogn' },
+    ],
+    '2026-09-02T08:00:00.000Z',
+  )
+  assert.deepEqual(sum, { levert: 0, løpende: 0, ute: 1, manglerPris: true })
+})
+
+test('internleieRad henter pris og enhet fra maskinen', () => {
+  assert.deepEqual(
+    internleieRad({
+      status: 'aktiv',
+      start_tid: '2026-09-01T08:00:00.000Z',
+      belop: null,
+      maskiner: { dogn_pris: 450, pris_enhet: 'time' },
+    }),
+    { status: 'aktiv', start_tid: '2026-09-01T08:00:00.000Z', belop: null, pris: 450, enhet: 'time' },
+  )
+  assert.deepEqual(
+    internleieRad({ status: 'avsluttet', start_tid: '2026-09-01T08:00:00.000Z', belop: 900, maskiner: null }),
+    { status: 'avsluttet', start_tid: '2026-09-01T08:00:00.000Z', belop: 900, pris: null, enhet: 'dogn' },
+  )
 })

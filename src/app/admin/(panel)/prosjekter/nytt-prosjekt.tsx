@@ -1,0 +1,84 @@
+'use client'
+
+import { useActionState, useEffect, useRef, useState } from 'react'
+import { ETIKETT, FELT, KNAPP_SEKUNDÆR } from '@/components/ui'
+import { opprettProsjekt, type ProsjektTilstand } from './actions'
+
+const start: ProsjektTilstand = {}
+
+export function NyttProsjekt() {
+  const [åpen, settÅpen] = useState(false)
+  const [tilstand, handling, venter] = useActionState(opprettProsjekt, start)
+  const skjema = useRef<HTMLFormElement>(null)
+
+  useEffect(() => {
+    if (tilstand.ok) skjema.current?.reset()
+  }, [tilstand.ok])
+
+  if (!åpen) {
+    return (
+      <div className="flex flex-wrap items-center gap-4">
+        <button
+          type="button"
+          onClick={() => settÅpen(true)}
+          className="hm-trykk hm-kant-skygge-sm inline-flex min-h-[2.75rem] items-center border-2 border-[var(--kant-sterk)] bg-hm-red px-4 text-sm font-bold tracking-wide text-white uppercase hover:bg-hm-red-hover"
+        >
+          + Nytt prosjekt
+        </button>
+        {tilstand.ok && (
+          <p role="status" className="text-sm font-semibold text-hm-green">
+            {tilstand.ok}
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <form
+      ref={skjema}
+      action={handling}
+      className="border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-5"
+    >
+      <h2 className="hm-display mb-4 text-xl">Nytt prosjekt</h2>
+
+      <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
+        <label>
+          <span className={ETIKETT}>Navn</span>
+          <input name="navn" required placeholder="Kvamsøy bru" className={FELT} />
+        </label>
+        <label>
+          <span className={ETIKETT}>
+            Prosjektnummer <span className="normal-case">(valgfritt)</span>
+          </span>
+          <input name="nummer" placeholder="P-2317" className={FELT} />
+        </label>
+      </div>
+
+      {tilstand.feil && (
+        <p
+          role="alert"
+          className="mt-4 border-l-4 border-hm-red bg-hm-red/10 p-3 text-sm font-semibold text-hm-red-ink"
+        >
+          {tilstand.feil}
+        </p>
+      )}
+      {tilstand.ok && (
+        <p className="mt-4 text-sm font-semibold text-hm-green">{tilstand.ok}</p>
+      )}
+
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <button
+          type="submit"
+          disabled={venter}
+          className="hm-trykk hm-kant-skygge-sm inline-flex min-h-[2.75rem] items-center border-2 border-[var(--kant-sterk)] bg-hm-red px-5 text-sm font-bold tracking-wide text-white uppercase hover:bg-hm-red-hover disabled:opacity-50"
+        >
+          {venter ? 'Lagrer …' : 'Legg til'}
+        </button>
+        <button type="button" onClick={() => settÅpen(false)} className={KNAPP_SEKUNDÆR}>
+          Lukk
+        </button>
+      </div>
+    </form>
+  )
+}

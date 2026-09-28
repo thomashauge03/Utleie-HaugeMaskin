@@ -15,6 +15,12 @@ import 'server-only'
  * ingen leserettigheter i databasen (se er_admin i 0011). Derfor sjekker
  * hver funksjon her selv at det den gjør, gjelder den innloggede.
  * Kallstedet har allerede krevd innlogging med krevAnsatt.
+ *
+ * Denne fila må ALDRI få `'use server'` øverst. `avsluttInternLeie` sin
+ * `somAdmin`-modus har ingen eierskapssjekk – den stoler på at kalleren
+ * (en adminhandling som selv har kjørt krevAdmin) allerede har sjekket
+ * det. Som en server action ville funksjonen vært en åpen POST-rute som
+ * hvem som helst kunne truffet direkte, uten noen tilgangskontroll.
  */
 
 /** PostgREST- og Postgres-kodene for «tabellen finnes ikke». */
@@ -116,7 +122,11 @@ export async function hentProsjektvalg(brukerId: string): Promise<{
  * mer enn spørringen selv – se hentVerksted.
  */
 export async function hentUttaksside(bruker: AdminBruker): Promise<Uttaksside> {
-  const [valg, { data: maskinRader }, { data: aktiveRader }] = await Promise.all([
+  const [
+    valg,
+    { data: maskinRader, error: maskinFeil },
+    { data: aktiveRader, error: aktiveFeil },
+  ] = await Promise.all([
     hentProsjektvalg(bruker.id),
     supabaseAdmin
       .from('maskiner')
@@ -136,7 +146,11 @@ export async function hentUttaksside(bruker: AdminBruker): Promise<Uttaksside> {
       .order('start_tid'),
   ])
 
+  // «Ikke satt opp ennå» skal vinne når prosjekttabellen mangler, selv om
+  // de andre spørringene skulle feile av samme grunn.
   if (!valg) return { sattOpp: false }
+  if (maskinFeil) throw new Error(`Kunne ikke hente maskiner: ${maskinFeil.message}`)
+  if (aktiveFeil) throw new Error(`Kunne ikke hente leier: ${aktiveFeil.message}`)
 
   const aktive = (aktiveRader ?? []) as unknown as AktivRad[]
   const perMaskin = new Map(aktive.map((l) => [l.maskin_id, l]))
@@ -248,7 +262,13 @@ export async function taUtUtstyr(
       continue
     }
 
-    await supabaseAdmin.from('maskiner').update({ status: 'utleid' }).eq('id', m.id)
+    // `.eq('status','ledig')`: satte admin maskinen til service i
+    // mellomtiden, skal ikke dette overskrive det.
+    await supabaseAdmin
+      .from('maskiner')
+      .update({ status: 'utleid' })
+      .eq('id', m.id)
+      .eq('status', 'ledig')
     await supabaseAdmin.from('hendelser').insert({
       leie_id: leie.id,
       type: 'startet',
@@ -268,19 +288,22 @@ export async function taUtUtstyr(
  * Brukes både når den ansatte leverer selv og når admin registrerer
  * levering på vegne av noen. Med `ansattId` må leien være deres – ellers
  * kunne hvem som helst levere en kollegas utstyr med en direkte POST.
+ *
+ * Modusen er eksplisitt i typen (`ansattId` eller `somAdmin: true`), så en
+ * ny kaller ikke kan glemme eierskapssjekken ved å utelate begge.
  */
-export async function avsluttInternLeie(opts: {
-  leieId: string
-  aktor: string
-  ansattId?: string
-  kommentar?: string | null
-}): Promise<{ feil: string } | { ok: true; maskin: string }> {
+export async function avsluttInternLeie(
+  opts: { leieId: string; aktor: string; kommentar?: string | null } & (
+    | { ansattId: string }
+    | { somAdmin: true }
+  ),
+): Promise<{ feil: string } | { ok: true; maskin: string }> {
   let spørring = supabaseAdmin
     .from('leier')
     .select('id, status, start_tid, maskin_id, ansatt_id, maskiner(navn, dogn_pris, pris_enhet)')
     .eq('id', opts.leieId)
     .not('ansatt_id', 'is', null)
-  if (opts.ansattId) spørring = spørring.eq('ansatt_id', opts.ansattId)
+  if ('ansattId' in opts) spørring = spørring.eq('ansatt_id', opts.ansattId)
 
   const { data } = await spørring.maybeSingle()
   const leie = data as unknown as {

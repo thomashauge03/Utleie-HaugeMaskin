@@ -122,7 +122,7 @@ export async function registrerLeveringManuelt(leieId: string) {
   // Internleier har ingen godkjenning å gå til. De avsluttes med utregnet
   // pris, akkurat som når den ansatte leverer selv.
   if (leie.ansatt_id) {
-    await avsluttInternLeie({ leieId, aktor: `admin:${admin.epost}` })
+    await avsluttInternLeie({ leieId, aktor: `admin:${admin.epost}`, somAdmin: true })
     revalidatePath('/admin')
     revalidatePath('/admin/leier')
     revalidatePath(`/admin/leier/${leieId}`)

@@ -75,20 +75,35 @@ export async function settProsjektAktiv(id: string, aktiv: boolean) {
 
 /**
  * Sletter et prosjekt uten leier – typisk et feilskrevet et. Har det
- * leier, stopper fremmednøkkelen slettingen uansett. Da skal det
- * avsluttes, ikke slettes, så historikken består.
+ * leier, skal det avsluttes i stedet, ikke slettes, så historikken
+ * består.
+ *
+ * Knappen er skjult når prosjektet har leier, men et direkte POST eller
+ * en leie som opprettes i samme øyeblikk kan komme hit likevel – da må
+ * admin få beskjed, ikke bare se at ingenting skjedde.
  */
-export async function slettProsjekt(id: string) {
+export async function slettProsjekt(
+  id: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kreves av useActionState sin signatur
+  _forrige: ProsjektTilstand,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kreves av useActionState sin signatur
+  _formData: FormData,
+): Promise<ProsjektTilstand> {
   await krevAdmin()
   const supabase = await lagServerKlient()
+  const feilLeier = 'Prosjektet har leier og kan ikke slettes. Avslutt det i stedet.'
 
   const { count } = await supabase
     .from('leier')
     .select('id', { count: 'exact', head: true })
     .eq('prosjekt_id', id)
-  if (count) return
+  if (count) return { feil: feilLeier }
 
-  await supabase.from('prosjekter').delete().eq('id', id)
+  const { error } = await supabase.from('prosjekter').delete().eq('id', id)
+  if (error) {
+    return { feil: error.code === '23503' ? feilLeier : `Kunne ikke slette: ${error.message}` }
+  }
+
   revalidatePath('/admin/prosjekter')
   redirect('/admin/prosjekter')
 }

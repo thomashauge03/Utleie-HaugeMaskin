@@ -8,8 +8,9 @@ import { dato } from '@/lib/dato'
 import type { Prosjekt } from '@/lib/types'
 import { Kort, KortTittel, Merke, TomTilstand } from '@/components/ui'
 import { BekreftKnapp } from '@/components/bekreft-knapp'
-import { settProsjektAktiv, slettProsjekt } from '../actions'
+import { settProsjektAktiv } from '../actions'
 import { RedigerProsjekt } from './rediger-prosjekt'
+import { SlettProsjekt } from './slett-prosjekt'
 
 export const metadata: Metadata = { title: 'Prosjekt – HM Utleie' }
 export const dynamic = 'force-dynamic'
@@ -76,23 +77,6 @@ export default async function ProsjektSide(props: PageProps<'/admin/prosjekter/[
       </div>
 
       <Kort>
-        <KortTittel>Internleie hittil</KortTittel>
-        <div className="p-5">
-          <p className="hm-display hm-tall text-4xl">{kr(sum.levert + sum.løpende)}</p>
-          <p className="mt-1 text-sm text-[var(--blekk-svak)]">
-            {kr(sum.levert)} levert
-            {sum.ute > 0 && ` · ${kr(sum.løpende)} løpende på ${sum.ute} ting som er ute`}
-          </p>
-          {sum.manglerPris && (
-            <p className="mt-3 border-l-4 border-hm-amber bg-[var(--flate-2)] p-3 text-sm">
-              Noe utstyr på prosjektet mangler pris, så summen er for lav. Sett
-              pris på maskinen, og rett beløpet på leien.
-            </p>
-          )}
-        </div>
-      </Kort>
-
-      <Kort>
         <KortTittel>Leier</KortTittel>
         {leier.length === 0 ? (
           <div className="p-5">
@@ -150,6 +134,23 @@ export default async function ProsjektSide(props: PageProps<'/admin/prosjekter/[
       </Kort>
 
       <Kort>
+        <KortTittel>Internleie hittil</KortTittel>
+        <div className="p-5">
+          <p className="hm-display hm-tall text-4xl">{kr(sum.levert + sum.løpende)}</p>
+          <p className="mt-1 text-sm text-[var(--blekk-svak)]">
+            {kr(sum.levert)} levert
+            {sum.ute > 0 && ` · ${kr(sum.løpende)} løpende på ${sum.ute} ting som er ute`}
+          </p>
+          {sum.manglerPris && (
+            <p className="mt-3 border-l-4 border-hm-amber bg-[var(--flate-2)] p-3 text-sm">
+              Noe utstyr på prosjektet mangler pris, så summen er for lav. Sett
+              pris på maskinen, og rett beløpet på leien.
+            </p>
+          )}
+        </div>
+      </Kort>
+
+      <Kort>
         <KortTittel>Navn og nummer</KortTittel>
         <RedigerProsjekt id={prosjekt.id} navn={prosjekt.navn} nummer={prosjekt.nummer} />
       </Kort>
@@ -168,11 +169,7 @@ export default async function ProsjektSide(props: PageProps<'/admin/prosjekter/[
               bekreft={prosjekt.aktiv ? 'Ja, avslutt' : 'Ja, åpne'}
             />
           </form>
-          {leier.length === 0 && (
-            <form action={slettProsjekt.bind(null, prosjekt.id)}>
-              <BekreftKnapp etikett="Slett prosjektet" bekreft="Slett for godt" fare />
-            </form>
-          )}
+          {leier.length === 0 && <SlettProsjekt id={prosjekt.id} />}
         </div>
       </div>
     </div>

@@ -55,12 +55,26 @@ Videre brukere opprettes fra `/admin/brukere` inne i appen.
 src/app/m/[qr]/        Kundeside per maskin (QR-kode på maskinen)
 src/app/retur/         Felles retur-side (QR-kode på arbeidsstedet)
 src/app/leie/[ref]/    Kvittering og retur for én enkelt leie
+src/app/ansatt/        Uttak til prosjekter for egne folk, krever innlogging
 src/app/admin/         Adminpanel, krever innlogging
 src/lib/supabase/      Databaseklienter
 src/proxy.ts           Sesjonsoppfriskning (het middleware.ts før Next 16)
 supabase/migrations/   Databaseskjema
 docs/                  Teknisk plan
 ```
+
+## Roller
+
+| Rolle | Kommer inn på | Kan ta ut utstyr til prosjekter |
+|---|---|---|
+| Admin | alt | ja |
+| Servicearbeider | verkstedet | ja |
+| Ansatt | `/ansatt` | ja |
+
+Brukere lages under `/admin/brukere` med et midlertidig passord, som må
+byttes ved første innlogging. Prosjektene de ansatte velger mellom, legges
+inn under `/admin/prosjekter`. Internleie regnes ut når utstyret leveres,
+og summeres per prosjekt – den faktureres ikke.
 
 ## Slå på e-postvarsling (utsatt – gjøres når det passer)
 
@@ -98,6 +112,10 @@ verifiserer selv at enhets-ID eller leiereferanse hører til raden som hentes.
 `src/proxy.ts` frisker kun opp sesjonen. Selve tilgangskontrollen ligger i
 adminlayouten og i hver enkelt server action – server actions kjører som POST
 mot siden de brukes fra, og kan derfor ikke sikres av proxy alene.
+
+Radsikkerheten i databasen slipper bare rollen admin til (`er_admin()`, fra
+migrasjon 0011). Service og ansatte kan lese sin egen brukerrad og ingenting
+annet – alt de gjør, går gjennom server actions som sjekker tilgangen selv.
 
 ## Merk om Next.js 16
 

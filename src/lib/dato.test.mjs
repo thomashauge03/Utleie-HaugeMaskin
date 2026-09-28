@@ -10,6 +10,14 @@ test('sommertid: 23:59:59 norsk er 21:59:59 UTC', () => {
   assert.equal(norskSluttAvDag('2026-07-15')?.toISOString(), '2026-07-15T21:59:59.000Z')
 })
 
+test('sommertid starter: 2026-03-29 er offset +2 hele døgnet', () => {
+  assert.equal(norskSluttAvDag('2026-03-29')?.toISOString(), '2026-03-29T21:59:59.000Z')
+})
+
+test('sommertid slutter: 2026-10-25 er offset +1 hele døgnet', () => {
+  assert.equal(norskSluttAvDag('2026-10-25')?.toISOString(), '2026-10-25T22:59:59.000Z')
+})
+
 test('feil format gir null', () => {
   assert.equal(norskSluttAvDag('15.07.2026'), null)
   assert.equal(norskSluttAvDag(''), null)

@@ -5,9 +5,11 @@ import { KNAPP_SEKUNDÆR } from '@/components/ui'
 import { registrerLeveringManuelt } from './actions'
 
 /**
- * Lar admin avslutte en aktiv leie på kundens vegne – for de som ikke
- * får levert selv i appen. Krever ett bekreftelsestrykk, siden det
- * stopper klokka og fører leien til godkjenning.
+ * Lar admin avslutte en aktiv leie på kundens (eller en ansatts) vegne –
+ * for de som ikke får levert selv i appen. Krever ett bekreftelsestrykk,
+ * siden det stopper klokka. En kundeleie føres til godkjenning, som før.
+ * En internleie går rett til avsluttet med utregnet pris – det er ingen
+ * som skal godkjenne en internpris.
  */
 export function ManuellLevering({ leieId, intern }: { leieId: string; intern: boolean }) {
   const [bekrefter, settBekrefter] = useState(false)

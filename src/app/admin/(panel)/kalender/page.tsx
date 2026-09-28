@@ -246,50 +246,56 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
           <ol className="space-y-3">
             {[...leier]
               .sort((a, b) => a.start_tid.localeCompare(b.start_tid))
-              .map((l) => (
-                <li key={l.id}>
-                  <Link
-                    href={`/admin/leier/${l.id}`}
-                    className="hm-trykk hm-kant-skygge-sm flex flex-wrap items-center gap-x-5 gap-y-3 border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-4"
-                  >
-                    <span
-                      className={`hm-display hm-tall shrink-0 border-2 border-[var(--kant-sterk)] px-3 py-1.5 text-base whitespace-nowrap ${farge(l)}`}
+              .map((l) => {
+                const t = leietaker(l)
+                return (
+                  <li key={l.id}>
+                    <Link
+                      href={`/admin/leier/${l.id}`}
+                      className="hm-trykk hm-kant-skygge-sm flex flex-wrap items-center gap-x-5 gap-y-3 border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-4"
                     >
-                      {datoKort(l.start_tid)} →{' '}
-                      {tilTekst(l)}
-                      {erForfalt(l) && ' ⚠'}
-                    </span>
-
-                    <span className="min-w-0 flex-1">
-                      <span className="hm-display block truncate text-lg">
-                        {l.maskiner?.navn ?? 'Ukjent maskin'}
-                      </span>
-                      <span className="block text-sm text-[var(--blekk-svak)]">
-                        {leietakerTekst(l)}
-                        {leietaker(l).telefon && ` · ${visTelefon(leietaker(l).telefon!)}`}
-                      </span>
-                    </span>
-
-                    <span className="flex flex-wrap items-center gap-3">
-                      {erForfalt(l) && <Merke type="rød">Forfalt</Merke>}
-                      <Merke
-                        type={
-                          l.status === 'aktiv'
-                            ? 'grønn'
-                            : l.status === 'venter_godkjenning'
-                              ? 'gul'
-                              : 'nøytral'
-                        }
+                      <span
+                        className={`hm-display hm-tall shrink-0 border-2 border-[var(--kant-sterk)] px-3 py-1.5 text-base whitespace-nowrap ${farge(l)}`}
                       >
-                        {LEIE_STATUS_TEKST[l.status]}
-                      </Merke>
-                      <span className="hm-tall font-mono text-xs text-[var(--blekk-svak)]">
-                        {l.referanse}
+                        {datoKort(l.start_tid)} →{' '}
+                        {tilTekst(l)}
+                        {erForfalt(l) && ' ⚠'}
                       </span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
+
+                      <span className="min-w-0 flex-1">
+                        <span className="hm-display block truncate text-lg">
+                          {l.maskiner?.navn ?? 'Ukjent maskin'}
+                        </span>
+                        <span className="block text-sm text-[var(--blekk-svak)]">
+                          <span className="inline-flex flex-wrap items-center gap-2">
+                            {t.prosjekt ? `${t.navn} · ${t.prosjekt}` : t.navn}
+                            {t.intern && <Merke>Intern</Merke>}
+                          </span>
+                          {t.telefon && ` · ${visTelefon(t.telefon)}`}
+                        </span>
+                      </span>
+
+                      <span className="flex flex-wrap items-center gap-3">
+                        {erForfalt(l) && <Merke type="rød">Forfalt</Merke>}
+                        <Merke
+                          type={
+                            l.status === 'aktiv'
+                              ? 'grønn'
+                              : l.status === 'venter_godkjenning'
+                                ? 'gul'
+                                : 'nøytral'
+                          }
+                        >
+                          {LEIE_STATUS_TEKST[l.status]}
+                        </Merke>
+                        <span className="hm-tall font-mono text-xs text-[var(--blekk-svak)]">
+                          {l.referanse}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                )
+              })}
           </ol>
         </div>
       )}

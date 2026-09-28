@@ -134,27 +134,33 @@ export default async function OversiktSide() {
             Forfalt · {forfalt.length}
           </h2>
           <ul className="divide-y-2 divide-[var(--kant)]">
-            {forfalt.map((l) => (
-              <li key={l.id}>
-                <Link href={`/admin/leier/${l.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4 transition-colors hover:bg-[var(--flate-2)]">
-                  <span className="hm-display min-w-0 flex-1 truncate text-base">
-                    {l.maskiner?.navn ?? 'Ukjent maskin'}
-                  </span>
-                  <span className="text-sm">
-                    {leietakerTekst(l)}
-                    {leietaker(l).telefon && (
-                      <span className="hm-tall text-[var(--blekk-svak)]">
-                        {' · '}
-                        {visTelefon(leietaker(l).telefon!)}
+            {forfalt.map((l) => {
+              const t = leietaker(l)
+              return (
+                <li key={l.id}>
+                  <Link href={`/admin/leier/${l.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4 transition-colors hover:bg-[var(--flate-2)]">
+                    <span className="hm-display min-w-0 flex-1 truncate text-base">
+                      {l.maskiner?.navn ?? 'Ukjent maskin'}
+                    </span>
+                    <span className="text-sm">
+                      <span className="inline-flex flex-wrap items-center gap-2">
+                        {t.prosjekt ? `${t.navn} · ${t.prosjekt}` : t.navn}
+                        {t.intern && <Merke>Intern</Merke>}
                       </span>
-                    )}
-                  </span>
-                  <Merke type="rød">
-                    {Math.abs(dagerTil(l.planlagt_slutt!))} dager på overtid
-                  </Merke>
-                </Link>
-              </li>
-            ))}
+                      {t.telefon && (
+                        <span className="hm-tall text-[var(--blekk-svak)]">
+                          {' · '}
+                          {visTelefon(t.telefon)}
+                        </span>
+                      )}
+                    </span>
+                    <Merke type="rød">
+                      {Math.abs(dagerTil(l.planlagt_slutt!))} dager på overtid
+                    </Merke>
+                  </Link>
+                </li>
+              )
+            })}
           </ul>
         </Kort>
       )}
@@ -172,6 +178,7 @@ export default async function OversiktSide() {
               {aktive.slice(0, 8).map((l) => {
                 // Internleier uten dato står ute «til videre» – ingen nedtelling.
                 const dager = l.planlagt_slutt ? dagerTil(l.planlagt_slutt) : null
+                const t = leietaker(l)
                 return (
                   <li key={l.id}>
                     <Link href={`/admin/leier/${l.id}`} className="flex items-center gap-3 p-4 transition-colors hover:bg-[var(--flate-2)]">
@@ -180,7 +187,10 @@ export default async function OversiktSide() {
                           {l.maskiner?.navn ?? 'Ukjent'}
                         </span>
                         <span className="block truncate text-sm text-[var(--blekk-svak)]">
-                          {leietakerTekst(l)}
+                          <span className="inline-flex flex-wrap items-center gap-2">
+                            {t.prosjekt ? `${t.navn} · ${t.prosjekt}` : t.navn}
+                            {t.intern && <Merke>Intern</Merke>}
+                          </span>
                         </span>
                       </span>
                       <span className="shrink-0 text-right">

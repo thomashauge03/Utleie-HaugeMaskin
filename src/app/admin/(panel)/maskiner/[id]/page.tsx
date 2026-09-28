@@ -6,7 +6,7 @@ import { lagServerKlient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
 import { dato } from '@/lib/dato'
 import { LEIE_STATUS_TEKST, MASKIN_STATUS_TEKST, type LeieRad, type Maskin } from '@/lib/types'
-import { LEIETAKER_FELT, leietakerTekst } from '@/lib/leietaker'
+import { LEIETAKER_FELT, leietaker } from '@/lib/leietaker'
 import { Kort, KortTittel, Merke } from '@/components/ui'
 import { KopierLenke } from '../kopier-lenke'
 import { RedigerSkjema } from './rediger-skjema'
@@ -146,35 +146,41 @@ export default async function MaskinDetaljSide(props: PageProps<'/admin/maskiner
           </p>
         ) : (
           <ul className="divide-y-2 divide-[var(--kant)]">
-            {leier.map((l) => (
-              <li key={l.id}>
-                <Link
-                  href={`/admin/leier/${l.id}`}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4 transition-colors hover:bg-[var(--flate-2)]"
-                >
-                  <span className="hm-tall shrink-0 font-mono text-xs">
-                    {l.referanse}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate font-semibold">
-                    {leietakerTekst(l)}
-                  </span>
-                  <span className="hm-tall text-sm text-[var(--blekk-svak)]">
-                    {dato(l.start_tid)}
-                  </span>
-                  <Merke
-                    type={
-                      l.status === 'aktiv'
-                        ? 'grønn'
-                        : l.status === 'venter_godkjenning'
-                          ? 'gul'
-                          : 'nøytral'
-                    }
+            {leier.map((l) => {
+              const t = leietaker(l)
+              return (
+                <li key={l.id}>
+                  <Link
+                    href={`/admin/leier/${l.id}`}
+                    className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4 transition-colors hover:bg-[var(--flate-2)]"
                   >
-                    {LEIE_STATUS_TEKST[l.status]}
-                  </Merke>
-                </Link>
-              </li>
-            ))}
+                    <span className="hm-tall shrink-0 font-mono text-xs">
+                      {l.referanse}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-semibold">
+                      <span className="inline-flex flex-wrap items-center gap-2">
+                        {t.prosjekt ? `${t.navn} · ${t.prosjekt}` : t.navn}
+                        {t.intern && <Merke>Intern</Merke>}
+                      </span>
+                    </span>
+                    <span className="hm-tall text-sm text-[var(--blekk-svak)]">
+                      {dato(l.start_tid)}
+                    </span>
+                    <Merke
+                      type={
+                        l.status === 'aktiv'
+                          ? 'grønn'
+                          : l.status === 'venter_godkjenning'
+                            ? 'gul'
+                            : 'nøytral'
+                      }
+                    >
+                      {LEIE_STATUS_TEKST[l.status]}
+                    </Merke>
+                  </Link>
+                </li>
+              )
+            })}
           </ul>
         )}
       </Kort>

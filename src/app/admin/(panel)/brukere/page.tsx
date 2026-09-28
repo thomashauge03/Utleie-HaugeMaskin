@@ -12,12 +12,24 @@ export default async function BrukereSide() {
   const meg = await krevAdmin()
   const supabase = await lagServerKlient()
 
-  const { data } = await supabase.from('admin_brukere').select('*').order('navn')
+  const [{ data }, { data: uteRader }] = await Promise.all([
+    supabase.from('admin_brukere').select('*').order('navn'),
+    supabase
+      .from('leier')
+      .select('ansatt_id')
+      .eq('status', 'aktiv')
+      .not('ansatt_id', 'is', null),
+  ])
   const brukere = (data ?? []) as Bruker[]
+
+  const ute = new Map<string, number>()
+  for (const r of (uteRader ?? []) as { ansatt_id: string }[]) {
+    ute.set(r.ansatt_id, (ute.get(r.ansatt_id) ?? 0) + 1)
+  }
 
   return (
     <div className="space-y-7">
-      <Seksjonstittel under="Admin ser alt. Servicearbeidere ser kun verkstedet.">
+      <Seksjonstittel under="Admin ser alt. Service har verkstedet. Alle kan ta ut utstyr til prosjekter.">
         Brukere
       </Seksjonstittel>
 
@@ -25,7 +37,12 @@ export default async function BrukereSide() {
 
       <div className="divide-y-2 divide-[var(--kant)] border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)]">
         {brukere.map((b) => (
-          <RedigerBruker key={b.id} bruker={b} erMeg={b.id === meg.id} />
+          <RedigerBruker
+            key={b.id}
+            bruker={b}
+            erMeg={b.id === meg.id}
+            ute={ute.get(b.id) ?? 0}
+          />
         ))}
       </div>
 

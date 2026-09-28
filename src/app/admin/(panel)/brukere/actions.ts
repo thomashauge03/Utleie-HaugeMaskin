@@ -5,18 +5,37 @@ import { z } from 'zod'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { normaliserTelefon } from '@/lib/telefon'
 
 export type BrukerTilstand = { feil?: string; ok?: string }
+
+const ROLLER = ['admin', 'service', 'ansatt'] as const
+
+/** Tomt er lov – mobilnummeret er valgfritt. Utfylt må det være gyldig. */
+const telefon = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v, ctx) => {
+    if (!v) return null
+    const n = normaliserTelefon(v)
+    if (!n) {
+      ctx.addIssue({ code: 'custom', message: 'Mobilnummeret må være åtte siffer' })
+      return z.NEVER
+    }
+    return n
+  })
 
 const skjema = z.object({
   navn: z.string().trim().min(2, 'Navn må fylles ut'),
   epost: z.email('Ugyldig e-postadresse'),
   passord: z.string().min(8, 'Passordet må være minst 8 tegn'),
-  rolle: z.enum(['admin', 'service']).default('admin'),
+  rolle: z.enum(ROLLER).default('admin'),
+  telefon,
 })
 
 /**
- * Oppretter en ny admin-bruker.
+ * Oppretter en ny bruker.
  *
  * Vi setter passordet direkte i stedet for å sende invitasjon på
  * e-post, fordi Supabase sin innebygde e-posttjeneste har lave
@@ -51,15 +70,16 @@ export async function opprettBruker(
     navn: felter.data.navn,
     epost: felter.data.epost,
     rolle: felter.data.rolle,
+    telefon: felter.data.telefon,
     // Passordet er midlertidig – brukeren må sette sitt eget først.
     ma_bytte_passord: true,
   })
 
   if (radFeil) {
-    // Rydd opp, ellers står det igjen en auth-bruker uten admintilgang
-    // som ingen kan gjøre noe med.
+    // Rydd opp, ellers står det igjen en auth-bruker uten tilgang som
+    // ingen kan gjøre noe med.
     await supabaseAdmin.auth.admin.deleteUser(data.user.id)
-    return { feil: `Kunne ikke gi admintilgang: ${radFeil.message}` }
+    return { feil: `Kunne ikke gi tilgang: ${radFeil.message}` }
   }
 
   revalidatePath('/admin/brukere')
@@ -68,34 +88,48 @@ export async function opprettBruker(
 
 const endreSkjema = z.object({
   navn: z.string().trim().min(2, 'Navn må fylles ut'),
-  rolle: z.enum(['admin', 'service']),
+  rolle: z.enum(ROLLER),
+  telefon,
 })
 
 /**
- * Endrer navn og rolle på en eksisterende bruker.
+ * Endrer navn, rolle og mobil på en eksisterende bruker.
  *
  * Man kan ikke frata seg selv admintilgang. Er du siste admin og setter
- * deg til service, er det ingen igjen som kan gi tilgangen tilbake –
+ * deg til noe annet, er det ingen igjen som kan gi tilgangen tilbake –
  * da må databasen redigeres direkte for å komme inn igjen.
  */
-export async function endreBruker(brukerId: string, formData: FormData) {
+export async function endreBruker(
+  brukerId: string,
+  formData: FormData,
+): Promise<BrukerTilstand> {
   const meg = await krevAdmin()
 
   const felter = endreSkjema.safeParse({
     navn: formData.get('navn'),
     rolle: formData.get('rolle'),
+    telefon: formData.get('telefon') ?? undefined,
   })
-  if (!felter.success) return
+  if (!felter.success) return { feil: felter.error.issues[0].message }
 
-  if (brukerId === meg.id && felter.data.rolle !== 'admin') return
+  if (brukerId === meg.id && felter.data.rolle !== 'admin') {
+    return { feil: 'Du kan ikke frata deg selv admintilgang.' }
+  }
 
   const supabase = await lagServerKlient()
-  await supabase
+  const { error } = await supabase
     .from('admin_brukere')
-    .update({ navn: felter.data.navn, rolle: felter.data.rolle })
+    .update({
+      navn: felter.data.navn,
+      rolle: felter.data.rolle,
+      telefon: felter.data.telefon,
+    })
     .eq('id', brukerId)
 
+  if (error) return { feil: `Kunne ikke lagre: ${error.message}` }
+
   revalidatePath('/admin/brukere')
+  return { ok: 'Lagret.' }
 }
 
 /**

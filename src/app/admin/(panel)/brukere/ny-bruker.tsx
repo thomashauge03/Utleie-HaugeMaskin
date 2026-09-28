@@ -38,9 +38,9 @@ export function NyBruker() {
       action={handling}
       className="border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-5"
     >
-      <h2 className="hm-display mb-4 text-xl">Ny admin-bruker</h2>
+      <h2 className="hm-display mb-4 text-xl">Ny bruker</h2>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <label>
           <span className={ETIKETT}>Navn</span>
           <input name="navn" required className={FELT} />
@@ -50,19 +50,36 @@ export function NyBruker() {
           <input name="epost" type="email" required className={FELT} />
         </label>
         <label>
-          <span className={ETIKETT}>Passord</span>
+          <span className={ETIKETT}>
+            Mobil <span className="normal-case">(valgfritt)</span>
+          </span>
+          <input
+            name="telefon"
+            type="tel"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="900 00 000"
+            className={FELT}
+          />
+        </label>
+        <label>
+          <span className={ETIKETT}>Midlertidig passord</span>
           <input name="passord" type="text" required minLength={8} className={FELT} />
         </label>
 
-        <label className="sm:col-span-3">
+        <label className="sm:col-span-2">
           <span className={ETIKETT}>Tilgang</span>
           <select name="rolle" defaultValue="admin" className={FELT}>
             <option value="admin">Admin — full tilgang</option>
-            <option value="service">Servicearbeider — kun verkstedet</option>
+            <option value="service">
+              Servicearbeider — verkstedet, og kan ta ut utstyr til prosjekter
+            </option>
+            <option value="ansatt">Ansatt — kan ta ut utstyr til prosjekter</option>
           </select>
           <span className="mt-1.5 block text-xs text-[var(--blekk-svak)]">
-            Servicearbeidere ser verkstedlista og kan endre status på deler,
-            men kommer ikke inn i kunder, leier eller innstillinger.
+            Servicearbeidere ser verkstedlista og kan endre status på deler.
+            Ansatte kan bare ta ut og levere utstyr. Ingen av dem kommer inn i
+            kunder, leier eller innstillinger.
           </span>
         </label>
       </div>

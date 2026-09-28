@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { startTransition, useActionState, useState } from 'react'
 import { ETIKETT, FELT, KNAPP_PRIMÆR } from '@/components/ui'
 import type { ProsjektValg, UttakMaskin } from '@/lib/intern-leie'
 import { taUt, type UttakTilstand } from './actions'
@@ -61,7 +61,22 @@ export function UttakListe({ maskiner, prosjekter, sistProsjektId, iDag }: Felle
   }
 
   return (
-    <form action={handling} className="space-y-6">
+    <form
+      onSubmit={(e) => {
+        // React nullstiller skjemaet automatisk etter hver innsending med
+        // `<form action>` – men det rører ikke `valgte`, den kontrollerte
+        // tilstanden for avkrysningsboksene. Feiler uttaket helt (f.eks.
+        // «Prosjektet er avsluttet»), sto boksene tomme mens `valgte`
+        // fortsatt hadde ID-ene: det sto «N valgt» uten avkrysning, og
+        // neste forsøk ga «Velg minst én ting». `onSubmit` unngår
+        // nullstillingen. `useActionState`s dispatch må da kalles i en
+        // transition, siden den ikke lenger er selve form-action-en.
+        e.preventDefault()
+        const fd = new FormData(e.currentTarget)
+        startTransition(() => handling(fd))
+      }}
+      className="space-y-6"
+    >
       {prosjekter.length === 0 && <IngenProsjekter />}
 
       <input

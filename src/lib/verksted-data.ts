@@ -65,7 +65,7 @@ export async function hentVerksted(): Promise<{
     { data: delRader },
     { data: maskinRader },
     { data: statuser },
-    { data: leier },
+    { data: leier, error: leierFeil },
   ] = await Promise.all([
     supabaseAdmin
       .from('kategorier')
@@ -83,16 +83,23 @@ export async function hentVerksted(): Promise<{
       .order('navn'),
     supabaseAdmin.from('maskin_delstatus').select('maskin_id, del_id, status, mal'),
     /*
-     * Hvilke står ute hos kunde nå? Servicearbeideren må vite det – det
-     * er ingen vits i å planlegge sveising på noe som ikke er på plassen.
+     * Hvilke står ute nå? Servicearbeideren må vite det – det er ingen
+     * vits i å planlegge sveising på noe som ikke er på plassen. Navnet
+     * hentes her, men vises bare for verkstedbrukere på sidene – sidene
+     * er åpne for alle med QR-koden, og hvem som leier hva er
+     * persondata. Telefon trengs ikke her, så den bygges ikke inn.
      */
     supabaseAdmin
       .from('leier')
       .select(
-        'maskin_id, planlagt_slutt, ansatt_id, kunder(navn, telefon), ansatt:admin_brukere!leier_ansatt_id_fkey(navn, telefon), prosjekter(navn, nummer)',
+        'maskin_id, planlagt_slutt, ansatt_id, kunder(navn), ansatt:admin_brukere!leier_ansatt_id_fkey(navn), prosjekter(navn, nummer)',
       )
       .in('status', ['aktiv', 'venter_godkjenning']),
   ])
+
+  // En feil her skal ikke se ut som «ingen leier» – ellers vises en
+  // utleid maskin som ledig for servicearbeideren.
+  if (leierFeil) throw new Error(`Kunne ikke hente leier: ${leierFeil.message}`)
 
   const kategorier = (valgte ?? []).map((k) => k.navn as string)
   if (kategorier.length === 0) return { kategorier: [], deler: [], maskiner: [] }

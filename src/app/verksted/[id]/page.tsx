@@ -196,9 +196,14 @@ export default async function VerkstedMaskinSide(
                     {tid(h.tid)}
                   </span>
                   <span className="font-semibold">{h.beskrivelse}</span>
-                  <span className="w-full text-xs text-[var(--blekk-svak)]">
-                    {h.aktor}
-                  </span>
+                  {/* aktor kan være et ansattnavn i klartekst (f.eks.
+                      «ansatt:ola@…») – sida er åpen for alle med QR-koden,
+                      og hvem som gjorde hva er persondata. */}
+                  {innlogget && (
+                    <span className="w-full text-xs text-[var(--blekk-svak)]">
+                      {h.aktor}
+                    </span>
+                  )}
                 </li>
               ))}
             </ol>

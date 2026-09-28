@@ -222,10 +222,13 @@ export default async function VerkstedSide(props: PageProps<'/verksted'>) {
                         </div>
 
                         {/* Står den ute hos kunde, er det ingen vits i å
-                            planlegge arbeid på den før den er tilbake. */}
+                            planlegge arbeid på den før den er tilbake. Hvem
+                            som leier hva er persondata, og sida er åpen for
+                            alle med QR-koden – navnet vises derfor bare for
+                            verkstedbrukere. */}
                         {m.utleie && (
                           <p className="mt-2 border-l-4 border-hm-amber bg-[var(--flate-2)] px-3 py-2 text-sm">
-                            Ute hos {m.utleie.kunde ?? 'kunde'}
+                            {kanEndreVerksted(bruker) ? `Ute hos ${m.utleie.kunde}` : 'Utleid'}
                             {m.utleie.ventetTilbake ? (
                               <>
                                 {' · ventet tilbake '}

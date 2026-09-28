@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { lagServerKlient } from '@/lib/supabase/server'
+import { trygtNeste } from '@/lib/neste'
 
 const skjema = z.object({
   epost: z.email('Ugyldig e-postadresse'),
@@ -50,7 +51,8 @@ export async function loggInn(
     return { feil: 'Denne kontoen har ikke admintilgang.' }
   }
 
-  redirect('/admin')
+  // /admin sender hver rolle videre til sin egen side.
+  redirect(trygtNeste(formData.get('neste')) ?? '/admin')
 }
 
 export async function loggUt() {

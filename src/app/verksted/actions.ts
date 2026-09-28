@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { hentAdmin } from '@/lib/auth'
+import { hentAdmin, kanEndreVerksted } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sikreEnhetsId } from '@/lib/enhet'
 import { innenforGrense } from '@/lib/rategrense'
@@ -30,8 +30,15 @@ export async function settVerkstedStatus(
 
   const bruker = await hentAdmin()
 
-  if (!bruker && !kanSettesAvAlle(gyldig.data as VerkstedStatus)) {
-    return { feil: 'Du må være innlogget for å sette denne statusen.' }
+  // Å melde fra kan alle. Å bestemme – deler bestilt, klar – er for
+  // verkstedet. En innlogget ansatt melder fra som alle andre, men
+  // logges med navn i stedet for enhets-ID.
+  if (!kanEndreVerksted(bruker) && !kanSettesAvAlle(gyldig.data as VerkstedStatus)) {
+    return {
+      feil: bruker
+        ? 'Bare verkstedet kan sette denne statusen.'
+        : 'Du må være innlogget for å sette denne statusen.',
+    }
   }
 
   /*
@@ -88,7 +95,7 @@ export async function settDelStatus(
   status: string,
 ): Promise<VerkstedTilstand> {
   const bruker = await hentAdmin()
-  if (!bruker) return { feil: 'Krever innlogging.' }
+  if (!kanEndreVerksted(bruker)) return { feil: 'Krever innlogging som verksted eller admin.' }
 
   const gyldig = delStatusSkjema.safeParse(status)
   if (!gyldig.success) return { feil: 'Ugyldig status' }
@@ -136,7 +143,7 @@ export async function settDelMal(
   mal: string,
 ): Promise<VerkstedTilstand> {
   const bruker = await hentAdmin()
-  if (!bruker) return { feil: 'Krever innlogging.' }
+  if (!kanEndreVerksted(bruker)) return { feil: 'Krever innlogging som verksted eller admin.' }
 
   const verdi = mal.trim().slice(0, 120)
 
@@ -163,7 +170,7 @@ export async function leggTilNotat(
   formData: FormData,
 ): Promise<VerkstedTilstand> {
   const bruker = await hentAdmin()
-  if (!bruker) return { feil: 'Krever innlogging.' }
+  if (!kanEndreVerksted(bruker)) return { feil: 'Krever innlogging som verksted eller admin.' }
 
   const tekst = String(formData.get('notat') ?? '').trim()
   if (tekst.length < 2) return { feil: 'Skriv litt mer.' }
@@ -184,7 +191,7 @@ export async function settKjeftDimensjon(
   formData: FormData,
 ): Promise<VerkstedTilstand> {
   const bruker = await hentAdmin()
-  if (!bruker) return { feil: 'Krever innlogging.' }
+  if (!kanEndreVerksted(bruker)) return { feil: 'Krever innlogging som verksted eller admin.' }
 
   const verdi = String(formData.get('kjeft_dimensjon') ?? '').trim()
 

@@ -1,4 +1,4 @@
-import { hentAdmin } from '@/lib/auth'
+import { hentFullAdmin } from '@/lib/auth'
 import { varsleForfalte } from '@/lib/epost/varsler'
 
 export const dynamic = 'force-dynamic'
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   const header = request.headers.get('authorization')
   const fraCron = Boolean(hemmelighet) && header === `Bearer ${hemmelighet}`
 
-  if (!fraCron && !(await hentAdmin())) {
+  if (!fraCron && !(await hentFullAdmin())) {
     return new Response(null, { status: 401 })
   }
 

@@ -12,10 +12,20 @@ import { env } from '@/lib/env'
  * ikke skal være eneste autorisasjonsmekanisme, blant annet fordi
  * server actions kjører som POST mot siden de brukes fra.
  *
- * Matcher kun /admin. Kundeflyten har ingen sesjon å friske opp, og
- * skal slippe et unødvendig nettverkskall per forespørsel.
+ * Matcher alle sider der en innlogget bruker kan stå: adminpanelet,
+ * verkstedet, uttakssiden og kundesidene, der ansatte får egne valg.
+ * Server components kan ikke skrive informasjonskapsler, så uten dette
+ * ble en utløpt sesjon på de sidene aldri fornyet, og brukeren ble
+ * logget ut etter omtrent en time.
  */
 export async function proxy(request: NextRequest) {
+  // Uten Supabase-informasjonskapsel finnes det ingen sesjon å friske
+  // opp. Det gjelder alle kunder på /m og /retur – de skal ikke betale
+  // et nettverkskall for en innlogging de ikke har.
+  if (!request.cookies.getAll().some((c) => c.name.startsWith('sb-'))) {
+    return NextResponse.next({ request })
+  }
+
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -43,5 +53,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/admin/:path*', '/ansatt/:path*', '/verksted/:path*', '/m/:path*', '/retur'],
 }

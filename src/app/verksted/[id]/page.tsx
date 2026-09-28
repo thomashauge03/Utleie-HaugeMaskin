@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { hentAdmin } from '@/lib/auth'
+import { hentAdmin, kanEndreVerksted } from '@/lib/auth'
 import { hentVerkstedMaskin } from '@/lib/verksted-data'
 import { tid } from '@/lib/dato'
 import { HMLogo } from '@/components/hm-logo'
@@ -27,7 +27,9 @@ export default async function VerkstedMaskinSide(
 
   if (!data) notFound()
   const { maskin, deler, delStatus, delMal, logg } = data
-  const innlogget = Boolean(bruker)
+  // «innlogget» betyr her innlogget med rett til å endre verkstedet. En
+  // ansatt er innlogget, men melder fra som alle andre.
+  const innlogget = kanEndreVerksted(bruker)
 
   return (
     <>
@@ -75,8 +77,10 @@ export default async function VerkstedMaskinSide(
           <div className="p-5">
             {!innlogget && (
               <p className="mb-4 border-l-4 border-hm-amber bg-[var(--flate-2)] p-3 text-sm">
-                Du kan melde fra om at den må sveises. De andre valgene krever
-                innlogging.
+                Du kan melde fra om at den må sveises.{' '}
+                {bruker
+                  ? 'De andre valgene er for verkstedet.'
+                  : 'De andre valgene krever innlogging.'}
               </p>
             )}
             <StatusVelger

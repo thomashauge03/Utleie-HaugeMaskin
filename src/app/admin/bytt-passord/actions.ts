@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
-import { krevInnlogget } from '@/lib/auth'
+import { hjemFor, krevInnlogget } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
@@ -53,5 +53,5 @@ export async function byttEgetPassord(
     .update({ ma_bytte_passord: false })
     .eq('id', bruker.id)
 
-  redirect(bruker.rolle === 'service' ? '/verksted' : '/admin')
+  redirect(hjemFor(bruker.rolle))
 }

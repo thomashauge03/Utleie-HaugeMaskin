@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { hentAdmin } from '@/lib/auth'
+import { hentAdmin, kanEndreVerksted } from '@/lib/auth'
 import { hentVerksted, grupperPaaType } from '@/lib/verksted-data'
 import { HMLogo } from '@/components/hm-logo'
 import { Merke, TomTilstand } from '@/components/ui'
@@ -112,10 +112,12 @@ export default async function VerkstedSide(props: PageProps<'/verksted'>) {
       </header>
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-7">
-        {!bruker && (
+        {!kanEndreVerksted(bruker) && (
           <p className="mb-6 border-l-4 border-hm-amber bg-[var(--flate-2)] p-3 text-sm">
-            Du kan melde fra om at noe må sveises. For å sette «deler bestilt»
-            eller «klar for drift» må du logge inn.
+            Du kan melde fra om at noe må sveises.{' '}
+            {bruker
+              ? '«Deler bestilt» og «klar for drift» settes av verkstedet.'
+              : 'For å sette «deler bestilt» eller «klar for drift» må du logge inn.'}
           </p>
         )}
 

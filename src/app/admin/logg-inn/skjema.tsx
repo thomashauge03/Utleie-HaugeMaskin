@@ -10,11 +10,12 @@ const start: LoggInnTilstand = {}
 const felt =
   'w-full border-2 border-hm-200 bg-white px-3.5 py-3 text-base text-hm-black outline-none transition-colors focus:border-hm-red'
 
-export function LoggInnSkjema() {
+export function LoggInnSkjema({ neste }: { neste: string | null }) {
   const [tilstand, handling, venter] = useActionState(loggInn, start)
 
   return (
     <form action={handling} className="space-y-4">
+      {neste && <input type="hidden" name="neste" value={neste} />}
       <label className="block">
         <span className="mb-1.5 block text-xs font-bold tracking-widest text-hm-500 uppercase">
           E-post

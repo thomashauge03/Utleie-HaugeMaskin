@@ -1,14 +1,19 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { hentAdmin } from '@/lib/auth'
+import { trygtNeste } from '@/lib/neste'
 import { HMLogo } from '@/components/hm-logo'
 import { LoggInnSkjema } from './skjema'
 
 export const metadata: Metadata = { title: 'Logg inn – HM Utleie' }
 export const dynamic = 'force-dynamic'
 
-export default async function LoggInnSide() {
-  if (await hentAdmin()) redirect('/admin')
+export default async function LoggInnSide(props: PageProps<'/admin/logg-inn'>) {
+  const sp = await props.searchParams
+  // Kom de fra en maskin eller fra returkoden, skal de tilbake dit.
+  const neste = trygtNeste(sp.neste)
+
+  if (await hentAdmin()) redirect(neste ?? '/admin')
 
   return (
     <main className="relative flex min-h-dvh flex-1 items-center justify-center overflow-hidden bg-hm-black px-5 py-12">
@@ -23,13 +28,13 @@ export default async function LoggInnSide() {
 
       <div className="relative w-full max-w-sm">
         <HMLogo størrelse="lg" />
-        <h1 className="hm-display mt-6 text-3xl text-white">Adminpanel</h1>
+        <h1 className="hm-display mt-6 text-3xl text-white">Logg inn</h1>
         <p className="mt-1 mb-8 text-sm text-white/60">
           Innlogging for ansatte hos Hauge Maskin
         </p>
 
         <div className="border-2 border-white bg-white p-6">
-          <LoggInnSkjema />
+          <LoggInnSkjema neste={neste} />
         </div>
       </div>
     </main>

@@ -1,4 +1,4 @@
-import { hentAdmin } from '@/lib/auth'
+import { hentFullAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { lagFakturaPdf } from '@/lib/faktura-pdf'
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request, ctx: RouteContext<'/api/faktura/[id]'>) {
   // Fakturagrunnlaget inneholder kundens navn, adresse og telefonnummer.
-  if (!(await hentAdmin())) {
+  if (!(await hentFullAdmin())) {
     return new Response(null, { status: 401 })
   }
 

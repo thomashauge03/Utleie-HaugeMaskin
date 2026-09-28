@@ -1,4 +1,4 @@
-import { hentAdmin } from '@/lib/auth'
+import { hentFullAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
 import type { Maskin } from '@/lib/types'
@@ -17,7 +17,7 @@ function csvFelt(verdi: string | null): string {
 
 export async function GET() {
   // Route handlers er offentlige endepunkter og må sikres som sådan.
-  if (!(await hentAdmin())) {
+  if (!(await hentFullAdmin())) {
     return new Response(null, { status: 401 })
   }
 

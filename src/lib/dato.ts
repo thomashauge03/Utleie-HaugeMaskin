@@ -69,3 +69,41 @@ export function dagerTil(iso: string): number {
   const ms = Date.parse(`${mål}T00:00:00Z`) - Date.parse(`${idag}T00:00:00Z`)
   return Math.round(ms / 86_400_000)
 }
+
+/**
+ * Avtalt levering, eller «til videre» for internleier uten dato.
+ *
+ * Kundeleier har alltid dato – databasen krever det – så for dem er
+ * dette det samme som dato().
+ */
+export function returDato(iso: string | null): string {
+  return iso ? dato(iso) : 'til videre'
+}
+
+/**
+ * «2026-07-30» → tidspunktet 23:59:59 den dagen i norsk tid, som et
+ * korrekt UTC-instant – uavhengig av hvilken tidssone serveren står i.
+ *
+ * Vi finner Oslos offset ved å formatere kl. 12 UTC den dagen i
+ * Europe/Oslo: klokka blir 13 (vinter, UTC+1) eller 14 (sommer, UTC+2).
+ * Da vet vi at 23:59:59 Oslo = (23 − offset):59:59 UTC samme dato.
+ * Kl. 12 UTC unngår all døgnkryssing.
+ */
+export function norskSluttAvDag(ymd: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null
+
+  const [år, mnd, dag] = ymd.split('-').map(Number)
+  const klokka12 = new Date(Date.UTC(år, mnd - 1, dag, 12, 0, 0))
+
+  const osloTime = Number(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Oslo',
+      hour: '2-digit',
+      hour12: false,
+    }).format(klokka12),
+  )
+  const offset = osloTime - 12 // 1 om vinteren, 2 om sommeren
+
+  const instant = new Date(Date.UTC(år, mnd - 1, dag, 23 - offset, 59, 59))
+  return Number.isNaN(instant.getTime()) ? null : instant
+}

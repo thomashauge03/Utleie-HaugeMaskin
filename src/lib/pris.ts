@@ -42,3 +42,21 @@ export function beregnAntall(start: string, slutt: string, e: PrisEnhet): number
   const per = e === 'time' ? 1000 * 60 * 60 : 1000 * 60 * 60 * 24
   return Math.max(1, Math.ceil(ms / per))
 }
+
+/**
+ * Antall enheter og beløp for en periode.
+ *
+ * Én regel for både forslaget på godkjenningssiden og internleie som
+ * regnes ut ved levering, så de aldri kan regne ulikt. Hele kroner, som
+ * forslaget alltid har vært. Uten pris på maskinen blir beløpet null,
+ * ikke 0 – «mangler pris» er noe annet enn «gratis».
+ */
+export function beregnPris(
+  start: string,
+  slutt: string,
+  e: PrisEnhet,
+  pris: number | null,
+): { antall: number; belop: number | null } {
+  const antall = beregnAntall(start, slutt, e)
+  return { antall, belop: pris === null ? null : Math.round(antall * pris) }
+}

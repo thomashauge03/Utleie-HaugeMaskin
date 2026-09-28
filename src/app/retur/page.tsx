@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { hentEnhetsId } from '@/lib/enhet'
+import { hentAdmin } from '@/lib/auth'
 import { dato } from '@/lib/dato'
 import { HMLogo } from '@/components/hm-logo'
 import { FinnSkjema } from './finn-skjema'
@@ -15,6 +16,9 @@ export const metadata: Metadata = { title: 'Lever tilbake – HM Utleie' }
  * maskinene leveres inn. Se docs/TEKNISK-PLAN.md pkt. 8.2.
  */
 export default async function FellesReturSide() {
+  // Egne folk leverer fra sin egen side, der alt de har ute står samlet.
+  if (await hentAdmin()) redirect('/ansatt')
+
   const enhetsId = await hentEnhetsId()
 
   const { data: leier } = enhetsId
@@ -79,6 +83,15 @@ export default async function FellesReturSide() {
             <FinnSkjema />
           </>
         )}
+
+        <p className="mt-8 text-center">
+          <Link
+            href="/admin/logg-inn?neste=/ansatt"
+            className="inline-flex min-h-[2.75rem] items-center text-sm font-semibold text-[var(--blekk-svak)] underline underline-offset-4"
+          >
+            Ansatt? Logg inn
+          </Link>
+        </p>
       </main>
     </>
   )

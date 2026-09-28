@@ -3,15 +3,25 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { hentEnhetsId } from '@/lib/enhet'
-import type { Leie, Maskin } from '@/lib/types'
+import { BYTT_PASSORD_STI, hentAdmin } from '@/lib/auth'
+import { hentProsjektvalg } from '@/lib/intern-leie'
+import { prosjektNavn } from '@/lib/leietaker'
+import type { Leie, Maskin, ProsjektInnbygd } from '@/lib/types'
 import { HMLogo } from '@/components/hm-logo'
 import { KNAPP_PRIMÆR, Merke } from '@/components/ui'
-import { dato, returDato } from '@/lib/dato'
+import { dato, osloDag, returDato } from '@/lib/dato'
 import { krPer, prisEnhet } from '@/lib/pris'
 import { kanLeiesUt, verkstedStatusAv } from '@/lib/verksted'
+import { LeverKnapp } from '@/app/ansatt/lever-knapp'
+import { UttakEnkel } from '@/app/ansatt/uttak-skjema'
 import { LeieSkjema } from './leie-skjema'
 
 export const dynamic = 'force-dynamic'
+
+type AktivLeie = Leie & {
+  ansatt: { navn: string } | null
+  prosjekter: ProsjektInnbygd | null
+}
 
 export async function generateMetadata(
   props: PageProps<'/m/[qr]'>,
@@ -39,18 +49,31 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
   if (!data) notFound()
   const maskin = data as Maskin
 
-  const { data: aktivRad } = await supabaseAdmin
-    .from('leier')
-    .select('*')
-    .eq('maskin_id', maskin.id)
-    .in('status', ['aktiv', 'venter_godkjenning'])
-    .maybeSingle()
+  const [{ data: aktivRad }, enhetsId, bruker] = await Promise.all([
+    supabaseAdmin
+      .from('leier')
+      .select('*, ansatt:admin_brukere!leier_ansatt_id_fkey(navn), prosjekter(navn, nummer)')
+      .eq('maskin_id', maskin.id)
+      .in('status', ['aktiv', 'venter_godkjenning'])
+      .maybeSingle(),
+    hentEnhetsId(),
+    hentAdmin(),
+  ])
 
-  const aktiv = aktivRad as Leie | null
-  const enhetsId = await hentEnhetsId()
+  const aktiv = aktivRad as unknown as AktivLeie | null
   const erMin = Boolean(aktiv && enhetsId && aktiv.enhets_id === enhetsId)
   const utilgjengelig = maskin.status === 'service' || maskin.status === 'utrangert'
   const påVerksted = !kanLeiesUt(maskin.verksted_status)
+
+  // Innlogget betyr en av våre egne. De får det korte uttaksskjemaet i
+  // stedet for kundeskjemaet, og ser hvilken kollega som har maskinen.
+  const ansatt = bruker && !bruker.maByttePassord ? bruker : null
+  const minIntern = Boolean(ansatt && aktiv?.ansatt_id === ansatt.id)
+  const prosjekt = aktiv?.prosjekter ? prosjektNavn(aktiv.prosjekter) : null
+  const valg =
+    ansatt && !aktiv && !utilgjengelig && !påVerksted
+      ? await hentProsjektvalg(ansatt.id)
+      : null
 
   return (
     <>
@@ -74,7 +97,9 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
             {utilgjengelig ? (
               <Merke type="nøytral">Ute av drift</Merke>
             ) : aktiv ? (
-              <Merke type="gul">{erMin ? 'Du leier denne' : 'Utleid'}</Merke>
+              <Merke type="gul">
+                {erMin ? 'Du leier denne' : minIntern ? 'Du har denne' : 'Utleid'}
+              </Merke>
             ) : (
               <Merke type="grønn">Ledig nå</Merke>
             )}
@@ -83,7 +108,8 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
             )}
           </div>
 
-          {maskin.vis_pris && maskin.dogn_pris !== null && (
+          {/* Internleie har ingen kundepris – prisen er for kunder. */}
+          {!ansatt && maskin.vis_pris && maskin.dogn_pris !== null && (
             <p className="mt-6 flex items-baseline gap-2">
               <span className="hm-display hm-tall text-5xl">
                 {maskin.dogn_pris.toLocaleString('nb-NO')}
@@ -118,14 +144,56 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
               Se leien og lever
             </Link>
           </div>
+        ) : minIntern && aktiv ? (
+          <div className="space-y-5">
+            <Beskjed tittel={prosjekt ? `Du har denne på ${prosjekt}` : 'Du har denne'}>
+              Tatt ut {dato(aktiv.start_tid)}.
+              {aktiv.planlagt_slutt && ` Ventet tilbake ${dato(aktiv.planlagt_slutt)}.`}
+            </Beskjed>
+            <LeverKnapp leieId={aktiv.id} />
+          </div>
+        ) : ansatt && aktiv?.ansatt_id ? (
+          <Beskjed tittel={`Hos ${aktiv.ansatt?.navn ?? 'en kollega'}`}>
+            {prosjekt ? `Står på ${prosjekt}. ` : ''}
+            {aktiv.planlagt_slutt
+              ? `Ventet tilbake ${dato(aktiv.planlagt_slutt)}.`
+              : 'Ute til videre.'}
+          </Beskjed>
         ) : aktiv ? (
           <Beskjed tittel="Maskinen er utleid">
             {aktiv.planlagt_slutt
               ? `Den er ventet tilbake ${dato(aktiv.planlagt_slutt)}. Ta kontakt med utleier hvis du trenger den før det.`
               : 'Ta kontakt med utleier hvis du trenger den.'}
           </Beskjed>
+        ) : bruker?.maByttePassord ? (
+          <Beskjed tittel="Bytt passord først">
+            Du må velge ditt eget passord før du kan ta ut utstyr.{' '}
+            <Link href={BYTT_PASSORD_STI} className="font-semibold underline underline-offset-4">
+              Bytt passord
+            </Link>
+          </Beskjed>
+        ) : ansatt && valg ? (
+          <div className="space-y-4">
+            <p className="hm-display text-lg">Ta ut til prosjekt</p>
+            <UttakEnkel
+              maskinId={maskin.id}
+              prosjekter={valg.prosjekter}
+              sistProsjektId={valg.sistProsjektId}
+              iDag={osloDag(new Date())}
+            />
+          </div>
         ) : (
-          <LeieSkjema maskinId={maskin.id} maskinNavn={maskin.navn} />
+          <>
+            <LeieSkjema maskinId={maskin.id} maskinNavn={maskin.navn} />
+            <p className="mt-8 text-center">
+              <Link
+                href={`/admin/logg-inn?neste=${encodeURIComponent(`/m/${maskin.qr_kode}`)}`}
+                className="inline-flex min-h-[2.75rem] items-center text-sm font-semibold text-[var(--blekk-svak)] underline underline-offset-4"
+              >
+                Ansatt? Logg inn
+              </Link>
+            </p>
+          </>
         )}
       </main>
     </>
@@ -146,4 +214,3 @@ function Beskjed({
     </div>
   )
 }
-

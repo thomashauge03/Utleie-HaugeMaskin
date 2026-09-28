@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { krevInnlogget } from '@/lib/auth'
+import { hjemFor, krevInnlogget } from '@/lib/auth'
 import { HMLogo } from '@/components/hm-logo'
 import { ByttPassordSkjema } from './skjema'
 
@@ -42,7 +42,7 @@ export default async function ByttPassordSide() {
 
         {!påkrevd && (
           <Link
-            href={bruker.rolle === 'service' ? '/verksted' : '/admin'}
+            href={hjemFor(bruker.rolle)}
             className="mt-5 inline-flex min-h-[2.75rem] items-center text-sm font-semibold text-white/70 underline underline-offset-4 hover:text-white"
           >
             ← Tilbake uten å endre

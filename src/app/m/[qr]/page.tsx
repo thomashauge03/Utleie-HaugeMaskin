@@ -49,7 +49,7 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
   if (!data) notFound()
   const maskin = data as Maskin
 
-  const [{ data: aktivRad }, enhetsId, bruker] = await Promise.all([
+  const [{ data: aktivRad, error: aktivFeil }, enhetsId, bruker] = await Promise.all([
     supabaseAdmin
       .from('leier')
       .select('*, ansatt:admin_brukere!leier_ansatt_id_fkey(navn), prosjekter(navn, nummer)')
@@ -59,6 +59,10 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
     hentEnhetsId(),
     hentAdmin(),
   ])
+
+  // En feil her skal aldri se ut som «ingen leier» – ellers viser sida
+  // en utleid maskin som «Ledig nå».
+  if (aktivFeil) throw new Error(`Kunne ikke hente leien: ${aktivFeil.message}`)
 
   const aktiv = aktivRad as unknown as AktivLeie | null
   const erMin = Boolean(aktiv && enhetsId && aktiv.enhets_id === enhetsId)
@@ -183,17 +187,22 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
             />
           </div>
         ) : (
-          <>
-            <LeieSkjema maskinId={maskin.id} maskinNavn={maskin.navn} />
-            <p className="mt-8 text-center">
-              <Link
-                href={`/admin/logg-inn?neste=${encodeURIComponent(`/m/${maskin.qr_kode}`)}`}
-                className="inline-flex min-h-[2.75rem] items-center text-sm font-semibold text-[var(--blekk-svak)] underline underline-offset-4"
-              >
-                Ansatt? Logg inn
-              </Link>
-            </p>
-          </>
+          <LeieSkjema maskinId={maskin.id} maskinNavn={maskin.navn} />
+        )}
+
+        {/* Vises for alle som ikke er innlogget, uansett hva maskinen
+            viser over – står den utleid til en kunde, havnet lenka ellers
+            aldri på skjermen, og en ansatt uten økt på telefonen fikk bare
+            kundeskjemaet (spec §3.4). */}
+        {!bruker && (
+          <p className="mt-8 text-center">
+            <Link
+              href={`/admin/logg-inn?neste=${encodeURIComponent(`/m/${maskin.qr_kode}`)}`}
+              className="inline-flex min-h-[2.75rem] items-center text-sm font-semibold text-[var(--blekk-svak)] underline underline-offset-4"
+            >
+              Ansatt? Logg inn
+            </Link>
+          </p>
         )}
       </main>
     </>

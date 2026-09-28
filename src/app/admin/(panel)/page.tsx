@@ -186,11 +186,15 @@ export default async function OversiktSide() {
                         <span className="block truncate font-semibold">
                           {l.maskiner?.navn ?? 'Ukjent'}
                         </span>
-                        <span className="block truncate text-sm text-[var(--blekk-svak)]">
-                          <span className="inline-flex flex-wrap items-center gap-2">
+                        <span className="flex min-w-0 items-center gap-2 text-sm text-[var(--blekk-svak)]">
+                          <span className="truncate">
                             {t.prosjekt ? `${t.navn} · ${t.prosjekt}` : t.navn}
-                            {t.intern && <Merke>Intern</Merke>}
                           </span>
+                          {t.intern && (
+                            <span className="shrink-0">
+                              <Merke>Intern</Merke>
+                            </span>
+                          )}
                         </span>
                       </span>
                       <span className="shrink-0 text-right">

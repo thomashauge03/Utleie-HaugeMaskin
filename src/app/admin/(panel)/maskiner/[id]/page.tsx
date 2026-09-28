@@ -157,11 +157,15 @@ export default async function MaskinDetaljSide(props: PageProps<'/admin/maskiner
                     <span className="hm-tall shrink-0 font-mono text-xs">
                       {l.referanse}
                     </span>
-                    <span className="min-w-0 flex-1 truncate font-semibold">
-                      <span className="inline-flex flex-wrap items-center gap-2">
+                    <span className="flex min-w-0 flex-1 items-center gap-2 font-semibold">
+                      <span className="truncate">
                         {t.prosjekt ? `${t.navn} · ${t.prosjekt}` : t.navn}
-                        {t.intern && <Merke>Intern</Merke>}
                       </span>
+                      {t.intern && (
+                        <span className="shrink-0">
+                          <Merke>Intern</Merke>
+                        </span>
+                      )}
                     </span>
                     <span className="hm-tall text-sm text-[var(--blekk-svak)]">
                       {dato(l.start_tid)}

@@ -476,6 +476,13 @@ alter table leier
   add column if not exists ansatt_id uuid references admin_brukere(id),
   add column if not exists prosjekt_id uuid references prosjekter(id);
 
+-- antall_dogn var numeric(6,2) – maks 9999,99. En internleie uten
+-- sluttdato («til videre») kan stå ute svært lenge, og med timepris er
+-- taket brukt opp etter rundt 10 000 timer (~417 dager): update ville
+-- feile på overflow, og leien kunne aldri avsluttes. Idempotent: samme
+-- type to ganger er ufarlig.
+alter table leier alter column antall_dogn type numeric(10,2);
+
 -- To former, og bare to. En kundeleie ser ut akkurat som før. En
 -- internleie har ansatt og prosjekt, og kan stå «til videre».
 alter table leier drop constraint if exists leier_leietaker_check;

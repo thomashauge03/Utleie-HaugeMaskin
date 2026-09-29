@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Worktreene fra Claude-øktene ligger her, med egne .next-bygg.
+    // Uten denne linja lintes byggene deres, og `npm run lint` feiler.
+    ".claude/**",
   ]),
 ]);
 

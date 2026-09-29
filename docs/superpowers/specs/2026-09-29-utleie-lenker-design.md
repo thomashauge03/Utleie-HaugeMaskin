@@ -16,8 +16,10 @@ Maskinlista skal finnes ett sted. Appen får ingen egen katalog.
 
 1. **Forsida, den svarte toppen.** Under ingressen «… QR-koden sitter på
    maskinen.» kommer knappen «Se alle maskiner og hva som er ledig» til
-   `${HOVEDSIDE_URL}/utleie`. Stil: `KNAPP_SEKUNDÆR` (lys flate, svart kant),
-   samme som «Til retursiden». Rødt er forbeholdt leieflyten.
+   `${HOVEDSIDE_URL}/utleie`. Samme form som `KNAPP_SEKUNDÆR` («Til
+   retursiden»), men med faste farger – hvit flate, svart tekst – fordi
+   toppen er svart i begge tema, og temafargene ville gitt hvit tekst på hvit
+   flate der. Rødt er forbeholdt leieflyten.
 2. **Bunnteksten.** «Hauge Maskin» til `HOVEDSIDE_URL`, først i lista foran
    Leievilkår, Personvern og Admin.
 3. **Adressen.** `HOVEDSIDE_URL` er én konstant øverst i `src/app/page.tsx`.

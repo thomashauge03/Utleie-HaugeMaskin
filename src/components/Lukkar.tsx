@@ -39,18 +39,30 @@
 
    SIKKERHETSNETT, fordi dette ligger over et system i drift: platene er
    display:none som utgangspunkt, så svikter skriptet ser ingen noe;
-   pointer-events none; åpner senest etter 2,6 sekund uansett; fjerner
-   seg selv; respekterer prefers-reduced-motion.
+   pointer-events none; åpner senest etter 2,6 sekund uansett; skjuler
+   seg selv etterpå; respekterer prefers-reduced-motion.
 
-   Kanonisk kopi: hauge-maskin-mobil/twa/lukkar.html
+   ── RØRER ALDRI ELEMENTET, BARE <html> ─────────────────────────
+   Skriptet kjører før React tar over sida. Fjernet eller endret det
+   #hm-lukkar, stemte ikke sida lenger med det serveren sendte: React
+   ga opp hydreringen og bygde hele treet på nytt i nettleseren, på
+   hver eneste side. Derfor styres alt med ett attributt på <html>,
+   data-hm-lukkar = lukket | opp | ferdig, og CSS-en gjør resten.
+   Elementet blir liggende, skjult, når animasjonen er ferdig.
+   <html> har suppressHydrationWarning i layouten, slik at attributtet
+   ikke regnes som et avvik.
+
+   Kanonisk kopi: hauge-maskin-mobil/twa/lukkar.html. Den er vanlig
+   HTML uten React, og fjerner elementet sitt – det skal ikke denne.
    ══════════════════════════════════════════════════════════════════ */
 
 const CSS = `
 #hm-lukkar { display: none; }
-html[data-hm-app] #hm-lukkar {
+html[data-hm-lukkar] #hm-lukkar {
   display: block;
   position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; overflow: hidden;
 }
+html[data-hm-lukkar="ferdig"] #hm-lukkar { display: none; }
 #hm-lukkar .hm-l-grunn { position: absolute; inset: 0; background: #0a0a0c; }
 #hm-lukkar i {
   position: absolute; top: -14%; bottom: -14%; width: 46%;
@@ -63,37 +75,36 @@ html[data-hm-app] #hm-lukkar {
 #hm-lukkar i:nth-of-type(1) { left: -8%; }
 #hm-lukkar i:nth-of-type(2) { left: 28%; }
 #hm-lukkar i:nth-of-type(3) { left: 64%; }
-#hm-lukkar.opp .hm-l-grunn { opacity: 0; }
-#hm-lukkar.opp i { animation: hmLukkOpp 520ms cubic-bezier(.62,.02,.34,1) both; }
-#hm-lukkar.opp i:nth-of-type(1) { animation-delay: 0ms; }
-#hm-lukkar.opp i:nth-of-type(2) { animation-delay: 60ms; }
-#hm-lukkar.opp i:nth-of-type(3) { animation-delay: 120ms; }
+html[data-hm-lukkar="opp"] #hm-lukkar .hm-l-grunn { opacity: 0; }
+html[data-hm-lukkar="opp"] #hm-lukkar i { animation: hmLukkOpp 520ms cubic-bezier(.62,.02,.34,1) both; }
+html[data-hm-lukkar="opp"] #hm-lukkar i:nth-of-type(1) { animation-delay: 0ms; }
+html[data-hm-lukkar="opp"] #hm-lukkar i:nth-of-type(2) { animation-delay: 60ms; }
+html[data-hm-lukkar="opp"] #hm-lukkar i:nth-of-type(3) { animation-delay: 120ms; }
 @keyframes hmLukkOpp { to { transform: skewX(-12deg) translate3d(210%, 0, 0); } }
 @media (prefers-reduced-motion: reduce) {
   #hm-lukkar i { display: none; }
-  #hm-lukkar.opp { opacity: 0; transition: opacity .2s linear; }
+  html[data-hm-lukkar="opp"] #hm-lukkar { opacity: 0; transition: opacity .2s linear; }
 }
 `
 
 const JS = `
 (function () {
-  var e = document.getElementById('hm-lukkar');
-  if (!e) return;
-  function vekk() { if (e.parentNode) e.parentNode.removeChild(e); }
   var r = document.referrer || '';
-  if (r.lastIndexOf('android-app://no.haugemaskin.mobil', 0) !== 0) { vekk(); return; }
+  if (r.lastIndexOf('android-app://no.haugemaskin.mobil', 0) !== 0) return;
   try {
-    if (sessionStorage.getItem('hm-lukkar')) { vekk(); return; }
+    if (sessionStorage.getItem('hm-lukkar')) return;
     sessionStorage.setItem('hm-lukkar', '1');
   } catch (x) {}
-  document.documentElement.setAttribute('data-hm-app', '');
+  var html = document.documentElement;
+  function sett(tilstand) { html.setAttribute('data-hm-lukkar', tilstand); }
+  sett('lukket');
   var start = Date.now(), gjort = false;
   function opne() {
     if (gjort) return;
     gjort = true;
     setTimeout(function () {
-      e.className = 'opp';
-      setTimeout(vekk, 760);
+      sett('opp');
+      setTimeout(function () { sett('ferdig'); }, 760);
     }, Math.max(0, 260 - (Date.now() - start)));
   }
   if (document.readyState === 'complete') opne();

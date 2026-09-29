@@ -43,6 +43,10 @@ export default function RootLayout({
     <html
       lang="nb"
       className={`${geistSans.variable} ${geistMono.variable} ${barlow.variable} h-full`}
+      /* Lukkeren setter data-hm-lukkar på <html> før React tar over sida.
+         Uten denne regnes attributtet som et avvik. Gjelder bare <html>
+         selv, ikke det som ligger inni. */
+      suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">
         {/* Først i body, så platene er malt før noe annet rekker å vises. */}

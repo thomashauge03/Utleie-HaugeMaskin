@@ -45,11 +45,19 @@ export function RedigerBruker({
   const [passordApen, settPassordApen] = useState(false)
   const [melding, settMelding] = useState('')
   const [feil, settFeil] = useState('')
+  const [passordFeil, settPassordFeil] = useState('')
 
+  // Feil og suksess holdes hver for seg – før havnet begge i `melding`,
+  // og en feil sto i grønt som om passordet var satt.
   const nyttPassord = async (fd: FormData) => {
     const r = await settPassord(bruker.id, fd)
-    settMelding(r.feil ?? r.ok ?? '')
-    if (r.ok) settPassordApen(false)
+    if (r.feil) {
+      settPassordFeil(r.feil)
+      return
+    }
+    settPassordFeil('')
+    settMelding(r.ok ?? '')
+    settPassordApen(false)
   }
 
   if (redigerer) {
@@ -172,7 +180,11 @@ export function RedigerBruker({
           </button>
           <button
             type="button"
-            onClick={() => settPassordApen((v) => !v)}
+            onClick={() => {
+              settPassordFeil('')
+              settMelding('')
+              settPassordApen((v) => !v)
+            }}
             className={KNAPP_LITEN}
           >
             Nytt passord
@@ -207,6 +219,14 @@ export function RedigerBruker({
           <span className="w-full text-xs text-[var(--blekk-svak)]">
             Vises i klartekst fordi du må gi det videre selv.
           </span>
+          {passordFeil && (
+            <p
+              role="alert"
+              className="w-full border-l-4 border-hm-red bg-hm-red/10 p-2 text-sm font-semibold text-hm-red-ink"
+            >
+              {passordFeil}
+            </p>
+          )}
         </form>
       )}
 

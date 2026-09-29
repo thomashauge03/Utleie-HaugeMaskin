@@ -2,6 +2,16 @@ import Link from 'next/link'
 import { HMLogo } from '@/components/hm-logo'
 import { KNAPP_SEKUNDÆR } from '@/components/ui'
 
+// Hovedsida, der maskinlista med ledig/utleid ligger. haugemaskin.no er ikke
+// koblet til Vercel ennå – per 29.09.2026 sender den til Facebook-sida. Bytt
+// til https://haugemaskin.no når domenet er på plass.
+const HOVEDSIDE_URL = 'https://haugemaskin.vercel.app'
+
+// Toppen er svart i begge tema. KNAPP_SEKUNDÆR følger temaet og ville gitt
+// hvit tekst på hvit flate her, så denne har faste farger.
+const KNAPP_PÅ_SVART =
+  'hm-trykk inline-flex min-h-[2.75rem] items-center justify-center gap-2 border-2 border-white bg-white px-4 text-sm font-semibold text-hm-black shadow-[3px_3px_0_0_var(--color-hm-red)] hover:bg-white/90'
+
 const steg = [
   { n: '01', tittel: 'Skann', tekst: 'Hold kameraet mot QR-koden på maskinen.' },
   { n: '02', tittel: 'Bekreft', tekst: 'Fyll ut, ta bilde av maskinen, og leien starter.' },
@@ -43,6 +53,15 @@ export default function Forside() {
               Ingen konto, ingen skjemaer på forhånd, ingen venting på nøkkel.
               QR-koden sitter på maskinen.
             </p>
+
+            {/* hm-inn på en egen div: animasjonen fyller transform: none og
+                ville ellers slukt trykkeffekten fra hm-trykk. */}
+            <div className="hm-inn mt-8" style={{ animationDelay: '180ms' }}>
+              <a href={`${HOVEDSIDE_URL}/utleie`} className={KNAPP_PÅ_SVART}>
+                Se alle maskiner og hva som er ledig
+                <span aria-hidden="true">→</span>
+              </a>
+            </div>
           </div>
         </section>
 
@@ -88,6 +107,9 @@ export default function Forside() {
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-7">
           <HMLogo størrelse="sm" />
           <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/60">
+            <a href={HOVEDSIDE_URL} className="hover:text-white">
+              Hauge Maskin
+            </a>
             <Link href="/vilkar" className="hover:text-white">
               Leievilkår
             </Link>

@@ -139,17 +139,30 @@ export async function opprettDel(
   return { ok: `«${navn.data}» er lagt til.` }
 }
 
-export async function endreDel(id: string, formData: FormData) {
+export async function endreDel(id: string, formData: FormData): Promise<Tilstand> {
   await krevAdmin()
 
   const navn = delNavn.safeParse(formData.get('navn'))
-  if (!navn.success) return
+  if (!navn.success) return { feil: navn.error.issues[0].message }
 
   const supabase = await lagServerKlient()
-  await supabase.from('verksted_deler').update({ navn: navn.data }).eq('id', id)
+  const { error } = await supabase
+    .from('verksted_deler')
+    .update({ navn: navn.data })
+    .eq('id', id)
+
+  if (error) {
+    return {
+      feil:
+        error.code === '23505'
+          ? 'Denne delen finnes allerede.'
+          : `Kunne ikke lagre: ${error.message}`,
+    }
+  }
 
   revalidatePath('/admin/innstillinger')
   revalidatePath('/verksted')
+  return {}
 }
 
 /**
@@ -298,11 +311,11 @@ export async function opprettKategori(
  * navnet over. Uten den flyttingen ville maskinene blitt stående med en
  * kategori som ikke lenger finnes i lista.
  */
-export async function endreKategori(id: string, formData: FormData) {
+export async function endreKategori(id: string, formData: FormData): Promise<Tilstand> {
   await krevAdmin()
 
   const navn = navnSkjema.safeParse(formData.get('navn'))
-  if (!navn.success) return
+  if (!navn.success) return { feil: navn.error.issues[0].message }
 
   const supabase = await lagServerKlient()
 
@@ -312,22 +325,39 @@ export async function endreKategori(id: string, formData: FormData) {
     .eq('id', id)
     .maybeSingle()
 
-  if (!gammel || gammel.navn === navn.data) return
+  if (!gammel) return { feil: 'Fant ikke kategorien. Last siden på nytt.' }
+  if (gammel.navn === navn.data) return {}
 
   const { error } = await supabase
     .from('kategorier')
     .update({ navn: navn.data })
     .eq('id', id)
 
-  if (error) return
+  if (error) {
+    return {
+      feil:
+        error.code === '23505'
+          ? 'Denne kategorien finnes allerede.'
+          : `Kunne ikke lagre: ${error.message}`,
+    }
+  }
 
-  await supabase
+  const { error: flyttFeil } = await supabase
     .from('maskiner')
     .update({ kategori: navn.data })
     .eq('kategori', gammel.navn)
 
   revalidatePath('/admin/innstillinger')
   revalidatePath('/admin/maskiner')
+
+  // Navnet er byttet, men maskinene står igjen på det gamle – det må
+  // admin få vite, ellers ser det ut som alt gikk bra.
+  if (flyttFeil) {
+    return {
+      feil: `Kategorien fikk nytt navn, men maskinene ble ikke flyttet over: ${flyttFeil.message}`,
+    }
+  }
+  return {}
 }
 
 /**

@@ -84,14 +84,25 @@ export function Deler({ deler }: { deler: Del[] }) {
 function DelRad({ del }: { del: Del }) {
   const [redigerer, settRedigerer] = useState(false)
   const [bekrefter, settBekrefter] = useState(false)
+  const [feil, settFeil] = useState('')
 
   if (redigerer) {
+    // Feltet står åpent til lagringen faktisk gikk – før lukket det seg
+    // uansett, så et navn som alt fantes forsvant uten beskjed.
+    const lagre = async (fd: FormData) => {
+      const r = await endreDel(del.id, fd)
+      if (r.feil) {
+        settFeil(r.feil)
+        return
+      }
+      settFeil('')
+      settRedigerer(false)
+    }
+
     return (
       <form
-        action={async (fd: FormData) => {
-          await endreDel(del.id, fd)
-          settRedigerer(false)
-        }}
+        action={lagre}
+        onSubmit={utenNullstilling(lagre)}
         className="flex flex-wrap items-center gap-3 p-3"
       >
         <input
@@ -106,11 +117,22 @@ function DelRad({ del }: { del: Del }) {
         </button>
         <button
           type="button"
-          onClick={() => settRedigerer(false)}
+          onClick={() => {
+            settFeil('')
+            settRedigerer(false)
+          }}
           className="text-sm text-[var(--blekk-svak)]"
         >
           Avbryt
         </button>
+        {feil && (
+          <p
+            role="alert"
+            className="w-full border-l-4 border-hm-red bg-hm-red/10 p-2 text-sm font-semibold text-hm-red-ink"
+          >
+            {feil}
+          </p>
+        )}
       </form>
     )
   }

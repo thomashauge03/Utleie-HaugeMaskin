@@ -80,14 +80,25 @@ export function Kategorier({ kategorier }: { kategorier: Kategori[] }) {
 
 function KategoriRad({ kategori }: { kategori: Kategori }) {
   const [redigerer, settRedigerer] = useState(false)
+  const [feil, settFeil] = useState('')
 
   if (redigerer) {
+    // Feltet står åpent til lagringen faktisk gikk – før lukket det seg
+    // uansett, så et navn som alt fantes forsvant uten beskjed.
+    const lagre = async (fd: FormData) => {
+      const r = await endreKategori(kategori.id, fd)
+      if (r.feil) {
+        settFeil(r.feil)
+        return
+      }
+      settFeil('')
+      settRedigerer(false)
+    }
+
     return (
       <form
-        action={async (fd: FormData) => {
-          await endreKategori(kategori.id, fd)
-          settRedigerer(false)
-        }}
+        action={lagre}
+        onSubmit={utenNullstilling(lagre)}
         className="flex flex-wrap items-center gap-3 p-3"
       >
         <input
@@ -102,11 +113,22 @@ function KategoriRad({ kategori }: { kategori: Kategori }) {
         </button>
         <button
           type="button"
-          onClick={() => settRedigerer(false)}
+          onClick={() => {
+            settFeil('')
+            settRedigerer(false)
+          }}
           className="text-sm text-[var(--blekk-svak)]"
         >
           Avbryt
         </button>
+        {feil && (
+          <p
+            role="alert"
+            className="w-full border-l-4 border-hm-red bg-hm-red/10 p-2 text-sm font-semibold text-hm-red-ink"
+          >
+            {feil}
+          </p>
+        )}
       </form>
     )
   }

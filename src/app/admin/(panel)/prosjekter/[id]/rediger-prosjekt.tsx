@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { ETIKETT, FELT, KNAPP_SEKUNDÆR } from '@/components/ui'
+import { utenNullstilling } from '@/lib/skjema'
 import { endreProsjekt, type ProsjektTilstand } from '../actions'
 
 const start: ProsjektTilstand = {}
@@ -18,7 +19,11 @@ export function RedigerProsjekt({
   const [tilstand, handling, venter] = useActionState(endreProsjekt.bind(null, id), start)
 
   return (
-    <form action={handling} className="grid gap-4 p-5 sm:grid-cols-[2fr_1fr_auto] sm:items-end">
+    <form
+      action={handling}
+      onSubmit={utenNullstilling(handling)}
+      className="grid gap-4 p-5 sm:grid-cols-[2fr_1fr_auto] sm:items-end"
+    >
       <label>
         <span className={ETIKETT}>Navn</span>
         <input name="navn" required defaultValue={navn} className={FELT} />

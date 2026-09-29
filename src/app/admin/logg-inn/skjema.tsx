@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
+import { utenNullstilling } from '@/lib/skjema'
 import { loggInn, type LoggInnTilstand } from './actions'
 
 const start: LoggInnTilstand = {}
@@ -14,7 +15,7 @@ export function LoggInnSkjema({ neste }: { neste: string | null }) {
   const [tilstand, handling, venter] = useActionState(loggInn, start)
 
   return (
-    <form action={handling} className="space-y-4">
+    <form action={handling} onSubmit={utenNullstilling(handling)} className="space-y-4">
       {neste && <input type="hidden" name="neste" value={neste} />}
       <label className="block">
         <span className="mb-1.5 block text-xs font-bold tracking-widest text-hm-500 uppercase">

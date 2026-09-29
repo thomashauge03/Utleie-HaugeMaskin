@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { ETIKETT, FELT, KNAPP_LITEN } from '@/components/ui'
+import { utenNullstilling } from '@/lib/skjema'
 import { endreDel, opprettDel, slettDel, type Tilstand } from './actions'
 
 const start: Tilstand = {}
@@ -20,7 +21,7 @@ export function Deler({ deler }: { deler: Del[] }) {
 
   useEffect(() => {
     if (tilstand.ok) skjema.current?.reset()
-  }, [tilstand.ok])
+  }, [tilstand])
 
   return (
     <div className="p-5">
@@ -42,6 +43,7 @@ export function Deler({ deler }: { deler: Del[] }) {
       <form
         ref={skjema}
         action={handling}
+        onSubmit={utenNullstilling(handling)}
         className="border-t-2 border-[var(--kant)] pt-5"
       >
         <span className={ETIKETT}>Ny del</span>

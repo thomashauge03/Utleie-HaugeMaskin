@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { ETIKETT, FELT } from '@/components/ui'
+import { utenNullstilling } from '@/lib/skjema'
 import { lagreVarsling, type Tilstand } from './actions'
 
 const start: Tilstand = {}
@@ -49,7 +50,7 @@ export function VarselSkjema({ varsling }: { varsling: Varsling }) {
   const [tilstand, handling, venter] = useActionState(lagreVarsling, start)
 
   return (
-    <form action={handling} className="space-y-6 p-5">
+    <form action={handling} onSubmit={utenNullstilling(handling)} className="space-y-6 p-5">
       <div className="grid gap-5 sm:grid-cols-2">
         <label className="block">
           <span className={ETIKETT}>Varsler sendes til</span>

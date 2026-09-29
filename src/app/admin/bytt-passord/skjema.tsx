@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
+import { utenNullstilling } from '@/lib/skjema'
 import { byttEgetPassord, type ByttTilstand } from './actions'
 
 const start: ByttTilstand = {}
@@ -15,7 +16,7 @@ export function ByttPassordSkjema() {
   const [tilstand, handling, venter] = useActionState(byttEgetPassord, start)
 
   return (
-    <form action={handling} className="space-y-4">
+    <form action={handling} onSubmit={utenNullstilling(handling)} className="space-y-4">
       <label className="block">
         <span className={etikett}>Nytt passord</span>
         <input

@@ -3,6 +3,7 @@
 import { useActionState } from 'react'
 import { BildeOpplasting } from '@/components/bilde-opplasting'
 import { ETIKETT, FELT, KNAPP_PRIMÆR } from '@/components/ui'
+import { utenNullstilling } from '@/lib/skjema'
 import { leverTilbake, type ReturTilstand } from './actions'
 
 const start: ReturTilstand = {}
@@ -17,7 +18,7 @@ export function ReturSkjema({
   const [tilstand, handling, venter] = useActionState(leverTilbake, start)
 
   return (
-    <form action={handling} className="space-y-6">
+    <form action={handling} onSubmit={utenNullstilling(handling)} className="space-y-6">
       <input type="hidden" name="referanse" value={referanse} />
 
       <BildeOpplasting

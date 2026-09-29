@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { ETIKETT } from '@/components/ui'
+import { utenNullstilling } from '@/lib/skjema'
 import { lagreVerkstedKategori, type Tilstand } from './actions'
 
 const start: Tilstand = {}
@@ -22,7 +23,7 @@ export function VerkstedSkjema({
   const [tilstand, handling, venter] = useActionState(lagreVerkstedKategori, start)
 
   return (
-    <form action={handling} className="space-y-4 p-5">
+    <form action={handling} onSubmit={utenNullstilling(handling)} className="space-y-4 p-5">
       <p className="text-sm text-[var(--blekk-svak)]">
         Maskinene i disse kategoriene får i tillegg en verkstedside, med
         status på deler og hva som må fikses. De kan fortsatt leies ut som

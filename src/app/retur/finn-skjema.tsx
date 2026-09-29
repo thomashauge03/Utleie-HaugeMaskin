@@ -3,6 +3,7 @@
 import { useActionState } from 'react'
 import { ETIKETT, FELT, KNAPP_PRIMÆR } from '@/components/ui'
 import { dato } from '@/lib/dato'
+import { utenNullstilling } from '@/lib/skjema'
 import { finnLeier, knyttTilEnhet, type FinnTilstand } from './actions'
 
 const start: FinnTilstand = {}
@@ -37,7 +38,7 @@ export function FinnSkjema() {
   }
 
   return (
-    <form action={handling} className="space-y-5">
+    <form action={handling} onSubmit={utenNullstilling(handling)} className="space-y-5">
       <label className="block">
         <span className={ETIKETT}>Mobilnummer</span>
         <input

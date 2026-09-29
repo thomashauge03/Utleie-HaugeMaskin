@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { ETIKETT, FELT, KNAPP_SEKUNDÆR } from '@/components/ui'
+import { utenNullstilling } from '@/lib/skjema'
 import { godkjennLeie, sendTilbake, type GodkjennTilstand } from './actions'
 
 const start: GodkjennTilstand = {}
@@ -32,7 +33,7 @@ export function GodkjennSkjema({
           gjelder for fakturaen.
         </p>
 
-        <form action={handling} className="space-y-4">
+        <form action={handling} onSubmit={utenNullstilling(handling)} className="space-y-4">
           <input type="hidden" name="leie_id" value={leieId} />
           <input type="hidden" name="foreslatt_dogn" value={foreslattDogn} />
           <input type="hidden" name="foreslatt_belop" value={foreslattBelop ?? ''} />

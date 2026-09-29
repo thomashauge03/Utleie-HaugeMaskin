@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { FELT, KNAPP_LITEN, Merke } from '@/components/ui'
+import { utenNullstilling } from '@/lib/skjema'
 import { visTelefon } from '@/lib/telefon'
 import { endreBruker, settAktiv, settPassord } from './actions'
 
@@ -45,18 +46,27 @@ export function RedigerBruker({
   const [melding, settMelding] = useState('')
   const [feil, settFeil] = useState('')
 
+  const nyttPassord = async (fd: FormData) => {
+    const r = await settPassord(bruker.id, fd)
+    settMelding(r.feil ?? r.ok ?? '')
+    if (r.ok) settPassordApen(false)
+  }
+
   if (redigerer) {
+    const lagre = async (fd: FormData) => {
+      const r = await endreBruker(bruker.id, fd)
+      if (r.feil) {
+        settFeil(r.feil)
+        return
+      }
+      settFeil('')
+      settRedigerer(false)
+    }
+
     return (
       <form
-        action={async (fd: FormData) => {
-          const r = await endreBruker(bruker.id, fd)
-          if (r.feil) {
-            settFeil(r.feil)
-            return
-          }
-          settFeil('')
-          settRedigerer(false)
-        }}
+        action={lagre}
+        onSubmit={utenNullstilling(lagre)}
         className="flex flex-wrap items-end gap-3 p-4"
       >
         <div className="min-w-[10rem] flex-1">
@@ -179,11 +189,8 @@ export function RedigerBruker({
 
       {passordApen && (
         <form
-          action={async (fd: FormData) => {
-            const r = await settPassord(bruker.id, fd)
-            settMelding(r.feil ?? r.ok ?? '')
-            if (r.ok) settPassordApen(false)
-          }}
+          action={nyttPassord}
+          onSubmit={utenNullstilling(nyttPassord)}
           className="mt-3 flex flex-wrap items-center gap-3 border-t-2 border-[var(--kant)] pt-3"
         >
           <input

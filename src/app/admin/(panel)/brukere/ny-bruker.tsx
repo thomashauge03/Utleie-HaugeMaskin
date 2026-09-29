@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { ETIKETT, FELT, KNAPP_SEKUNDÆR } from '@/components/ui'
+import { utenNullstilling } from '@/lib/skjema'
 import { opprettBruker, type BrukerTilstand } from './actions'
 
 const start: BrukerTilstand = {}
@@ -11,9 +12,11 @@ export function NyBruker() {
   const [tilstand, handling, venter] = useActionState(opprettBruker, start)
   const skjema = useRef<HTMLFormElement>(null)
 
+  // Tømmes bare når brukeren ble opprettet – ved en feil står det som
+  // ble skrevet, så det holder å rette feltet det gjelder.
   useEffect(() => {
     if (tilstand.ok) skjema.current?.reset()
-  }, [tilstand.ok])
+  }, [tilstand])
 
   if (!åpen) {
     return (
@@ -36,6 +39,7 @@ export function NyBruker() {
     <form
       ref={skjema}
       action={handling}
+      onSubmit={utenNullstilling(handling)}
       className="border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-5"
     >
       <h2 className="hm-display mb-4 text-xl">Ny bruker</h2>

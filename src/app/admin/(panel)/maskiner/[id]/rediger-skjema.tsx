@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import { ETIKETT, FELT } from '@/components/ui'
 import { prisEnhet } from '@/lib/pris'
+import { utenNullstilling } from '@/lib/skjema'
 import type { Maskin } from '@/lib/types'
 import {
   deaktiverMaskin,
@@ -33,7 +34,7 @@ export function RedigerSkjema({
 
   return (
     <>
-      <form action={handling} className="space-y-5 p-5">
+      <form action={handling} onSubmit={utenNullstilling(handling)} className="space-y-5 p-5">
         <input type="hidden" name="id" value={maskin.id} />
 
       <label className="block">

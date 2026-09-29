@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { ETIKETT, FELT } from '@/components/ui'
+import { utenNullstilling } from '@/lib/skjema'
 import { lagreInnstillinger, type Tilstand } from './actions'
 
 const start: Tilstand = {}
@@ -17,7 +18,7 @@ export function FirmaSkjema({ innstillinger }: { innstillinger: Innstillinger })
   const [tilstand, handling, venter] = useActionState(lagreInnstillinger, start)
 
   return (
-    <form action={handling} className="space-y-5 p-5">
+    <form action={handling} onSubmit={utenNullstilling(handling)} className="space-y-5 p-5">
       <label className="block">
         <span className={ETIKETT}>Firmanavn</span>
         <input

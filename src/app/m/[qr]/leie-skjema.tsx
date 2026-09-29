@@ -3,6 +3,7 @@
 import { useActionState, useRef } from 'react'
 import { BildeOpplasting } from '@/components/bilde-opplasting'
 import { useSkjemakladd } from '@/lib/bruk-kladd'
+import { utenNullstilling } from '@/lib/skjema'
 import { ETIKETT, FELT, KNAPP_PRIMÆR } from '@/components/ui'
 import { startLeie, type LeieTilstand } from './actions'
 
@@ -55,7 +56,12 @@ export function LeieSkjema({
   useSkjemakladd(`leie:${maskinId}`, skjema)
 
   return (
-    <form ref={skjema} action={handling} className="space-y-6">
+    <form
+      ref={skjema}
+      action={handling}
+      onSubmit={utenNullstilling(handling)}
+      className="space-y-6"
+    >
       <input type="hidden" name="maskin_id" value={maskinId} />
 
       <fieldset className="space-y-4">

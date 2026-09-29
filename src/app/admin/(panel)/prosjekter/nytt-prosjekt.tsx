@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { ETIKETT, FELT, KNAPP_SEKUNDÆR } from '@/components/ui'
+import { utenNullstilling } from '@/lib/skjema'
 import { opprettProsjekt, type ProsjektTilstand } from './actions'
 
 const start: ProsjektTilstand = {}
@@ -13,7 +14,7 @@ export function NyttProsjekt() {
 
   useEffect(() => {
     if (tilstand.ok) skjema.current?.reset()
-  }, [tilstand.ok])
+  }, [tilstand])
 
   if (!åpen) {
     return (
@@ -38,6 +39,7 @@ export function NyttProsjekt() {
     <form
       ref={skjema}
       action={handling}
+      onSubmit={utenNullstilling(handling)}
       className="border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-5"
     >
       <h2 className="hm-display mb-4 text-xl">Nytt prosjekt</h2>

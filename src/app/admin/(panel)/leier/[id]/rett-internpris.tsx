@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { ETIKETT, FELT, KNAPP_SEKUNDÆR, Kort, KortTittel } from '@/components/ui'
+import { utenNullstilling } from '@/lib/skjema'
 import { rettInternpris, type GodkjennTilstand } from './actions'
 
 const start: GodkjennTilstand = {}
@@ -22,7 +23,11 @@ export function RettInternpris({
   return (
     <Kort>
       <KortTittel>Rett antall og beløp</KortTittel>
-      <form action={handling} className="grid gap-4 p-5 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <form
+        action={handling}
+        onSubmit={utenNullstilling(handling)}
+        className="grid gap-4 p-5 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+      >
         <label>
           <span className={ETIKETT}>{antallEtikett}</span>
           <input

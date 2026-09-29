@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { ETIKETT, FELT, KNAPP_SEKUNDÆR } from '@/components/ui'
+import { utenNullstilling } from '@/lib/skjema'
 import { opprettMaskin, type MaskinTilstand } from './actions'
 
 const start: MaskinTilstand = {}
@@ -19,7 +20,7 @@ export function NyMaskin({
 
   useEffect(() => {
     if (tilstand.ok) skjema.current?.reset()
-  }, [tilstand.ok])
+  }, [tilstand])
 
   if (!åpen) {
     return (
@@ -42,6 +43,7 @@ export function NyMaskin({
     <form
       ref={skjema}
       action={handling}
+      onSubmit={utenNullstilling(handling)}
       className="border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-5"
     >
       <h2 className="hm-display mb-4 text-xl">Ny maskin</h2>

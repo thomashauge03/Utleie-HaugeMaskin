@@ -24,11 +24,12 @@ export default async function AnsattSide() {
 
   return (
     <>
-      <header className="relative overflow-hidden bg-hm-black px-5 pt-6 pb-8 text-white">
-        <div
-          aria-hidden="true"
-          className="absolute -top-10 -right-16 h-[160%] w-40 skew-x-[-18deg] bg-hm-red/90"
-        />
+      <header className="relative bg-hm-black px-5 pt-6 pb-8 text-white">
+        {/* Den skrå flata klippes i sitt eget lag. Med overflow-hidden på
+            selve toppen ble brukermenyen kappet der toppen slutter. */}
+        <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-10 -right-16 h-[160%] w-40 skew-x-[-18deg] bg-hm-red/90" />
+        </div>
         <div className="relative mx-auto max-w-3xl">
           <div className="flex items-start justify-between gap-4">
             <HMLogo størrelse="sm" />

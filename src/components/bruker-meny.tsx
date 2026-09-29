@@ -8,6 +8,13 @@ const ROLLE_TEKST: Record<Rolle, string> = {
   ansatt: 'Ansatt',
 }
 
+// Panelet ligger oppå den svarte toppen, som er svart i begge tema. Med
+// temafargene ble det nesten svart på svart i mørkt tema (1,1:1 mot toppen),
+// og «Logg ut» mørkerødt på nesten svart (2,4:1). Variablene låses derfor til
+// de lyse verdiene fra globals.css, så alt inni følger etter.
+const ALLTID_LYS =
+  '[--flate-opp:#ffffff] [--flate-2:#f4f4f5] [--blekk:#0b0b0c] [--blekk-svak:#52525b] [--kant:#e4e4e7] [--kant-sterk:#0b0b0c]'
+
 /**
  * Brukermeny øverst på verkstedet og på uttakssiden.
  *
@@ -17,6 +24,10 @@ const ROLLE_TEKST: Record<Rolle, string> = {
  *
  * Bruker <details> framfor egen klientkomponent: det gir en meny som
  * åpnes og lukkes uten JavaScript, og lukkes med Escape av seg selv.
+ *
+ * Panelet henger ut under den svarte toppen. Toppen kan derfor ikke ha
+ * overflow-hidden – den skrå flata må klippes i sitt eget lag, ellers
+ * kappes panelet der toppen slutter, og «Logg ut» med det.
  */
 export function BrukerMeny({
   bruker,
@@ -58,7 +69,9 @@ export function BrukerMeny({
         <span aria-hidden="true">▾</span>
       </summary>
 
-      <div className="absolute right-0 z-20 mt-2 w-52 border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] shadow-[4px_4px_0_0_var(--kant-sterk)]">
+      <div
+        className={`absolute right-0 z-20 mt-2 w-52 border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] shadow-[4px_4px_0_0_var(--kant-sterk)] ${ALLTID_LYS}`}
+      >
         <p className="border-b-2 border-[var(--kant)] px-4 py-2 text-[10px] font-bold tracking-widest text-[var(--blekk-svak)] uppercase">
           {ROLLE_TEKST[bruker.rolle]}
         </p>

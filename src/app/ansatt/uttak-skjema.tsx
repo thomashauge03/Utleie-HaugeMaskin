@@ -1,8 +1,9 @@
 'use client'
 
-import { startTransition, useActionState, useState } from 'react'
+import { useActionState, useState } from 'react'
 import { ETIKETT, FELT, KNAPP_PRIMÆR } from '@/components/ui'
 import type { ProsjektValg, UttakMaskin } from '@/lib/intern-leie'
+import { utenNullstilling } from '@/lib/skjema'
 import { taUt, type UttakTilstand } from './actions'
 
 const start: UttakTilstand = {}
@@ -60,23 +61,13 @@ export function UttakListe({ maskiner, prosjekter, sistProsjektId, iDag }: Felle
     })
   }
 
+  // Den automatiske nullstillingen etter en innsending rører ikke
+  // `valgte`, den kontrollerte tilstanden for avkrysningsboksene. Feilet
+  // uttaket helt (f.eks. «Prosjektet er avsluttet»), sto boksene tomme
+  // mens `valgte` fortsatt hadde ID-ene: det sto «N valgt» uten
+  // avkrysning, og neste forsøk ga «Velg minst én ting».
   return (
-    <form
-      onSubmit={(e) => {
-        // React nullstiller skjemaet automatisk etter hver innsending med
-        // `<form action>` – men det rører ikke `valgte`, den kontrollerte
-        // tilstanden for avkrysningsboksene. Feiler uttaket helt (f.eks.
-        // «Prosjektet er avsluttet»), sto boksene tomme mens `valgte`
-        // fortsatt hadde ID-ene: det sto «N valgt» uten avkrysning, og
-        // neste forsøk ga «Velg minst én ting». `onSubmit` unngår
-        // nullstillingen. `useActionState`s dispatch må da kalles i en
-        // transition, siden den ikke lenger er selve form-action-en.
-        e.preventDefault()
-        const fd = new FormData(e.currentTarget)
-        startTransition(() => handling(fd))
-      }}
-      className="space-y-6"
-    >
+    <form onSubmit={utenNullstilling(handling)} className="space-y-6">
       {prosjekter.length === 0 && <IngenProsjekter />}
 
       <input
@@ -148,7 +139,7 @@ export function UttakEnkel({ maskinId, prosjekter, sistProsjektId, iDag }: Felle
   const [tilstand, handling, venter] = useActionState(taUt, start)
 
   return (
-    <form action={handling} className="space-y-4">
+    <form action={handling} onSubmit={utenNullstilling(handling)} className="space-y-4">
       <input type="hidden" name="maskin_id" value={maskinId} />
       {prosjekter.length === 0 && <IngenProsjekter />}
       <Felter
@@ -230,10 +221,13 @@ function Svar({ tilstand }: { tilstand: UttakTilstand }) {
   )
 }
 
+// Står også når prosjektene finnes, men alle er avsluttet – og vises for
+// admin, som selv kan gjøre noe med det.
 function IngenProsjekter() {
   return (
     <p className="border-l-4 border-hm-amber bg-[var(--flate-2)] p-3 text-sm">
-      Ingen aktive prosjekter ennå – admin må legge inn prosjekter først.
+      Ingen prosjekter er åpne for uttak nå. En admin kan opprette et nytt,
+      eller åpne et avsluttet, under Prosjekter.
     </p>
   )
 }

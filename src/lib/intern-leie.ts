@@ -273,7 +273,7 @@ export async function taUtUtstyr(
       leie_id: leie.id,
       type: 'startet',
       beskrivelse: `${bruker.navn} tok ut ${m.navn} til ${prosjektNavn(prosjekt)}`,
-      aktor: `ansatt:${bruker.epost}`,
+      aktor: `${bruker.rolle}:${bruker.epost}`,
     })
     tattUt.push(m.navn)
   }

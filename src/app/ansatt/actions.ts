@@ -77,7 +77,7 @@ export async function lever(
   const svar = await avsluttInternLeie({
     leieId,
     ansattId: bruker.id,
-    aktor: `ansatt:${bruker.epost}`,
+    aktor: `${bruker.rolle}:${bruker.epost}`,
     kommentar: kommentar || null,
   })
   if ('feil' in svar) return { feil: svar.feil }

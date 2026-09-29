@@ -13,6 +13,7 @@ import { dato, osloDag, returDato } from '@/lib/dato'
 import { krPer, prisEnhet } from '@/lib/pris'
 import { kanLeiesUt, verkstedStatusAv } from '@/lib/verksted'
 import { LeverKnapp } from '@/app/ansatt/lever-knapp'
+import { LevertRamme } from '@/app/ansatt/levert-melding'
 import { UttakEnkel } from '@/app/ansatt/uttak-skjema'
 import { LeieSkjema } from './leie-skjema'
 
@@ -127,68 +128,72 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
       </header>
 
       <main className="mx-auto w-full max-w-md flex-1 px-5 py-7">
-        {utilgjengelig ? (
-          <Beskjed tittel="Ikke tilgjengelig">
-            Denne maskinen er ute av drift. Ta kontakt med utleier.
-          </Beskjed>
-        ) : påVerksted && !aktiv ? (
-          <Beskjed tittel="Står til reparasjon">
-            {verkstedStatusAv(maskin.verksted_status) === 'deler_bestilt'
-              ? 'Deler er bestilt, og den er klar når de er på plass.'
-              : 'Den må sveises før den kan brukes igjen.'}{' '}
-            Ta kontakt med utleier hvis du trenger den.
-          </Beskjed>
-        ) : erMin && aktiv ? (
-          <div className="space-y-5">
-            <Beskjed tittel="Leien din er i gang">
-              Startet {dato(aktiv.start_tid)}. Forventet levering{' '}
-              {returDato(aktiv.planlagt_slutt)}.
+        {/* Etter en levering bytter siden til uttaksskjemaet – rammen
+            står fast rundt og viser at leveringen gikk. */}
+        <LevertRamme>
+          {utilgjengelig ? (
+            <Beskjed tittel="Ikke tilgjengelig">
+              Denne maskinen er ute av drift. Ta kontakt med utleier.
             </Beskjed>
-            <Link href={`/leie/${aktiv.referanse}`} className={KNAPP_PRIMÆR}>
-              Se leien og lever
-            </Link>
-          </div>
-        ) : minIntern && aktiv ? (
-          <div className="space-y-5">
-            <Beskjed tittel={prosjekt ? `Du har denne på ${prosjekt}` : 'Du har denne'}>
-              Tatt ut {dato(aktiv.start_tid)}.
-              {aktiv.planlagt_slutt && ` Ventet tilbake ${dato(aktiv.planlagt_slutt)}.`}
+          ) : påVerksted && !aktiv ? (
+            <Beskjed tittel="Står til reparasjon">
+              {verkstedStatusAv(maskin.verksted_status) === 'deler_bestilt'
+                ? 'Deler er bestilt, og den er klar når de er på plass.'
+                : 'Den må sveises før den kan brukes igjen.'}{' '}
+              Ta kontakt med utleier hvis du trenger den.
             </Beskjed>
-            <LeverKnapp leieId={aktiv.id} />
-          </div>
-        ) : ansatt && aktiv?.ansatt_id ? (
-          <Beskjed tittel={`Hos ${aktiv.ansatt?.navn ?? 'en kollega'}`}>
-            {prosjekt ? `Står på ${prosjekt}. ` : ''}
-            {aktiv.planlagt_slutt
-              ? `Ventet tilbake ${dato(aktiv.planlagt_slutt)}.`
-              : 'Ute til videre.'}
-          </Beskjed>
-        ) : aktiv ? (
-          <Beskjed tittel="Maskinen er utleid">
-            {aktiv.planlagt_slutt
-              ? `Den er ventet tilbake ${dato(aktiv.planlagt_slutt)}. Ta kontakt med utleier hvis du trenger den før det.`
-              : 'Ta kontakt med utleier hvis du trenger den.'}
-          </Beskjed>
-        ) : bruker?.maByttePassord ? (
-          <Beskjed tittel="Bytt passord først">
-            Du må velge ditt eget passord før du kan ta ut utstyr.{' '}
-            <Link href={BYTT_PASSORD_STI} className="font-semibold underline underline-offset-4">
-              Bytt passord
-            </Link>
-          </Beskjed>
-        ) : ansatt && valg ? (
-          <div className="space-y-4">
-            <p className="hm-display text-lg">Ta ut til prosjekt</p>
-            <UttakEnkel
-              maskinId={maskin.id}
-              prosjekter={valg.prosjekter}
-              sistProsjektId={valg.sistProsjektId}
-              iDag={osloDag(new Date())}
-            />
-          </div>
-        ) : (
-          <LeieSkjema maskinId={maskin.id} maskinNavn={maskin.navn} />
-        )}
+          ) : erMin && aktiv ? (
+            <div className="space-y-5">
+              <Beskjed tittel="Leien din er i gang">
+                Startet {dato(aktiv.start_tid)}. Forventet levering{' '}
+                {returDato(aktiv.planlagt_slutt)}.
+              </Beskjed>
+              <Link href={`/leie/${aktiv.referanse}`} className={KNAPP_PRIMÆR}>
+                Se leien og lever
+              </Link>
+            </div>
+          ) : minIntern && aktiv ? (
+            <div className="space-y-5">
+              <Beskjed tittel={prosjekt ? `Du har denne på ${prosjekt}` : 'Du har denne'}>
+                Tatt ut {dato(aktiv.start_tid)}.
+                {aktiv.planlagt_slutt && ` Ventet tilbake ${dato(aktiv.planlagt_slutt)}.`}
+              </Beskjed>
+              <LeverKnapp leieId={aktiv.id} />
+            </div>
+          ) : ansatt && aktiv?.ansatt_id ? (
+            <Beskjed tittel={`Hos ${aktiv.ansatt?.navn ?? 'en kollega'}`}>
+              {prosjekt ? `Står på ${prosjekt}. ` : ''}
+              {aktiv.planlagt_slutt
+                ? `Ventet tilbake ${dato(aktiv.planlagt_slutt)}.`
+                : 'Ute til videre.'}
+            </Beskjed>
+          ) : aktiv ? (
+            <Beskjed tittel="Maskinen er utleid">
+              {aktiv.planlagt_slutt
+                ? `Den er ventet tilbake ${dato(aktiv.planlagt_slutt)}. Ta kontakt med utleier hvis du trenger den før det.`
+                : 'Ta kontakt med utleier hvis du trenger den.'}
+            </Beskjed>
+          ) : bruker?.maByttePassord ? (
+            <Beskjed tittel="Bytt passord først">
+              Du må velge ditt eget passord før du kan ta ut utstyr.{' '}
+              <Link href={BYTT_PASSORD_STI} className="font-semibold underline underline-offset-4">
+                Bytt passord
+              </Link>
+            </Beskjed>
+          ) : ansatt && valg ? (
+            <div className="space-y-4">
+              <p className="hm-display text-lg">Ta ut til prosjekt</p>
+              <UttakEnkel
+                maskinId={maskin.id}
+                prosjekter={valg.prosjekter}
+                sistProsjektId={valg.sistProsjektId}
+                iDag={osloDag(new Date())}
+              />
+            </div>
+          ) : (
+            <LeieSkjema maskinId={maskin.id} maskinNavn={maskin.navn} />
+          )}
+        </LevertRamme>
 
         {/* Vises for alle som ikke er innlogget, uansett hva maskinen
             viser over – står den utleid til en kunde, havnet lenka ellers

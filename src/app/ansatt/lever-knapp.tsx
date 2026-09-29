@@ -2,8 +2,10 @@
 
 import { useActionState, useState } from 'react'
 import { ETIKETT, FELT, KNAPP_LITEN } from '@/components/ui'
+import { utenNullstilling } from '@/lib/skjema'
 import { MAKS_KOMMENTAR } from '@/lib/validering'
 import { lever, type LeverTilstand } from './actions'
+import { useMeldLevert } from './levert-melding'
 
 const start: LeverTilstand = {}
 
@@ -16,7 +18,18 @@ const start: LeverTilstand = {}
  */
 export function LeverKnapp({ leieId }: { leieId: string }) {
   const [åpen, settÅpen] = useState(false)
-  const [tilstand, handling, venter] = useActionState(lever.bind(null, leieId), start)
+  const meldLevert = useMeldLevert()
+
+  // «Levert» meldes videre i selve handlingen – når den er ferdig,
+  // forsvinner leien fra siden, og denne knappen med den.
+  const [tilstand, handling, venter] = useActionState(
+    async (forrige: LeverTilstand, fd: FormData) => {
+      const svar = await lever(leieId, forrige, fd)
+      if (svar.ok) meldLevert?.(svar.ok)
+      return svar
+    },
+    start,
+  )
 
   if (!åpen) {
     return (
@@ -31,7 +44,11 @@ export function LeverKnapp({ leieId }: { leieId: string }) {
   }
 
   return (
-    <form action={handling} className="w-full space-y-3 border-t-2 border-[var(--kant)] pt-3">
+    <form
+      action={handling}
+      onSubmit={utenNullstilling(handling)}
+      className="w-full space-y-3 border-t-2 border-[var(--kant)] pt-3"
+    >
       <label className="block">
         <span className={ETIKETT}>
           Noe som bør fikses? <span className="normal-case">(valgfritt)</span>

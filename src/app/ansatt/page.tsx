@@ -6,6 +6,7 @@ import { HMLogo } from '@/components/hm-logo'
 import { BrukerMeny } from '@/components/bruker-meny'
 import { TomTilstand } from '@/components/ui'
 import { LeverKnapp } from './lever-knapp'
+import { LevertRamme } from './levert-melding'
 import { UttakListe } from './uttak-skjema'
 
 export const metadata: Metadata = { title: 'Utstyr – HM' }
@@ -50,30 +51,32 @@ export default async function AnsattSide() {
           <>
             <section>
               <Overskrift antall={side.mine.length}>Hos deg nå</Overskrift>
-              {side.mine.length === 0 ? (
-                <p className="text-sm text-[var(--blekk-svak)]">Du har ikke noe ute.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {side.mine.map((l) => (
-                    <li
-                      key={l.id}
-                      className="flex flex-wrap items-start justify-between gap-3 border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-4"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <span className="hm-display block text-lg">{l.maskin}</span>
-                        <span className="mt-0.5 block text-sm text-[var(--blekk-svak)]">
-                          {[l.internnummer, l.prosjekt].filter(Boolean).join(' · ')}
-                        </span>
-                        <span className="mt-1 block text-sm">
-                          Ute siden {dato(l.startTid)}
-                          {l.planlagtSlutt && ` · ventet tilbake ${dato(l.planlagtSlutt)}`}
-                        </span>
-                      </div>
-                      <LeverKnapp leieId={l.id} />
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <LevertRamme>
+                {side.mine.length === 0 ? (
+                  <p className="text-sm text-[var(--blekk-svak)]">Du har ikke noe ute.</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {side.mine.map((l) => (
+                      <li
+                        key={l.id}
+                        className="flex flex-wrap items-start justify-between gap-3 border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-4"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <span className="hm-display block text-lg">{l.maskin}</span>
+                          <span className="mt-0.5 block text-sm text-[var(--blekk-svak)]">
+                            {[l.internnummer, l.prosjekt].filter(Boolean).join(' · ')}
+                          </span>
+                          <span className="mt-1 block text-sm">
+                            Ute siden {dato(l.startTid)}
+                            {l.planlagtSlutt && ` · ventet tilbake ${dato(l.planlagtSlutt)}`}
+                          </span>
+                        </div>
+                        <LeverKnapp leieId={l.id} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </LevertRamme>
             </section>
 
             <section>

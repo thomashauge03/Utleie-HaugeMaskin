@@ -280,7 +280,8 @@ legge inn prosjekter først», og knappen er av.
 3. Prosjektet må finnes og være aktivt.
 4. Per maskin: må være aktiv, ledig og `kanLeiesUt`. Sett inn leie
    (`ansatt_id`, `prosjekt_id`, `planlagt_slutt` eller null), sett maskinen
-   til `utleid`, logg hendelse `startet` med aktør `ansatt:<epost>`.
+   til `utleid`, logg hendelse `startet` med aktør `<rolle>:<epost>` –
+   samme form som verkstedet, så en servicearbeider står som `service:`.
 5. Svar med hvilke som gikk og hvilke som ikke gikk. Treffer innsettingen
    den unike indeksen (23505), rakk noen andre å ta maskinen – de andre
    registreres likevel, og siden sier «Kompaktor 2 rakk noen andre å ta».
@@ -295,7 +296,7 @@ legge inn prosjekter først», og knappen er av.
    og ev. `kommentar_retur` – med `.eq('status', 'aktiv')` som lås mot
    dobbeltsending, som i kundereturen.
 5. Maskinen settes til `ledig` hvis den fortsatt står som `utleid`.
-6. Hendelse `levert`, aktør `ansatt:<epost>`.
+6. Hendelse `levert`, aktør `<rolle>:<epost>`.
 7. Står det noe i *Noe som bør fikses?*, sendes e-post til admin (se 4.4).
 
 Avslutningen ligger i én server-only funksjon,

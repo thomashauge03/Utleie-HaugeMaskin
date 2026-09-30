@@ -19,7 +19,10 @@ export function ReservasjonRad({ r, visMaskin }: { r: ReservasjonVisning; visMas
       <span className="hm-display hm-tall shrink-0 text-base whitespace-nowrap">
         {kortDag(r.fra_dato)} → {kortDag(r.til_dato)}
       </span>
-      <span className="min-w-0 flex-1">
+      {/* På mobil får teksten egen linje under datoer og knapp. Med
+          flex-1 alene krympet den i stedet for å bryte – og med
+          «Ja, avlys» åpen ble den rundt 100 px bred. */}
+      <span className="order-last min-w-0 basis-full sm:order-none sm:basis-0 sm:flex-1">
         {visMaskin && (
           <span className="hm-display block truncate text-lg">
             {r.maskiner?.navn ?? 'Ukjent maskin'}
@@ -30,7 +33,7 @@ export function ReservasjonRad({ r, visMaskin }: { r: ReservasjonVisning; visMas
           {r.notat && <span className="text-[var(--blekk-svak)]"> · {r.notat}</span>}
         </span>
       </span>
-      <form action={avlysReservasjon.bind(null, r.id)}>
+      <form action={avlysReservasjon.bind(null, r.id)} className="ml-auto">
         <BekreftKnapp etikett="Avlys" bekreft="Ja, avlys" fare />
       </form>
     </li>

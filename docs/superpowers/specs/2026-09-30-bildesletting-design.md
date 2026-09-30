@@ -42,8 +42,9 @@ eldste bildet med rad (03.08.2026) går 03.08.2028, sjekket mot produksjon
 ## Migrasjon 0014_bildesletting.sql
 
 - `innstillinger.slett_gamle_bilder boolean not null default true` – bryteren.
-- `slett_utlopte_bilder(nå timestamptz default now(), maks integer default 1000)`
-  `returns table (sti text, foreldrelos boolean)`, i plpgsql:
+- `slett_utlopte_bilder(tidspunkt timestamptz default now(), maks integer default 1000)`
+  `returns table (sti text, foreldrelos boolean)`, i plpgsql (ASCII-navn som
+  resten av skjemaet):
   1. Sletter inntil `maks` utløpte rader, eldste først, der leien ikke er
      `aktiv` eller `venter_godkjenning`.
   2. Legger én hendelse på hver berørt leie: type `bilder_slettet`, aktor
@@ -54,7 +55,7 @@ eldste bildet med rad (03.08.2026) går 03.08.2028, sjekket mot produksjon
 - `security definer set search_path = ''`, med fullt kvalifiserte navn.
   `revoke all … from public, anon, authenticated` og `grant execute … to
   service_role`. Ellers kunne hvem som helst kalt den via `/rest/v1/rpc` med
-  en `nå` langt fram i tid og slettet alle bildene. En kontrollblokk stopper
+  et `tidspunkt` langt fram i tid og slettet alle bildene. En kontrollblokk stopper
   migrasjonen hvis anon eller authenticated kan kjøre den.
 - plpgsql framfor sql: kroppen valideres ikke mot `storage.objects` når
   funksjonen lages, så migrasjonen går også der Storage ikke finnes (PGlite,
@@ -77,7 +78,8 @@ rad som peker på en borte fil.
 Etter reservasjonene, som før:
 
 - Leser `innstillinger.slett_gamle_bilder`. Feil (kolonnen finnes ikke) betyr
-  at migrasjonen ikke er kjørt, og steget hoppes over.
+  at migrasjonen ikke er kjørt, og steget hoppes over (`bilder: 'ikke satt
+  opp'`).
 - Av: `bilder: 'av'` i svaret.
 - På: `slettGamleBilder()` i `src/lib/bildesletting.ts` kaller funksjonen,
   sletter filene med `storage.from('bilder').remove()` i biter på 100, og
@@ -100,6 +102,7 @@ Ny fane «Personvern» (`?fane=personvern`) med kortet «Sletting av bilder»:
   «Ingen bilder lagret.»
 - Står den av: «Bildene blir liggende til noen sletter dem, og personvernsida
   sier ikke lenger at de slettes automatisk.»
+- Er migrasjonen ikke kjørt, sier kortet det, så ingen tror bryteren virker.
 - `lagreBildesletting` i `innstillinger/actions.ts`: `krevAdmin`, lagrer
   bryteren, `revalidatePath` for innstillingene og `/personvern`.
 

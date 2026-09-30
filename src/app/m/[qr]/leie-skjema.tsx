@@ -43,9 +43,12 @@ function iDag() {
 export function LeieSkjema({
   maskinId,
   maskinNavn,
+  sisteDag,
 }: {
   maskinId: string
   maskinNavn: string
+  /** Siste lovlige leveringsdag (yyyy-mm-dd) når en annen kunde har reservert. */
+  sisteDag?: string
 }) {
   const [tilstand, handling, venter] = useActionState(startLeie, start)
   const skjema = useRef<HTMLFormElement>(null)
@@ -127,6 +130,7 @@ export function LeieSkjema({
             required
             type="date"
             min={iDag()}
+            max={sisteDag}
             defaultValue={iDag()}
             className={FELT}
           />

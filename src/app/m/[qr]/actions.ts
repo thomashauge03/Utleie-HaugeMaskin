@@ -10,8 +10,10 @@ import { BILDE_STI, MAKS_KOMMENTAR } from '@/lib/validering'
 import { bildeFinnes } from '@/lib/bilder'
 import { innenforGrense } from '@/lib/rategrense'
 import { varsleNyLeie } from '@/lib/epost/varsler'
-import { norskSluttAvDag } from '@/lib/dato'
+import { norskSluttAvDag, osloDag } from '@/lib/dato'
 import { kanLeiesUt } from '@/lib/verksted'
+import { egneReservasjoner, kortDag, kundeGrense, type Reservasjon } from '@/lib/reservasjon'
+import { hentReservasjoner, merkHentet } from '@/lib/reservasjon-data'
 
 export type LeieTilstand = { feil?: string }
 
@@ -96,6 +98,26 @@ export async function startLeie(
     }
   }
 
+  // En annen kundes reservasjon: levering senest dagen før, og ingen leie
+  // mens den pågår. Kundens egen reservasjon, kjent på mobilnummeret,
+  // teller ikke. Sjekkes før kunden lagres, av samme grunn som over.
+  let reservasjoner: Reservasjon[]
+  try {
+    reservasjoner = await hentReservasjoner([maskin.id])
+  } catch {
+    return { feil: 'Kunne ikke sjekke reservasjonene. Prøv igjen.' }
+  }
+  const iDag = osloDag(new Date())
+  const grense = kundeGrense(reservasjoner, iDag, telefon)
+  if (grense.type === 'sperret') {
+    return { feil: 'Maskinen er reservert for en annen kunde nå. Ta kontakt med utleier.' }
+  }
+  if (grense.type === 'frist' && felter.data.planlagt_slutt > grense.sisteDag) {
+    return {
+      feil: `Maskinen er reservert fra ${kortDag(grense.fra)} Velg levering senest ${kortDag(grense.sisteDag)}`,
+    }
+  }
+
   const enhetsId = await sikreEnhetsId()
 
   // Kjenner vi nummeret fra før, gjenbruker vi kunden og oppdaterer
@@ -165,6 +187,11 @@ export async function startLeie(
     beskrivelse: `${felter.data.navn} startet leie av ${maskin.navn}`,
     aktor: `kunde:${enhetsId}`,
   })
+
+  await merkHentet(
+    egneReservasjoner(reservasjoner, telefon, iDag, felter.data.planlagt_slutt),
+    leie.id,
+  )
 
   // Sendes etter at svaret er levert. Kunden står på anleggsplassen og
   // skal ikke vente på at en e-posttjeneste svarer.

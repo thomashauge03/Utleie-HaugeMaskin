@@ -12,6 +12,8 @@ import { KNAPP_PRIMÆR, Merke } from '@/components/ui'
 import { dato, osloDag, returDato } from '@/lib/dato'
 import { krPer, prisEnhet } from '@/lib/pris'
 import { kanLeiesUt, verkstedStatusAv } from '@/lib/verksted'
+import { kortDag, kundeGrense, nesteReservasjon, reservasjonTekst } from '@/lib/reservasjon'
+import { hentReservasjoner } from '@/lib/reservasjon-data'
 import { LeverKnapp } from '@/app/ansatt/lever-knapp'
 import { LevertRamme } from '@/app/ansatt/levert-melding'
 import { UttakEnkel } from '@/app/ansatt/uttak-skjema'
@@ -50,7 +52,7 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
   if (!data) notFound()
   const maskin = data as Maskin
 
-  const [{ data: aktivRad, error: aktivFeil }, enhetsId, bruker] = await Promise.all([
+  const [{ data: aktivRad, error: aktivFeil }, enhetsId, bruker, reservasjoner] = await Promise.all([
     supabaseAdmin
       .from('leier')
       .select('*, ansatt:admin_brukere!leier_ansatt_id_fkey(navn), prosjekter(navn, nummer)')
@@ -59,6 +61,7 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
       .maybeSingle(),
     hentEnhetsId(),
     hentAdmin(),
+    hentReservasjoner([maskin.id]),
   ])
 
   // En feil her skal aldri se ut som «ingen leier» – ellers viser sida
@@ -69,6 +72,12 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
   const erMin = Boolean(aktiv && enhetsId && aktiv.enhets_id === enhetsId)
   const utilgjengelig = maskin.status === 'service' || maskin.status === 'utrangert'
   const påVerksted = !kanLeiesUt(maskin.verksted_status)
+
+  // Kunden er ikke kjent før skjemaet sendes, så her vises grensen for
+  // alle. Den reserverte kunden slipper forbi i startLeie, på mobilnummeret.
+  const iDag = osloDag(new Date())
+  const grense = kundeGrense(reservasjoner, iDag)
+  const neste = nesteReservasjon(reservasjoner, iDag)
 
   // Innlogget betyr en av våre egne. De får det korte uttaksskjemaet i
   // stedet for kundeskjemaet, og ser hvilken kollega som har maskinen.
@@ -105,6 +114,8 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
               <Merke type="gul">
                 {erMin ? 'Du leier denne' : minIntern ? 'Du har denne' : 'Utleid'}
               </Merke>
+            ) : grense.type === 'sperret' ? (
+              <Merke type="gul">Reservert</Merke>
             ) : (
               <Merke type="grønn">Ledig nå</Merke>
             )}
@@ -183,15 +194,39 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
           ) : ansatt && valg ? (
             <div className="space-y-4">
               <p className="hm-display text-lg">Ta ut til prosjekt</p>
+              {/* Varsel, ikke sperre: den ansatte avgjør selv. */}
+              {neste && (
+                <p className="border-l-4 border-hm-amber bg-[var(--flate-2)] p-3 text-sm font-semibold">
+                  {reservasjonTekst(neste, iDag)}
+                </p>
+              )}
               <UttakEnkel
                 maskinId={maskin.id}
                 prosjekter={valg.prosjekter}
                 sistProsjektId={valg.sistProsjektId}
-                iDag={osloDag(new Date())}
+                iDag={iDag}
               />
             </div>
           ) : (
-            <LeieSkjema maskinId={maskin.id} maskinNavn={maskin.navn} />
+            <div className="space-y-6">
+              {grense.type === 'frist' && (
+                <Beskjed tittel={`Reservert fra ${kortDag(grense.fra)}`}>
+                  En annen kunde har reservert maskinen. Du kan leie den nå, men må
+                  levere senest {kortDag(grense.sisteDag)}
+                </Beskjed>
+              )}
+              {grense.type === 'sperret' && (
+                <Beskjed tittel="Reservert nå">
+                  Maskinen er reservert for en kunde til {kortDag(grense.til)} Er det
+                  deg, fyll ut skjemaet med mobilnummeret du oppga da du reserverte.
+                </Beskjed>
+              )}
+              <LeieSkjema
+                maskinId={maskin.id}
+                maskinNavn={maskin.navn}
+                sisteDag={grense.type === 'frist' ? grense.sisteDag : undefined}
+              />
+            </div>
           )}
         </LevertRamme>
 

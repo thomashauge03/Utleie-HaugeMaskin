@@ -21,6 +21,7 @@ kameraet i en dialog i fullskjerm. For hver kode som leses:
 | Maskin som er opptatt | «Navn: grunn», samme tekst som i lista | uendret |
 | Maskin som ikke står i lista | «Fant ikke maskinen» | uendret |
 | Kategorikode (`/kategori/<navn>`) | «Viser <kategori> – kryss av i lista» | søket settes til kategorien |
+| Kategorikode uten treff i lista | «Fant ingen <kategori> i lista» | uendret |
 | Returkoden (`/retur`) | «Dette er returkoden. Lever under «Hos deg nå».» | uendret |
 | Alt annet | «Ukjent kode» | uendret |
 

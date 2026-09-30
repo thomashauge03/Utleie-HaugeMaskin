@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
   }
 
   const iDag = osloDag(new Date())
-  const utfall = validerForesporsel(kropp, iDag, Date.now())
+  const utfall = validerForesporsel(kropp, iDag)
   if (!utfall.ok) return svar(origin, { feil: utfall.feil }, utfall.status)
   const f = utfall.data
 

@@ -3,7 +3,6 @@ import assert from 'node:assert/strict'
 import { MAKS_DAGER, opptattePerioder, overlapper, validerForesporsel } from './foresporsel.ts'
 
 const I_DAG = '2026-10-01'
-const NÅ = Date.parse('2026-10-01T10:00:00Z')
 
 const gyldig = (mer = {}) => ({
   maskin_id: '00000000-0000-4000-8000-000000000001',
@@ -14,18 +13,18 @@ const gyldig = (mer = {}) => ({
   epost: '',
   melding: '',
   nettside: '',
-  startet: NÅ - 60_000,
+  brukt_ms: 60_000,
   ...mer,
 })
 
 const feil = (kropp) => {
-  const u = validerForesporsel(kropp, I_DAG, NÅ)
+  const u = validerForesporsel(kropp, I_DAG)
   assert.equal(u.ok, false, JSON.stringify(kropp))
   return u
 }
 
 test('en gyldig forespørsel går gjennom, ryddet', () => {
-  const u = validerForesporsel(gyldig(), I_DAG, NÅ)
+  const u = validerForesporsel(gyldig(), I_DAG)
   assert.deepEqual(u, {
     ok: true,
     data: {
@@ -41,16 +40,16 @@ test('en gyldig forespørsel går gjennom, ryddet', () => {
 })
 
 test('e-post og melding tas med når de er fylt ut', () => {
-  const u = validerForesporsel(gyldig({ epost: 'ola@example.com', melding: 'Henter kl. 7' }), I_DAG, NÅ)
+  const u = validerForesporsel(gyldig({ epost: 'ola@example.com', melding: 'Henter kl. 7' }), I_DAG)
   assert.equal(u.ok && u.data.epost, 'ola@example.com')
   assert.equal(u.ok && u.data.melding, 'Henter kl. 7')
 })
 
-test('roboter får en generisk feil: honningfelt, for rask eller uten startet', () => {
+test('roboter får en generisk feil: honningfelt, for rask eller uten tid', () => {
   const generisk = 'Kunne ikke sende forespørselen. Prøv igjen.'
   assert.equal(feil(gyldig({ nettside: 'http://spam.example' })).feil, generisk)
-  assert.equal(feil(gyldig({ startet: NÅ - 1_000 })).feil, generisk)
-  assert.equal(feil(gyldig({ startet: undefined })).feil, generisk)
+  assert.equal(feil(gyldig({ brukt_ms: 1_000 })).feil, generisk)
+  assert.equal(feil(gyldig({ brukt_ms: undefined })).feil, generisk)
 })
 
 test('datoene må henge sammen', () => {
@@ -61,7 +60,7 @@ test('datoene må henge sammen', () => {
 })
 
 test(`høyst ${MAKS_DAGER} dager, begge med`, () => {
-  assert.equal(validerForesporsel(gyldig({ fra: '2026-10-02', til: '2026-11-30' }), I_DAG, NÅ).ok, true)
+  assert.equal(validerForesporsel(gyldig({ fra: '2026-10-02', til: '2026-11-30' }), I_DAG).ok, true)
   assert.match(feil(gyldig({ fra: '2026-10-02', til: '2026-12-01' })).feil, /60 dager/)
 })
 

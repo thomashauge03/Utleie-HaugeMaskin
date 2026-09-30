@@ -40,7 +40,10 @@ const skjema = z.object({
   melding: z.string().trim().max(500, 'Meldingen kan være høyst 500 tegn').optional(),
   // Honningfelt: skjult for mennesker, fylt ut av roboter.
   nettside: z.string().optional(),
-  startet: z.number().optional(),
+  // Hvor lenge skjemaet var åpent, målt i nettleseren. Et tidspunkt ville
+  // blitt sammenlignet med serverens klokke, og en PC med klokka et minutt
+  // for fort ville aldri sluppet gjennom.
+  brukt_ms: z.number().optional(),
 })
 
 /** Finnes datoen? «2026-02-31» passer mønsteret, men ikke kalenderen. */
@@ -54,13 +57,13 @@ function dagerMellom(fra: string, til: string): number {
   return Math.round((Date.parse(`${til}T00:00:00Z`) - Date.parse(`${fra}T00:00:00Z`)) / 86_400_000)
 }
 
-export function validerForesporsel(kropp: unknown, iDag: string, nå: number): Utfall {
+export function validerForesporsel(kropp: unknown, iDag: string): Utfall {
   const f = skjema.safeParse(kropp)
   if (!f.success) return { ok: false, feil: f.error.issues[0].message, status: 400 }
   const d = f.data
 
   // Samme svar som andre feil, så en robot ikke lærer hva som avslørte den.
-  if (d.nettside || d.startet === undefined || nå - d.startet < MIN_MS) {
+  if (d.nettside || d.brukt_ms === undefined || d.brukt_ms < MIN_MS) {
     return { ok: false, feil: GENERISK, status: 400 }
   }
 

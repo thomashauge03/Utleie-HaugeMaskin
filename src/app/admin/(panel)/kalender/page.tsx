@@ -10,6 +10,7 @@ import { Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
 import { kortDag } from '@/lib/reservasjon'
 import { NyReservasjon, type ReservasjonMaskin } from './ny-reservasjon'
 import { ReservasjonRad, type ReservasjonVisning } from './reservasjon-rad'
+import { ForesporselRad, type ForesporselVisning } from './foresporsel-rad'
 
 export const metadata: Metadata = { title: 'Kalender – HM Utleie' }
 export const dynamic = 'force-dynamic'
@@ -96,13 +97,18 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
 
   // Reservasjoner som berører måneden, og maskinene skjemaet kan velge.
   // Mangler tabellen, står det en beskjed der skjemaet ellers hadde stått.
-  const [{ data: resData, error: resFeil }, { data: maskinData }] = await Promise.all([
+  // Forespørsler fra nettsida står øverst uansett måned – de venter på svar.
+  const [
+    { data: resData, error: resFeil },
+    { data: maskinData },
+    { data: forespData },
+  ] = await Promise.all([
     supabase
       .from('reservasjoner')
       .select(
         'id, maskin_id, fra_dato, til_dato, kunde_navn, kunde_telefon, notat, status, maskiner(navn)',
       )
-      .eq('status', 'aktiv')
+      .in('status', ['aktiv', 'forespurt'])
       .lte('fra_dato', celleDag(new Date(år, måned + 1, 0)))
       .gte('til_dato', celleDag(førsteIMnd))
       .order('fra_dato'),
@@ -112,9 +118,21 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
       .eq('aktiv', true)
       .neq('status', 'utrangert')
       .order('navn'),
+    // Uten migrasjon 0013 mangler kunde_epost, og da er lista tom – det kan
+    // heller ikke finnes forespørsler før den er kjørt.
+    supabase
+      .from('reservasjoner')
+      .select(
+        'id, maskin_id, fra_dato, til_dato, kunde_navn, kunde_telefon, kunde_epost, notat, status, maskiner(navn)',
+      )
+      .eq('status', 'forespurt')
+      .gte('til_dato', osloDag(nå))
+      .order('fra_dato'),
   ])
   const reservasjonerPå = !(resFeil && FINNES_IKKE.includes(resFeil.code))
-  const reservasjoner = (resData ?? []) as unknown as ReservasjonVisning[]
+  const månedensReservasjoner = (resData ?? []) as unknown as ReservasjonVisning[]
+  const reservasjoner = månedensReservasjoner.filter((r) => r.status === 'aktiv')
+  const forespørsler = (forespData ?? []) as unknown as ForesporselVisning[]
 
   /*
    * Rutenettet starter på mandagen i uka der den 1. faller, og fylles
@@ -136,7 +154,8 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
       // ISO-datoer kan sammenlignes som tekst.
       return dag >= fra && dag <= til
     })
-    const reservert = reservasjoner.filter((r) => dag >= r.fra_dato && dag <= r.til_dato)
+    // Aktive og forespurte; forespurte tegnes grått og sperrer ingenting.
+    const reservert = månedensReservasjoner.filter((r) => dag >= r.fra_dato && dag <= r.til_dato)
 
     return { dato: d, dag, iMåneden, leier: påDagen, reservert }
   })
@@ -172,6 +191,21 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
           </Link>
         </div>
       </div>
+
+      {forespørsler.length > 0 && (
+        <section id="foresporsler" className="scroll-mt-6">
+          <h2 className="hm-display mb-1 text-2xl">Nye forespørsler ({forespørsler.length})</h2>
+          <p className="mb-4 text-sm text-[var(--blekk-svak)]">
+            Fra haugemaskin.no. De sperrer ingenting før du godkjenner – ring kunden for å
+            bekrefte.
+          </p>
+          <ol className="space-y-3">
+            {forespørsler.map((r) => (
+              <ForesporselRad key={r.id} r={r} />
+            ))}
+          </ol>
+        </section>
+      )}
 
       {reservasjonerPå ? (
         <NyReservasjon maskiner={(maskinData ?? []) as ReservasjonMaskin[]} iDag={iDag} />
@@ -230,16 +264,24 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
 
                   <ul className="space-y-1">
                     {/* Reservasjonene først: det er de som ikke har skjedd ennå. */}
-                    {reservert.slice(0, 2).map((r) => (
-                      <li key={r.id}>
-                        <span
-                          title={`${r.maskiner?.navn} · reservert for ${r.kunde_navn} · ${kortDag(r.fra_dato)}–${kortDag(r.til_dato)}`}
-                          className="block truncate border border-dashed border-hm-amber bg-[var(--flate-opp)] px-1.5 py-1 text-[11px] leading-tight font-bold"
-                        >
-                          {r.maskiner?.navn ?? 'Reservert'}
-                        </span>
-                      </li>
-                    ))}
+                    {reservert.slice(0, 2).map((r) => {
+                      const forespurt = r.status === 'forespurt'
+                      return (
+                        <li key={r.id}>
+                          <span
+                            title={`${r.maskiner?.navn} · ${forespurt ? 'forespurt av' : 'reservert for'} ${r.kunde_navn} · ${kortDag(r.fra_dato)}–${kortDag(r.til_dato)}`}
+                            className={`block truncate border border-dashed bg-[var(--flate-opp)] px-1.5 py-1 text-[11px] leading-tight font-bold ${
+                              forespurt
+                                ? 'border-[var(--blekk-svak)] text-[var(--blekk-svak)]'
+                                : 'border-hm-amber'
+                            }`}
+                          >
+                            {forespurt && '? '}
+                            {r.maskiner?.navn ?? 'Reservert'}
+                          </span>
+                        </li>
+                      )
+                    })}
                     {reservert.length > 2 && (
                       <li className="px-1 text-[10px] font-bold text-[var(--blekk-svak)]">
                         +{reservert.length - 2} reservert
@@ -288,6 +330,10 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
         <span className="flex items-center gap-1.5">
           <span className="inline-block size-3 border border-dashed border-hm-amber bg-[var(--flate-opp)]" />
           Reservert
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block size-3 border border-dashed border-[var(--blekk-svak)] bg-[var(--flate-opp)]" />
+          ? Forespurt
         </span>
       </div>
 

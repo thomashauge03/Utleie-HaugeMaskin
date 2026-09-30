@@ -3,8 +3,10 @@
 import { useActionState, useState } from 'react'
 import { ETIKETT, FELT, KNAPP_PRIMÆR } from '@/components/ui'
 import type { ProsjektValg, UttakMaskin } from '@/lib/intern-leie'
+import { tolkKode } from '@/lib/skannet-kode'
 import { utenNullstilling } from '@/lib/skjema'
 import { taUt, type UttakTilstand } from './actions'
+import { Skanner, type SkannSvar } from './skanner'
 
 const start: UttakTilstand = {}
 
@@ -61,6 +63,34 @@ export function UttakListe({ maskiner, prosjekter, sistProsjektId, iDag }: Felle
     })
   }
 
+  const perQr = new Map(maskiner.map((m) => [m.qr, m]))
+
+  // Skanneren krysser bare av, aldri av igjen: holdes kameraet mot samme
+  // kode to ganger, skal ikke maskinen forsvinne fra uttaket.
+  function vedSkann(tekst: string): SkannSvar {
+    const kode = tolkKode(tekst)
+    if (kode.type === 'maskin') {
+      const m = perQr.get(kode.qr)
+      if (!m) return { tone: 'feil', tekst: 'Fant ikke maskinen' }
+      if (m.opptatt) return { tone: 'info', tekst: `${m.navn}: ${m.opptatt}` }
+      if (valgte.has(m.id)) return { tone: 'info', tekst: `${m.navn} er allerede valgt` }
+      settValgte((før) => new Set(før).add(m.id))
+      return { tone: 'ok', tekst: `✓ ${m.navn}` }
+    }
+    if (kode.type === 'kategori') {
+      const navn = kode.navn.trim()
+      if (!maskiner.some((m) => m.kategori.toLowerCase() === navn.toLowerCase())) {
+        return { tone: 'feil', tekst: `Fant ingen ${navn} i lista` }
+      }
+      settSøk(navn)
+      return { tone: 'info', tekst: `Viser ${navn} – kryss av i lista` }
+    }
+    if (kode.type === 'retur') {
+      return { tone: 'info', tekst: 'Dette er returkoden. Lever under «Hos deg nå».' }
+    }
+    return { tone: 'feil', tekst: 'Ukjent kode' }
+  }
+
   // Den automatiske nullstillingen etter en innsending rører ikke
   // `valgte`, den kontrollerte tilstanden for avkrysningsboksene. Feilet
   // uttaket helt (f.eks. «Prosjektet er avsluttet»), sto boksene tomme
@@ -70,14 +100,17 @@ export function UttakListe({ maskiner, prosjekter, sistProsjektId, iDag }: Felle
     <form onSubmit={utenNullstilling(handling)} className="space-y-6">
       {prosjekter.length === 0 && <IngenProsjekter />}
 
-      <input
-        type="search"
-        value={søk}
-        onChange={(e) => settSøk(e.target.value)}
-        placeholder="Søk på navn, internnummer eller type"
-        aria-label="Søk i utstyret"
-        className={FELT}
-      />
+      <div className="space-y-3">
+        <Skanner onKode={vedSkann} antallValgt={valgte.size} />
+        <input
+          type="search"
+          value={søk}
+          onChange={(e) => settSøk(e.target.value)}
+          placeholder="Søk på navn, internnummer eller type"
+          aria-label="Søk i utstyret"
+          className={FELT}
+        />
+      </div>
 
       {[...grupper.entries()].map(([kategori, liste]) => (
         <section key={kategori} hidden={!liste.some(treff)}>

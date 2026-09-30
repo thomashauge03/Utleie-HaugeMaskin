@@ -39,6 +39,8 @@ export type MinLeie = {
 
 export type UttakMaskin = {
   id: string
+  /** Koden på maskinen (qr_kode) – skanneren slår opp på den. */
+  qr: string
   navn: string
   internnummer: string | null
   kategori: string
@@ -70,6 +72,7 @@ type AktivRad = {
 
 type MaskinRad = {
   id: string
+  qr_kode: string
   navn: string
   internnummer: string | null
   kategori: string | null
@@ -130,7 +133,7 @@ export async function hentUttaksside(bruker: AdminBruker): Promise<Uttaksside> {
     hentProsjektvalg(bruker.id),
     supabaseAdmin
       .from('maskiner')
-      .select('id, navn, internnummer, kategori, underkategori, status, verksted_status')
+      .select('id, qr_kode, navn, internnummer, kategori, underkategori, status, verksted_status')
       .eq('aktiv', true)
       .neq('status', 'utrangert')
       .order('kategori', { nullsFirst: false })
@@ -170,6 +173,7 @@ export async function hentUttaksside(bruker: AdminBruker): Promise<Uttaksside> {
     const l = perMaskin.get(m.id)
     return {
       id: m.id,
+      qr: m.qr_kode,
       navn: m.navn,
       internnummer: m.internnummer,
       kategori: m.kategori?.trim() || 'Uten kategori',

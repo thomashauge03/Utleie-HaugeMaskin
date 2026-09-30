@@ -524,3 +524,320 @@ $$;
 drop policy if exists egen_rad on admin_brukere;
 create policy egen_rad on admin_brukere
   for select using (id = auth.uid());
+
+-- >>>>>>>>>>  0012_reservasjoner.sql  <<<<<<<<<<
+-- ═══════════════════════════════════════════════════════════
+--  Reservasjoner
+--
+--  Framtidige utleier, lagt inn av admin. En annen kunde kan leie
+--  maskinen fram til dagen før, ansatte får varsel, og kunden med
+--  reservasjonen kjennes igjen på mobilnummeret når den hentes.
+--  Se docs/superpowers/specs/2026-09-30-reservasjoner-design.md.
+--
+--  Trygg å kjøre mot koden som ligger ute: ingen eksisterende tabell
+--  endres, og koden tåler at denne ikke er kjørt.
+-- ═══════════════════════════════════════════════════════════
+
+create extension if not exists btree_gist with schema extensions;
+
+
+-- ── Tabellen ───────────────────────────────────────────────
+create table if not exists reservasjoner (
+  id            uuid primary key default gen_random_uuid(),
+  maskin_id     uuid not null references maskiner(id),
+  fra_dato      date not null,
+  til_dato      date not null,
+  kunde_navn    text not null,
+  kunde_telefon text not null,
+  notat         text,
+  status        text not null default 'aktiv'
+                check (status in ('forespurt', 'aktiv', 'hentet', 'avlyst')),
+  leie_id       uuid references leier(id),
+  opprettet_av  uuid references admin_brukere(id),
+  opprettet     timestamptz not null default now(),
+
+  constraint reservasjoner_datoer check (til_dato >= fra_dato),
+
+  -- To aktive reservasjoner på samme maskin kan ikke overlappe. En
+  -- forespørsel (del 3) sperrer ingenting før admin har godkjent den.
+  constraint reservasjoner_uten_overlapp exclude using gist (
+    maskin_id with =,
+    daterange(fra_dato, til_dato, '[]') with &&
+  ) where (status = 'aktiv')
+);
+
+comment on table reservasjoner is
+  'Framtidige utleier. Datoene er norske kalenderdager, begge med.';
+comment on column reservasjoner.kunde_telefon is
+  'Åtte siffer, som kunder.telefon. Slik kjennes kunden igjen ved henting.';
+
+create index if not exists reservasjoner_maskin_idx
+  on reservasjoner (maskin_id, fra_dato) where status = 'aktiv';
+
+
+-- ── Radsikkerhet ───────────────────────────────────────────
+alter table reservasjoner enable row level security;
+
+drop policy if exists admin_alt on reservasjoner;
+create policy admin_alt on reservasjoner
+  for all using (er_admin()) with check (er_admin());
+
+
+-- ── Offentlig: når maskinene er opptatt (hovedsida, del 2) ─
+-- Bare datoer. Ingen navn, ingen telefon, ingen referanser.
+--
+-- Lages bare når den ikke finnes. 0013 legger til kolonnen levert, og
+-- create or replace kan ikke fjerne kolonner: kjørt på nytt etter 0013
+-- (KJOR-DENNE.sql en gang til) stoppet denne hele fila med «cannot drop
+-- columns from view», før senere migrasjoner var kjørt.
+do $$
+begin
+  if to_regclass('public.hm_offentleg_opptatt') is null then
+    create view public.hm_offentleg_opptatt as
+      select r.maskin_id, r.fra_dato, r.til_dato
+        from reservasjoner r
+        join maskiner m on m.id = r.maskin_id
+       where r.status = 'aktiv'
+         and r.til_dato >= (now() at time zone 'Europe/Oslo')::date
+         and m.aktiv and m.status <> 'utrangert'
+      union all
+      select l.maskin_id,
+             (l.start_tid at time zone 'Europe/Oslo')::date,
+             (l.planlagt_slutt at time zone 'Europe/Oslo')::date
+        from leier l
+        join maskiner m on m.id = l.maskin_id
+       where l.status in ('aktiv', 'venter_godkjenning')
+         and m.aktiv and m.status <> 'utrangert';
+
+    comment on view public.hm_offentleg_opptatt is
+      'Dager maskinene er opptatt, for hovedsida. Ingen kunde-, leie- eller '
+      'internopplysninger. til_dato null betyr til videre.';
+  end if;
+end $$;
+
+-- REKKEFØLGEN ER IKKE VALGFRI: revoke før grant. Supabase gir anon alt på
+-- nye visninger, og en visning uten security_invoker kjører med eierens
+-- rettigheter – en anonym DELETE ville gått rett til grunntabellen.
+-- Se hm-web-craft/speiling/01-utleie.sql.
+revoke all    on public.hm_offentleg_opptatt from anon, authenticated;
+grant  select on public.hm_offentleg_opptatt to   anon, authenticated;
+
+
+-- ── Kontroll ───────────────────────────────────────────────
+do $$
+declare
+  uten_rls text;
+  for_mye  text;
+begin
+  select string_agg(c.relname, ', ' order by c.relname)
+    into uten_rls
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public'
+     and c.relkind = 'r'
+     and c.relname in ('reservasjoner', 'maskiner', 'leier')
+     and not c.relrowsecurity;
+  if uten_rls is not null then
+    raise exception 'Disse tabellene mangler RLS: %', uten_rls;
+  end if;
+
+  select string_agg(distinct privilege_type, ', ')
+    into for_mye
+    from information_schema.table_privileges
+   where grantee in ('anon', 'authenticated')
+     and table_schema = 'public'
+     and table_name = 'hm_offentleg_opptatt'
+     and privilege_type <> 'SELECT';
+  if for_mye is not null then
+    raise exception 'hm_offentleg_opptatt gir anon mer enn SELECT: %', for_mye;
+  end if;
+end $$;
+
+-- >>>>>>>>>>  0013_foresporsel.sql  <<<<<<<<<<
+-- ═══════════════════════════════════════════════════════════
+--  Leieforespørsler fra haugemaskin.no
+--
+--  Kunden ber om datoer på nettsida, og forespørselen lagres som en
+--  reservasjon med status «forespurt» (fra 0012). Det eneste som mangler,
+--  er stedet for kundens e-post, som er valgfri i skjemaet.
+--  Se docs/superpowers/specs/2026-09-30-leieforesporsel-design.md.
+--
+--  I tillegg får hovedsida vite om en maskin er levert (nederst).
+--
+--  Bare tillegg: koden som ligger ute, leser verken kolonnen eller
+--  flagget, og hovedsida leser visningen med select=*.
+-- ═══════════════════════════════════════════════════════════
+
+alter table reservasjoner add column if not exists kunde_epost text;
+
+comment on column reservasjoner.kunde_epost is
+  'Valgfri, fra forespørselsskjemaet på haugemaskin.no. Slettes med '
+  'forespørselen 30 dager etter perioden hvis det ikke blir leie.';
+
+
+-- ── Hovedsida: er maskinen levert? ─────────────────────────
+-- Hovedsida skriver «Ute nå – skulle vært levert 12. september» om en
+-- leie på overtid. En leie som venter på godkjenning, er levert – maskinen
+-- står i gården – men planlagt slutt er ofte passert før admin rekker å
+-- godkjenne. Uten flagget ville den sett ut som den var på overtid.
+--
+-- Samme visning som i 0012, med levert bakerst: create or replace godtar
+-- bare nye kolonner etter de gamle.
+create or replace view public.hm_offentleg_opptatt as
+  select r.maskin_id, r.fra_dato, r.til_dato, false as levert
+    from reservasjoner r
+    join maskiner m on m.id = r.maskin_id
+   where r.status = 'aktiv'
+     and r.til_dato >= (now() at time zone 'Europe/Oslo')::date
+     and m.aktiv and m.status <> 'utrangert'
+  union all
+  select l.maskin_id,
+         (l.start_tid at time zone 'Europe/Oslo')::date,
+         (l.planlagt_slutt at time zone 'Europe/Oslo')::date,
+         l.status = 'venter_godkjenning'
+    from leier l
+    join maskiner m on m.id = l.maskin_id
+   where l.status in ('aktiv', 'venter_godkjenning')
+     and m.aktiv and m.status <> 'utrangert';
+
+comment on view public.hm_offentleg_opptatt is
+  'Dager maskinene er opptatt, for hovedsida. Ingen kunde-, leie- eller '
+  'internopplysninger. til_dato null betyr til videre. levert betyr at '
+  'leia venter på godkjenning – maskinen er tilbake.';
+
+-- Som i 0012: revoke før grant.
+revoke all    on public.hm_offentleg_opptatt from anon, authenticated;
+grant  select on public.hm_offentleg_opptatt to   anon, authenticated;
+
+
+-- ── Kontroll ───────────────────────────────────────────────
+do $$
+declare
+  for_mye text;
+begin
+  select string_agg(distinct privilege_type, ', ')
+    into for_mye
+    from information_schema.table_privileges
+   where grantee in ('anon', 'authenticated')
+     and table_schema = 'public'
+     and table_name = 'hm_offentleg_opptatt'
+     and privilege_type <> 'SELECT';
+  if for_mye is not null then
+    raise exception 'hm_offentleg_opptatt gir anon mer enn SELECT: %', for_mye;
+  end if;
+end $$;
+
+-- >>>>>>>>>>  0014_bildesletting.sql  <<<<<<<<<<
+-- ═══════════════════════════════════════════════════════════
+--  Sletting av bilder og posisjon etter 24 måneder
+--
+--  Personvernsida lover at bilder og posisjonsdata slettes etter
+--  24 måneder. /api/rydd kaller funksjonen under hver morgen så
+--  lenge bryteren står på, og sletter filene i Storage etterpå.
+--  Se docs/superpowers/specs/2026-09-30-bildesletting-design.md.
+--
+--  Trygg å kjøre mot koden som ligger ute: ingen eksisterende
+--  kolonne endres, og ruta hopper over steget når funksjonen
+--  mangler. Migrasjonen sletter ingenting selv.
+-- ═══════════════════════════════════════════════════════════
+
+
+-- ── Bryteren ───────────────────────────────────────────────
+alter table innstillinger
+  add column if not exists slett_gamle_bilder boolean not null default true;
+
+comment on column innstillinger.slett_gamle_bilder is
+  'Slett bilder og posisjon eldre enn 24 måneder hver morgen (/api/rydd). '
+  'Personvernsida sier «automatisk» bare når denne er på.';
+
+
+-- ── Slettingen ─────────────────────────────────────────────
+-- Rader først, filer etterpå – motsatt av slettLeierMedFiler, og med
+-- vilje. Radene og hendelsene går i én transaksjon her. Feiler
+-- filslettingen i appen etterpå, er fila foreldreløs og eldre enn 24
+-- måneder, og kommer med neste morgen. Jobben retter seg selv.
+--
+-- plpgsql framfor sql: kroppen sjekkes ikke mot storage.objects når
+-- funksjonen lages, så migrasjonen går også der Storage mangler.
+create or replace function public.slett_utlopte_bilder(
+  tidspunkt timestamptz default now(),
+  maks      integer     default 1000
+)
+returns table (sti text, foreldrelos boolean)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  grense constant timestamptz := tidspunkt - interval '24 months';
+begin
+  -- Foreldreløse filer først, mens radene som slettes under ennå finnes.
+  -- Ellers ville de samme filene kommet med to ganger.
+  if to_regclass('storage.objects') is not null then
+    return query
+      select o.name, true
+        from storage.objects o
+       where o.bucket_id = 'bilder'
+         and o.created_at < grense
+         and not exists (select 1 from public.bilder b where b.fil_sti = o.name)
+       order by o.created_at
+       limit maks;
+  end if;
+
+  -- Bilder på en leie som pågår, venter til leien er avsluttet:
+  -- hentebildet er beviset på tilstanden maskinen gikk ut i.
+  --
+  -- «delete from» står etter parentesen med vilje. lag-samlemigrasjon.mjs
+  -- advarer mot linjer som begynner med det, og denne migrasjonen river
+  -- ingenting når den kjøres.
+  return query
+    with utlopte as (
+      select b.id
+        from public.bilder b
+        join public.leier l on l.id = b.leie_id
+       where b.mottatt_tid < grense
+         and l.status not in ('aktiv', 'venter_godkjenning')
+       order by b.mottatt_tid
+       limit maks
+    ),
+    slettet as (delete from public.bilder b
+                 using utlopte u
+                 where b.id = u.id
+             returning b.leie_id, b.type, b.fil_sti),
+    logget as (
+      insert into public.hendelser (leie_id, type, beskrivelse, aktor)
+      select s.leie_id,
+             'bilder_slettet',
+             'Bilder slettet etter 24 måneder: '
+               || string_agg(distinct s.type, ' og ' order by s.type),
+             'system'
+        from slettet s
+       group by s.leie_id
+    )
+    select s.fil_sti, false from slettet s;
+end;
+$$;
+
+comment on function public.slett_utlopte_bilder(timestamptz, integer) is
+  'Sletter bilderader eldre enn 24 måneder (ikke på pågående leier), logger '
+  'én hendelse per leie, og returnerer stiene som skal slettes i Storage – '
+  'pluss foreldreløse filer eldre enn 24 måneder. Kalles av /api/rydd.';
+
+-- Supabase gir anon og authenticated execute på nye funksjoner. Uten
+-- revoke kunne hvem som helst kalt denne via /rest/v1/rpc med et
+-- tidspunkt langt fram i tid og slettet alle bildene.
+revoke all     on function public.slett_utlopte_bilder(timestamptz, integer)
+  from public, anon, authenticated;
+grant  execute on function public.slett_utlopte_bilder(timestamptz, integer)
+  to service_role;
+
+
+-- ── Kontroll ───────────────────────────────────────────────
+do $$
+begin
+  if has_function_privilege('anon', 'public.slett_utlopte_bilder(timestamptz, integer)', 'execute')
+     or has_function_privilege('authenticated', 'public.slett_utlopte_bilder(timestamptz, integer)', 'execute')
+  then
+    raise exception 'slett_utlopte_bilder kan kalles av anon eller authenticated';
+  end if;
+end $$;

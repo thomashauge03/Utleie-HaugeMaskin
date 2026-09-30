@@ -34,6 +34,9 @@ const MIGRASJONER = [
   { fil: '0008_bytt_passord.sql', tabell: 'admin_brukere', kolonne: 'ma_bytte_passord' },
   { fil: '0010_fjern_kjoretoy.sql', tabell: 'kjoretoy', kolonne: 'eu_frist', borte: true },
   { fil: '0011_ansatt.sql', tabell: 'prosjekter', kolonne: 'id' },
+  { fil: '0012_reservasjoner.sql', tabell: 'reservasjoner', kolonne: 'id' },
+  { fil: '0013_foresporsel.sql', tabell: 'reservasjoner', kolonne: 'kunde_epost' },
+  { fil: '0014_bildesletting.sql', tabell: 'innstillinger', kolonne: 'slett_gamle_bilder' },
 ]
 
 /*

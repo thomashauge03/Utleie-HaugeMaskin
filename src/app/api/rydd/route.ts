@@ -1,19 +1,27 @@
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { osloDag } from '@/lib/dato'
+import { slettGamleBilder } from '@/lib/bildesletting'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 /** «Tabellen finnes ikke» – migrasjon 0012 ikke kjørt; da er det ingenting å rydde. */
 const FINNES_IKKE = ['PGRST205', '42P01']
 
 /**
- * Sletter reservasjoner som ikke ble til leie – forespurt, avlyst, eller
- * aktiv men aldri hentet – 30 dager etter at perioden er over.
+ * Daglig opprydding. Kjøres av Vercel Cron (vercel.json), autentisert med
+ * CRON_SECRET som /api/varsler/forfalt.
  *
- * Personvernsida på haugemaskin.no lover det, så det må faktisk skje.
- * Hentede reservasjoner hører til en leie og blir stående. Kjøres daglig av
- * Vercel Cron (vercel.json), autentisert med CRON_SECRET som
- * /api/varsler/forfalt.
+ * 1. Reservasjoner som ikke ble til leie – forespurt, avlyst, eller aktiv
+ *    men aldri hentet – slettes 30 dager etter at perioden er over.
+ *    Personvernsida på haugemaskin.no lover det. Hentede reservasjoner
+ *    hører til en leie og blir stående.
+ * 2. Bilder og posisjon eldre enn 24 måneder slettes, som personvernsida
+ *    her lover – så lenge bryteren under Innstillinger → Personvern står
+ *    på. Se slettGamleBilder.
+ *
+ * Stegene er uavhengige: feiler det ene, kjøres det andre likevel, og
+ * svaret får status 500 så kjøringen står som feilet i Vercel.
  */
 export async function GET(request: Request) {
   const hemmelighet = process.env.CRON_SECRET
@@ -27,9 +35,14 @@ export async function GET(request: Request) {
     .delete({ count: 'exact' })
     .in('status', ['forespurt', 'avlyst', 'aktiv'])
     .lt('til_dato', grense)
+  const reservasjonFeil = error && !FINNES_IKKE.includes(error.code) ? error.message : undefined
 
-  if (error && !FINNES_IKKE.includes(error.code)) {
-    return Response.json({ feil: error.message }, { status: 500 })
-  }
-  return Response.json({ slettet: count ?? 0, grense, tid: new Date().toISOString() })
+  const bilder = await slettGamleBilder()
+  const bildeFeil = typeof bilder === 'object' ? bilder.feil : undefined
+
+  const feil = reservasjonFeil ?? bildeFeil
+  return Response.json(
+    { slettet: count ?? 0, grense, bilder, ...(feil ? { feil } : {}), tid: new Date().toISOString() },
+    { status: feil ? 500 : 200 },
+  )
 }

@@ -45,35 +45,93 @@ export default async function PersonvernSide() {
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>Navn, mobilnummer, adresse og e-postadresse</li>
             <li>Hvilken maskin du leier, og når</li>
+            <li>Kommentarer du skriver ved henting og innlevering</li>
             <li>Bilder du tar av maskinen ved henting og innlevering</li>
             <li>Posisjon når bildet tas, dersom du tillater det</li>
             <li>
-              En tilfeldig identifikator lagret i nettleseren din, slik at du
-              slipper å taste opplysningene på nytt neste gang
+              Navn, mobilnummer og datoer når du reserverer en maskin på forhånd
+            </li>
+            <li>
+              Merknader utleier skriver om leien eller kundeforholdet, for
+              eksempel om skade på maskinen
+            </li>
+            <li>
+              IP-adressen din, som brukes til å stoppe for mange forsøk på kort
+              tid og ikke lagres i databasen
             </li>
           </ul>
         </Avsnitt>
 
         <Avsnitt tittel="Hvorfor">
           Opplysningene er nødvendige for å gjennomføre leieforholdet: for å
-          vite hvem som har hvilken maskin, for å kunne kontakte deg, for å
-          fakturere, og for å dokumentere maskinens tilstand ved henting og
-          innlevering. Behandlingsgrunnlaget er avtalen mellom deg og oss.
+          vite hvem som har, eller skal ha, hvilken maskin, for å kunne kontakte
+          deg, for å fakturere, og for å dokumentere maskinens tilstand ved
+          henting og innlevering. Behandlingsgrunnlaget er avtalen mellom deg og
+          oss. IP-adressen bruker vi bare til å hindre misbruk, og grunnlaget
+          for det er vår berettigede interesse i å holde tjenesten trygg.
         </Avsnitt>
 
         <Avsnitt tittel="Posisjon er frivillig">
           Du kan avslå å dele posisjon. Leien og innleveringen fungerer likevel.
         </Avsnitt>
 
+        <Avsnitt tittel="Informasjonskapsler og lagring i nettleseren">
+          Tjenesten lagrer en tilfeldig identifikator i en informasjonskapsel
+          (cookie) i nettleseren din, slik at du kan se og levere leien uten å
+          logge inn. Den varer i to år. Mens du fyller ut leieskjemaet, husker
+          nettleseren det du skriver, så du ikke mister det om du bytter app.
+          Det fylles bare inn igjen de første tre timene, og sendes ikke til oss
+          før du sender inn skjemaet. Vi bruker ingen informasjonskapsler til
+          statistikk eller reklame.
+        </Avsnitt>
+
         <Avsnitt tittel="Hvor lenge vi lagrer">
-          Bilder og posisjonsdata slettes automatisk etter 24 måneder.
-          Opplysninger som inngår i fakturagrunnlaget oppbevares i fem år slik
-          bokføringsloven krever, og anonymiseres deretter.
+          Bilder og posisjonsdata slettes etter 24 måneder. Opplysninger som
+          inngår i fakturagrunnlaget, oppbevares i fem år etter utløpet av
+          regnskapsåret, slik bokføringsloven krever, og anonymiseres deretter.
+        </Avsnitt>
+
+        <Avsnitt tittel="Hvem har tilgang">
+          Kun ansatte hos utleier med behov for det, og leverandørene nedenfor,
+          som behandler opplysningene på våre vegne. Vi selger ikke
+          opplysninger videre.
+        </Avsnitt>
+
+        <Avsnitt tittel="Leverandører som behandler opplysningene">
+          Vi har databehandleravtale med alle tre:
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>
+              <strong>Supabase</strong> lagrer databasen og bildene i et
+              datasenter i Irland.
+            </li>
+            <li>
+              <strong>Vercel</strong> kjører tjenesten på servere i Frankfurt.
+            </li>
+            <li>
+              <strong>Resend</strong> sender e-post fra tjenesten, som
+              kvitteringer til deg og varsler til utleier. Varslene inneholder
+              navn, mobilnummer, e-postadresse, adresse og eventuelle
+              kommentarer.
+            </li>
+          </ul>
+        </Avsnitt>
+
+        <Avsnitt tittel="Overføring ut av EØS">
+          Resend behandler e-posten i USA. Vercel er et amerikansk selskap, og
+          etter avtalen kan opplysninger også behandles i USA og andre land der
+          Vercel eller underleverandørene deres har drift. Supabase-selskapet vi
+          har avtale med, holder til i Singapore. Overføringene bygger på
+          EU-kommisjonens standardklausuler, og Resend er i tillegg sertifisert
+          under EU–US Data Privacy Framework. Ta kontakt om du vil ha en kopi av
+          klausulene.
         </Avsnitt>
 
         <Avsnitt tittel="Dine rettigheter">
-          Du kan be om innsyn i opplysningene vi har om deg, få rettet feil, og
-          be om sletting av opplysninger vi ikke er lovpålagt å beholde.{' '}
+          Du kan be om innsyn i opplysningene vi har om deg, få rettet feil, be
+          om sletting av opplysninger vi ikke er lovpålagt å beholde, og be om
+          at behandlingen begrenses. Opplysningene du selv har gitt oss, kan du
+          få utlevert i et maskinlesbart format, og du kan protestere mot
+          behandling som bygger på berettiget interesse.{' '}
           {kontakt ? (
             <>
               Ta kontakt på{' '}
@@ -89,11 +147,6 @@ export default async function PersonvernSide() {
             'Ta kontakt med utleier.'
           )}{' '}
           Du kan også klage til Datatilsynet.
-        </Avsnitt>
-
-        <Avsnitt tittel="Hvem har tilgang">
-          Kun ansatte hos utleier med behov for det. Opplysningene lagres hos
-          Supabase, med databaser i EU. Vi selger ikke opplysninger videre.
         </Avsnitt>
       </div>
     </main>

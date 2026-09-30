@@ -82,8 +82,11 @@ godkjent ennå sett ut som den var på overtid. Nettsida leser visningen med
 - Personvernsida på haugemaskin.no får skjemaet: navn, mobil, valgfri
   e-post og melding, maskin og datoer; formål å svare på forespørselen og
   eventuelt inngå leieavtale (grunnlag: avtale, art. 6 (1) b); lagres i
-  utleiesystemet hos Supabase (Frankfurt); slettes 30 dager etter at
-  perioden er over hvis det ikke blir leie.
+  utleiesystemet hos Supabase (Irland – AWS eu-west-1, ikke Frankfurt som
+  først antatt; serveren kjører i Frankfurt, fra1); varselet til admin går
+  gjennom Resend, som behandler e-post i USA (standardklausuler og EU–US
+  Data Privacy Framework); slettes 30 dager etter at perioden er over hvis
+  det ikke blir leie.
 - Daglig jobb `GET /api/rydd` (Vercel cron kl. 07:30, `CRON_SECRET` som
   `/api/varsler/forfalt`) sletter reservasjoner som ikke ble leie – status
   `forespurt`, `avlyst`, eller `aktiv` men aldri hentet – der `til_dato` er

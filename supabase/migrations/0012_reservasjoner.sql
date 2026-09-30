@@ -57,25 +57,35 @@ create policy admin_alt on reservasjoner
 
 -- ── Offentlig: når maskinene er opptatt (hovedsida, del 2) ─
 -- Bare datoer. Ingen navn, ingen telefon, ingen referanser.
-create or replace view public.hm_offentleg_opptatt as
-  select r.maskin_id, r.fra_dato, r.til_dato
-    from reservasjoner r
-    join maskiner m on m.id = r.maskin_id
-   where r.status = 'aktiv'
-     and r.til_dato >= (now() at time zone 'Europe/Oslo')::date
-     and m.aktiv and m.status <> 'utrangert'
-  union all
-  select l.maskin_id,
-         (l.start_tid at time zone 'Europe/Oslo')::date,
-         (l.planlagt_slutt at time zone 'Europe/Oslo')::date
-    from leier l
-    join maskiner m on m.id = l.maskin_id
-   where l.status in ('aktiv', 'venter_godkjenning')
-     and m.aktiv and m.status <> 'utrangert';
+--
+-- Lages bare når den ikke finnes. 0013 legger til kolonnen levert, og
+-- create or replace kan ikke fjerne kolonner: kjørt på nytt etter 0013
+-- (KJOR-DENNE.sql en gang til) stoppet denne hele fila med «cannot drop
+-- columns from view», før senere migrasjoner var kjørt.
+do $$
+begin
+  if to_regclass('public.hm_offentleg_opptatt') is null then
+    create view public.hm_offentleg_opptatt as
+      select r.maskin_id, r.fra_dato, r.til_dato
+        from reservasjoner r
+        join maskiner m on m.id = r.maskin_id
+       where r.status = 'aktiv'
+         and r.til_dato >= (now() at time zone 'Europe/Oslo')::date
+         and m.aktiv and m.status <> 'utrangert'
+      union all
+      select l.maskin_id,
+             (l.start_tid at time zone 'Europe/Oslo')::date,
+             (l.planlagt_slutt at time zone 'Europe/Oslo')::date
+        from leier l
+        join maskiner m on m.id = l.maskin_id
+       where l.status in ('aktiv', 'venter_godkjenning')
+         and m.aktiv and m.status <> 'utrangert';
 
-comment on view public.hm_offentleg_opptatt is
-  'Dager maskinene er opptatt, for hovedsida. Ingen kunde-, leie- eller '
-  'internopplysninger. til_dato null betyr til videre.';
+    comment on view public.hm_offentleg_opptatt is
+      'Dager maskinene er opptatt, for hovedsida. Ingen kunde-, leie- eller '
+      'internopplysninger. til_dato null betyr til videre.';
+  end if;
+end $$;
 
 -- REKKEFØLGEN ER IKKE VALGFRI: revoke før grant. Supabase gir anon alt på
 -- nye visninger, og en visning uten security_invoker kjører med eierens

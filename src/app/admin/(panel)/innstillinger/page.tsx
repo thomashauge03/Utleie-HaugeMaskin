@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
+import { BILDE_MANEDER } from '@/lib/bildesletting'
+import { dato, leggTilManeder } from '@/lib/dato'
 import { Kort, KortTittel, Seksjonstittel } from '@/components/ui'
 import { BekreftKnapp } from '@/components/bekreft-knapp'
 import { KopierLenke } from '../maskiner/kopier-lenke'
@@ -12,6 +14,7 @@ import { VarselSkjema, type Varsling } from './varsel-skjema'
 import { VerkstedSkjema } from './verksted-skjema'
 import { Deler, type Del } from './deler'
 import { EpostStatus } from './epost-status'
+import { BildeslettingSkjema } from './bildesletting-skjema'
 import { nyttIcalToken } from './actions'
 
 export const metadata: Metadata = { title: 'Innstillinger – HM Utleie' }
@@ -23,6 +26,7 @@ const FANER = [
   { verdi: 'verksted', tekst: 'Verksted' },
   { verdi: 'varsling', tekst: 'Varsling' },
   { verdi: 'kalender', tekst: 'Kalender' },
+  { verdi: 'personvern', tekst: 'Personvern' },
 ] as const
 
 type Fane = (typeof FANER)[number]['verdi']
@@ -70,6 +74,7 @@ export default async function InnstillingerSide(
     { data: maskiner },
     { data: delRader },
     { data: delBruk },
+    { data: eldsteBilde },
   ] = await Promise.all([
     supabase.from('innstillinger').select('*').maybeSingle(),
     supabase.from('kategorier').select('id, navn, er_verksted').order('navn'),
@@ -80,6 +85,12 @@ export default async function InnstillingerSide(
       .order('rekkefolge')
       .order('navn'),
     supabase.from('maskin_delstatus').select('del_id'),
+    supabase
+      .from('bilder')
+      .select('mottatt_tid')
+      .order('mottatt_tid')
+      .limit(1)
+      .maybeSingle(),
   ])
 
   // Hvor mange registreringer henger på hver del – så admin ser hva
@@ -239,6 +250,24 @@ export default async function InnstillingerSide(
           </form>
         </div>
       </Kort>
+      )}
+
+      {fane === 'personvern' && (
+        <Kort>
+          <KortTittel>Sletting av bilder</KortTittel>
+          <BildeslettingSkjema
+            slettGamle={innst?.slett_gamle_bilder ?? true}
+            migrasjonKjort={Boolean(innst) && 'slett_gamle_bilder' in innst}
+            eldste={
+              eldsteBilde
+                ? {
+                    dato: dato(eldsteBilde.mottatt_tid),
+                    frist: dato(leggTilManeder(eldsteBilde.mottatt_tid, BILDE_MANEDER)),
+                  }
+                : null
+            }
+          />
+        </Kort>
       )}
     </div>
   )

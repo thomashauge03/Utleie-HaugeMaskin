@@ -75,7 +75,10 @@ export function UttakListe({ maskiner, prosjekter, sistProsjektId, iDag }: Felle
       if (m.opptatt) return { tone: 'info', tekst: `${m.navn}: ${m.opptatt}` }
       if (valgte.has(m.id)) return { tone: 'info', tekst: `${m.navn} er allerede valgt` }
       settValgte((før) => new Set(før).add(m.id))
-      return { tone: 'ok', tekst: `✓ ${m.navn}` }
+      // Reservert senere: krysses av likevel, men svaret er gult.
+      return m.reservert
+        ? { tone: 'info', tekst: `✓ ${m.navn} – ${m.reservert}` }
+        : { tone: 'ok', tekst: `✓ ${m.navn}` }
     }
     if (kode.type === 'kategori') {
       const navn = kode.navn.trim()
@@ -145,7 +148,7 @@ export function UttakListe({ maskiner, prosjekter, sistProsjektId, iDag }: Felle
       {/* Bunnlinja ligger i skjemaet og er sticky, så den følger med mens
           man blar – og svaret blir stående etter at valgene er tømt. */}
       <div
-        hidden={valgte.size === 0 && !tilstand.ok && !tilstand.feil}
+        hidden={valgte.size === 0 && !tilstand.ok && !tilstand.feil && !tilstand.varsel}
         className="sticky bottom-0 -mx-5 space-y-3 border-t-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
       >
         <Svar tilstand={tilstand} />
@@ -250,6 +253,11 @@ function Svar({ tilstand }: { tilstand: UttakTilstand }) {
           {tilstand.feil}
         </p>
       )}
+      {tilstand.varsel && (
+        <p className="border-l-4 border-hm-amber bg-[var(--flate-2)] p-3 text-sm font-semibold">
+          {tilstand.varsel}
+        </p>
+      )}
     </>
   )
 }
@@ -271,6 +279,14 @@ function Navn({ maskin }: { maskin: UttakMaskin }) {
     <span className="min-w-0 flex-1">
       <span className="block font-semibold">{maskin.navn}</span>
       {under && <span className="block text-sm text-[var(--blekk-svak)]">{under}</span>}
+      {/* Teksten i vanlig blekk og en gul firkant foran: gul tekst ville
+          falt under kravet til kontrast i mørkt tema. */}
+      {maskin.reservert && (
+        <span className="mt-1 flex items-center gap-1.5 text-sm font-semibold">
+          <span aria-hidden="true" className="size-2 shrink-0 bg-hm-amber" />
+          {maskin.reservert}
+        </span>
+      )}
     </span>
   )
 }

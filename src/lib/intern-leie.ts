@@ -4,6 +4,14 @@ import { varsleMerknadIntern } from '@/lib/epost/varsler'
 import { beregnPris, prisEnhet } from '@/lib/pris'
 import { kanLeiesUt } from '@/lib/verksted'
 import { opptattGrunn, prosjektNavn } from '@/lib/leietaker'
+import { osloDag } from '@/lib/dato'
+import {
+  ansattVarsel,
+  nesteReservasjon,
+  reservasjonTekst,
+  type Reservasjon,
+} from '@/lib/reservasjon'
+import { hentReservasjoner } from '@/lib/reservasjon-data'
 import type { AdminBruker } from '@/lib/auth'
 import type { ProsjektInnbygd } from '@/lib/types'
 import 'server-only'
@@ -47,6 +55,18 @@ export type UttakMaskin = {
   underkategori: string | null
   /** null når den kan tas ut. Ellers grunnen, klar til å vises. */
   opptatt: string | null
+  /** Neste reservasjon som tekst, eller null. Et varsel, ikke en sperre. */
+  reservert: string | null
+}
+
+/** Reservasjonene gruppert per maskin. */
+function reservasjonerPerMaskin(liste: Reservasjon[]): Map<string, Reservasjon[]> {
+  const kart = new Map<string, Reservasjon[]>()
+  for (const r of liste) {
+    if (!kart.has(r.maskin_id)) kart.set(r.maskin_id, [])
+    kart.get(r.maskin_id)!.push(r)
+  }
+  return kart
 }
 
 export type Uttaksside =
@@ -129,6 +149,7 @@ export async function hentUttaksside(bruker: AdminBruker): Promise<Uttaksside> {
     valg,
     { data: maskinRader, error: maskinFeil },
     { data: aktiveRader, error: aktiveFeil },
+    reservasjoner,
   ] = await Promise.all([
     hentProsjektvalg(bruker.id),
     supabaseAdmin
@@ -147,6 +168,9 @@ export async function hentUttaksside(bruker: AdminBruker): Promise<Uttaksside> {
       )
       .in('status', ['aktiv', 'venter_godkjenning'])
       .order('start_tid'),
+    // Reservasjonene er bare varsler her. Feiler de, skal lista likevel
+    // vises – uten varsel, ikke med en feilside.
+    hentReservasjoner().catch(() => [] as Reservasjon[]),
   ])
 
   // «Ikke satt opp ennå» skal vinne når prosjekttabellen mangler, selv om
@@ -169,8 +193,12 @@ export async function hentUttaksside(bruker: AdminBruker): Promise<Uttaksside> {
       planlagtSlutt: l.planlagt_slutt,
     }))
 
+  const iDag = osloDag(new Date())
+  const resPerMaskin = reservasjonerPerMaskin(reservasjoner)
+
   const maskiner: UttakMaskin[] = ((maskinRader ?? []) as MaskinRad[]).map((m) => {
     const l = perMaskin.get(m.id)
+    const neste = nesteReservasjon(resPerMaskin.get(m.id) ?? [], iDag)
     return {
       id: m.id,
       qr: m.qr_kode,
@@ -190,6 +218,7 @@ export async function hentUttaksside(bruker: AdminBruker): Promise<Uttaksside> {
           : null,
         megId: bruker.id,
       }),
+      reservert: neste ? reservasjonTekst(neste, iDag) : null,
     }
   })
 
@@ -209,7 +238,7 @@ export async function taUtUtstyr(
   maskinIder: string[],
   prosjektId: string,
   planlagtSlutt: Date | null,
-): Promise<{ feil: string } | { tattUt: string[]; ikkeTatt: string[] }> {
+): Promise<{ feil: string } | { tattUt: string[]; ikkeTatt: string[]; varsler: string[] }> {
   const { data: prosjektRad } = await supabaseAdmin
     .from('prosjekter')
     .select('id, navn, nummer, aktiv')
@@ -228,8 +257,16 @@ export async function taUtUtstyr(
   type Rad = { id: string; navn: string; aktiv: boolean; status: string; verksted_status: string | null }
   const maskiner = new Map(((rader ?? []) as Rad[]).map((m) => [m.id, m]))
 
+  // Varsler, aldri sperre: feiler oppslaget, tas utstyret ut uten varsel.
+  const iDag = osloDag(new Date())
+  const sluttDag = planlagtSlutt ? osloDag(planlagtSlutt) : null
+  const resPerMaskin = reservasjonerPerMaskin(
+    await hentReservasjoner(maskinIder).catch(() => [] as Reservasjon[]),
+  )
+
   const tattUt: string[] = []
   const ikkeTatt: string[] = []
+  const varsler: string[] = []
 
   for (const id of maskinIder) {
     const m = maskiner.get(id)
@@ -280,9 +317,12 @@ export async function taUtUtstyr(
       aktor: `${bruker.rolle}:${bruker.epost}`,
     })
     tattUt.push(m.navn)
+
+    const varsel = ansattVarsel(resPerMaskin.get(m.id) ?? [], iDag, sluttDag)
+    if (varsel) varsler.push(`${m.navn}: ${varsel}`)
   }
 
-  return { tattUt, ikkeTatt }
+  return { tattUt, ikkeTatt, varsler }
 }
 
 /**

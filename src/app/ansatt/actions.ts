@@ -7,7 +7,8 @@ import { norskSluttAvDag } from '@/lib/dato'
 import { MAKS_KOMMENTAR } from '@/lib/validering'
 import { avsluttInternLeie, taUtUtstyr } from '@/lib/intern-leie'
 
-export type UttakTilstand = { feil?: string; ok?: string }
+/** `varsel`: noe som ble tatt ut, er reservert før det er tilbake. */
+export type UttakTilstand = { feil?: string; ok?: string; varsel?: string }
 export type LeverTilstand = { feil?: string; ok?: string }
 
 const uttakSkjema = z.object({
@@ -58,6 +59,7 @@ export async function taUt(
   return {
     ok: svar.tattUt.length > 0 ? `Tatt ut: ${svar.tattUt.join(', ')}.` : undefined,
     feil: svar.ikkeTatt.length > 0 ? `${svar.ikkeTatt.join('. ')}.` : undefined,
+    varsel: svar.varsler.length > 0 ? svar.varsler.join(' ') : undefined,
   }
 }
 

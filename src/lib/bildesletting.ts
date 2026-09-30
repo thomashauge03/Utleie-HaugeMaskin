@@ -14,8 +14,15 @@ export type Bildesletting =
   | 'ikke satt opp'
   | { rader: number; foreldrelose: number; filer: number; feil?: string }
 
-/** Kolonnen eller funksjonen finnes ikke – migrasjon 0014 er ikke kjørt. */
-const FINNES_IKKE = ['42703', 'PGRST204', 'PGRST202', '42883']
+/** Kolonnen finnes ikke – migrasjon 0014 er ikke kjørt. */
+const MANGLER_KOLONNE = ['42703', 'PGRST204']
+
+/**
+ * Funksjonen finnes ikke i PostgREST sin skjemacache. Bare denne: 42703
+ * eller 42883 fra selve kallet kommer fra inni funksjonen, og er en ekte
+ * feil som skal gi 500 – ikke et stille «ikke satt opp» hver morgen.
+ */
+const MANGLER_FUNKSJON = ['PGRST202']
 
 /**
  * Sletter bilder og posisjon eldre enn 24 måneder, slik personvernsida
@@ -34,7 +41,7 @@ export async function slettGamleBilder(): Promise<Bildesletting> {
     .maybeSingle()
 
   if (innstFeil) {
-    return FINNES_IKKE.includes(innstFeil.code)
+    return MANGLER_KOLONNE.includes(innstFeil.code)
       ? 'ikke satt opp'
       : { rader: 0, foreldrelose: 0, filer: 0, feil: innstFeil.message }
   }
@@ -42,7 +49,7 @@ export async function slettGamleBilder(): Promise<Bildesletting> {
 
   const { data, error } = await supabaseAdmin.rpc('slett_utlopte_bilder')
   if (error) {
-    return FINNES_IKKE.includes(error.code)
+    return MANGLER_FUNKSJON.includes(error.code)
       ? 'ikke satt opp'
       : { rader: 0, foreldrelose: 0, filer: 0, feil: error.message }
   }

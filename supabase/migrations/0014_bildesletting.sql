@@ -29,9 +29,12 @@ comment on column innstillinger.slett_gamle_bilder is
 --
 -- plpgsql framfor sql: kroppen sjekkes ikke mot storage.objects når
 -- funksjonen lages, så migrasjonen går også der Storage mangler.
+--
+-- maks gjelder hver av de to delene. 500 + 500 holder svaret under
+-- PostgREST sitt tak på 1000 rader; det som ikke rekkes, tas neste dag.
 create or replace function public.slett_utlopte_bilder(
   tidspunkt timestamptz default now(),
-  maks      integer     default 1000
+  maks      integer     default 500
 )
 returns table (sti text, foreldrelos boolean)
 language plpgsql
@@ -39,15 +42,20 @@ security definer
 set search_path = ''
 as $$
 declare
-  grense constant timestamptz := tidspunkt - interval '24 months';
+  -- Aldri fram i tid. Et nysgjerrig kall i SQL-editoren med en dato
+  -- langt fram skal ikke slette noe som ikke er utløpt i dag.
+  grense constant timestamptz := least(tidspunkt, now()) - interval '24 months';
 begin
   -- Foreldreløse filer først, mens radene som slettes under ennå finnes.
-  -- Ellers ville de samme filene kommet med to ganger.
+  -- Ellers ville de samme filene kommet med to ganger. Bare stier av
+  -- formen /api/bilder/ny lager (som BILDE_STI i validering.ts): legges
+  -- noe annet i bøtta senere, blir det stående.
   if to_regclass('storage.objects') is not null then
     return query
       select o.name, true
         from storage.objects o
        where o.bucket_id = 'bilder'
+         and o.name ~ '^\d{4}-\d{2}/(henting|levering)-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jpg$'
          and o.created_at < grense
          and not exists (select 1 from public.bilder b where b.fil_sti = o.name)
        order by o.created_at
@@ -60,6 +68,11 @@ begin
   -- «delete from» står etter parentesen med vilje. lag-samlemigrasjon.mjs
   -- advarer mot linjer som begynner med det, og denne migrasjonen river
   -- ingenting når den kjøres.
+  --
+  -- fil_sti er ikke unik. Står en sti fortsatt på en rad som ikke slettes
+  -- nå, blir fila liggende til den raden også er utløpt. Hovedspørringen
+  -- ser tabellen slik den var før slettingen – derfor unntaket for radene
+  -- i utlopte.
   return query
     with utlopte as (
       select b.id
@@ -84,30 +97,66 @@ begin
         from slettet s
        group by s.leie_id
     )
-    select s.fil_sti, false from slettet s;
+    select distinct s.fil_sti, false
+      from slettet s
+     where not exists (
+       select 1
+         from public.bilder b
+        where b.fil_sti = s.fil_sti
+          and not exists (select 1 from utlopte u where u.id = b.id)
+     );
 end;
 $$;
 
 comment on function public.slett_utlopte_bilder(timestamptz, integer) is
   'Sletter bilderader eldre enn 24 måneder (ikke på pågående leier), logger '
   'én hendelse per leie, og returnerer stiene som skal slettes i Storage – '
-  'pluss foreldreløse filer eldre enn 24 måneder. Kalles av /api/rydd.';
+  'pluss foreldreløse filer eldre enn 24 måneder. Kalles av /api/rydd. '
+  'tidspunkt er for tester og kappes til now().';
 
 -- Supabase gir anon og authenticated execute på nye funksjoner. Uten
--- revoke kunne hvem som helst kalt denne via /rest/v1/rpc med et
--- tidspunkt langt fram i tid og slettet alle bildene.
+-- revoke kunne hvem som helst kalt denne via /rest/v1/rpc.
 revoke all     on function public.slett_utlopte_bilder(timestamptz, integer)
   from public, anon, authenticated;
 grant  execute on function public.slett_utlopte_bilder(timestamptz, integer)
   to service_role;
 
 
--- ── Kontroll ───────────────────────────────────────────────
+-- ── Kontroll: rettigheter ──────────────────────────────────
 do $$
 begin
   if has_function_privilege('anon', 'public.slett_utlopte_bilder(timestamptz, integer)', 'execute')
      or has_function_privilege('authenticated', 'public.slett_utlopte_bilder(timestamptz, integer)', 'execute')
   then
     raise exception 'slett_utlopte_bilder kan kalles av anon eller authenticated';
+  end if;
+end $$;
+
+
+-- ── Kontroll: Storage ──────────────────────────────────────
+-- Funksjonen kjører som den som lager den (postgres i SQL-editoren).
+-- Kommer ikke den rollen forbi radsikkerheten på storage.objects, gir
+-- søket etter foreldreløse filer bare tomt svar – ingen feil, og ingen
+-- ville merket det før i 2028. Da er det bedre å stoppe her.
+do $$
+declare
+  rls     boolean;
+  tvunget boolean;
+  eier    text;
+begin
+  select c.relrowsecurity, c.relforcerowsecurity, pg_get_userbyid(c.relowner)
+    into rls, tvunget, eier
+    from pg_class c
+   where c.oid = to_regclass('storage.objects');
+
+  if rls
+     and (eier <> current_user or tvunget)
+     and not exists (
+       select 1 from pg_roles
+        where rolname = current_user and (rolsuper or rolbypassrls)
+     )
+  then
+    raise exception 'Rollen % kommer ikke forbi radsikkerheten på storage.objects, så foreldreløse filer ville aldri blitt funnet. Kjør migrasjonen som postgres i Supabase SQL Editor.',
+      current_user;
   end if;
 end $$;

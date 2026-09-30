@@ -85,9 +85,11 @@ export default async function InnstillingerSide(
       .order('rekkefolge')
       .order('navn'),
     supabase.from('maskin_delstatus').select('del_id'),
+    // Eldste bilde på en avsluttet leie – de på leier som pågår, venter.
     supabase
       .from('bilder')
-      .select('mottatt_tid')
+      .select('mottatt_tid, leier!inner(status)')
+      .not('leier.status', 'in', '(aktiv,venter_godkjenning)')
       .order('mottatt_tid')
       .limit(1)
       .maybeSingle(),

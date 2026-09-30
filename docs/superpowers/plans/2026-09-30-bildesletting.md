@@ -977,3 +977,22 @@ For hver lenke under `.next\node_modules`: `cmd //c "rmdir <full Windows-sti>"` 
 - [ ] **Step 4: Gjennomgang** med superpowers:requesting-code-review mot spec-en, rett funn, og commit rettelsene.
 
 - [ ] **Step 5: Avslutning** med superpowers:finishing-a-development-branch. Ikke push uten ja fra Thomas. Si fra at `foresporsel` må merges først og at 0014 må kjøres i Supabase.
+
+---
+
+## Endret under gjennomføringen
+
+Koden over er slik planen ble skrevet. Spec-en beskriver sluttresultatet. Dette ble endret:
+
+- **0012:** `hm_offentleg_opptatt` lages bare når den ikke finnes. Samlefila stoppet ellers på «cannot drop columns from view» andre gang, etter 0013. Egen commit.
+- **Etter kodegjennomgang (0014):**
+  - `maks default 500`, så svaret holder seg under PostgREST sitt tak på 1000 rader.
+  - `least(tidspunkt, now())`.
+  - Foreldreløse filer bare med navnemønsteret fra `BILDE_STI`.
+  - En sti som fortsatt står på en annen rad, returneres ikke (`select distinct … where not exists …`).
+  - Ny kontrollblokk for radsikkerhet på `storage.objects`.
+  - PGlite-testene bruker datoer to år bakover og har fire nye tilfeller (13 i alt).
+- **Etter kodegjennomgang (kode):**
+  - `bildesletting.ts` skiller `MANGLER_KOLONNE` (`42703`, `PGRST204`) fra `MANGLER_FUNKSJON` (`PGRST202`).
+  - `/api/rydd` logger svaret med `console.log`.
+  - Innstillinger: eldste bilde regnes bare fra avsluttede leier, med teksten «ved første kjøring etter …». Datoen vises ikke når bryteren er av, og Lagre er låst uten migrasjon.

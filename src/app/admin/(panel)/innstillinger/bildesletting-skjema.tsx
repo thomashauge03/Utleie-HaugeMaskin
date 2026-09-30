@@ -39,9 +39,11 @@ export function BildeslettingSkjema({
       />
 
       <p className="text-sm text-[var(--blekk-svak)]">
-        {eldste
-          ? `Eldste bilde er fra ${eldste.dato} og slettes tidligst ${eldste.frist}.`
-          : 'Ingen bilder lagret.'}
+        {!eldste
+          ? 'Ingen bilder på avsluttede leier ennå.'
+          : slettGamle
+            ? `Eldste bilde på en avsluttet leie er fra ${eldste.dato}, og det slettes ved første kjøring etter ${eldste.frist}.`
+            : `Eldste bilde på en avsluttet leie er fra ${eldste.dato}.`}
       </p>
 
       {migrasjonKjort && !slettGamle && (
@@ -67,7 +69,7 @@ export function BildeslettingSkjema({
 
       <button
         type="submit"
-        disabled={venter}
+        disabled={venter || !migrasjonKjort}
         className="hm-trykk hm-kant-skygge-sm inline-flex min-h-[2.75rem] items-center border-2 border-[var(--kant-sterk)] bg-hm-red px-5 text-sm font-bold tracking-wide text-white uppercase hover:bg-hm-red-hover disabled:opacity-50"
       >
         {venter ? 'Lagrer …' : 'Lagre'}

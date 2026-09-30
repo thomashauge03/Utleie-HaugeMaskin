@@ -41,8 +41,18 @@ export async function GET(request: Request) {
   const bildeFeil = typeof bilder === 'object' ? bilder.feil : undefined
 
   const feil = reservasjonFeil ?? bildeFeil
-  return Response.json(
-    { slettet: count ?? 0, grense, bilder, ...(feil ? { feil } : {}), tid: new Date().toISOString() },
-    { status: feil ? 500 : 200 },
-  )
+  const svar = {
+    slettet: count ?? 0,
+    grense,
+    bilder,
+    ...(feil ? { feil } : {}),
+    tid: new Date().toISOString(),
+  }
+
+  // Vercel logger ikke svarkroppen. Uten denne linja viser loggen bare
+  // status 200 – også når bryteren står av eller migrasjonen mangler.
+  // Bare antall og datoer, ingen stier eller personopplysninger.
+  console.log('rydd', JSON.stringify(svar))
+
+  return Response.json(svar, { status: feil ? 500 : 200 })
 }

@@ -42,21 +42,31 @@ eldste bildet med rad (03.08.2026) går 03.08.2028, sjekket mot produksjon
 ## Migrasjon 0014_bildesletting.sql
 
 - `innstillinger.slett_gamle_bilder boolean not null default true` – bryteren.
-- `slett_utlopte_bilder(tidspunkt timestamptz default now(), maks integer default 1000)`
+- `slett_utlopte_bilder(tidspunkt timestamptz default now(), maks integer default 500)`
   `returns table (sti text, foreldrelos boolean)`, i plpgsql (ASCII-navn som
   resten av skjemaet):
-  1. Sletter inntil `maks` utløpte rader, eldste først, der leien ikke er
+  1. Returnerer inntil `maks` foreldreløse filer. Bare stier av formen
+     `/api/bilder/ny` lager (som `BILDE_STI`), så noe annet som senere legges
+     i bøtta blir stående. Finnes ikke `storage.objects`, hoppes steget over.
+  2. Sletter inntil `maks` utløpte rader, eldste først, der leien ikke er
      `aktiv` eller `venter_godkjenning`.
-  2. Legger én hendelse på hver berørt leie: type `bilder_slettet`, aktor
+  3. Legger én hendelse på hver berørt leie: type `bilder_slettet`, aktor
      `system`, beskrivelse «Bilder slettet etter 24 måneder: henting og
      levering» (typene som faktisk ble slettet).
-  3. Returnerer stiene til de slettede radene, pluss inntil `maks`
-     foreldreløse filer. Finnes ikke `storage.objects`, hoppes steg 3 over.
+  4. Returnerer stiene til de slettede radene – men ikke en sti som fortsatt
+     står på en annen rad. `fil_sti` er ikke unik, og fila skal stå til den
+     siste raden som bruker den, er utløpt.
+- `tidspunkt` er for tester og kappes til `now()`. Et kall i SQL-editoren med
+  en dato fram i tid sletter aldri mer enn det som er utløpt i dag.
+- `maks` gjelder hver del. 500 + 500 holder svaret under PostgREST sitt tak på
+  1000 rader. Det som ikke rekkes, tas neste dag.
 - `security definer set search_path = ''`, med fullt kvalifiserte navn.
   `revoke all … from public, anon, authenticated` og `grant execute … to
-  service_role`. Ellers kunne hvem som helst kalt den via `/rest/v1/rpc` med
-  et `tidspunkt` langt fram i tid og slettet alle bildene. En kontrollblokk stopper
-  migrasjonen hvis anon eller authenticated kan kjøre den.
+  service_role`. Ellers kunne hvem som helst kalt den via `/rest/v1/rpc`. To
+  kontrollblokker stopper migrasjonen: hvis anon eller authenticated kan kjøre
+  funksjonen, og hvis rollen som lager den (postgres i SQL-editoren) ikke
+  kommer forbi radsikkerheten på `storage.objects`. Da ville søket etter
+  foreldreløse filer bare gitt tomt svar, uten feil.
 - plpgsql framfor sql: kroppen valideres ikke mot `storage.objects` når
   funksjonen lages, så migrasjonen går også der Storage ikke finnes (PGlite,
   lokal Supabase uten Storage).
@@ -77,16 +87,19 @@ rad som peker på en borte fil.
 
 Etter reservasjonene, som før:
 
-- Leser `innstillinger.slett_gamle_bilder`. Feil (kolonnen finnes ikke) betyr
-  at migrasjonen ikke er kjørt, og steget hoppes over (`bilder: 'ikke satt
-  opp'`).
+- Leser `innstillinger.slett_gamle_bilder`. Mangler kolonnen (`42703`,
+  `PGRST204`), er migrasjonen ikke kjørt, og steget hoppes over (`bilder:
+  'ikke satt opp'`).
 - Av: `bilder: 'av'` i svaret.
 - På: `slettGamleBilder()` i `src/lib/bildesletting.ts` kaller funksjonen,
   sletter filene med `storage.from('bilder').remove()` i biter på 100, og
-  returnerer `{ rader, foreldrelose, filer }`. Mangler funksjonen
-  (`PGRST202`), hoppes steget over.
+  returnerer `{ rader, foreldrelose, filer }`. Bare `PGRST202` (funksjonen
+  finnes ikke) hoppes over. `42703` eller `42883` fra kallet kommer fra inni
+  funksjonen og er en ekte feil.
 - Andre feil gir status 500 med begge resultatene, så kjøringen står som
   feilet i Vercel. Neste dag prøves det på nytt.
+- Svaret skrives til loggen med `console.log` (bare antall og datoer). Vercel
+  logger ikke svarkroppen.
 - `maxDuration = 60`, som `/api/varsler/forfalt`.
 
 Reservasjonsslettingen går uansett bryteren.
@@ -98,11 +111,14 @@ Ny fane «Personvern» (`?fane=personvern`) med kortet «Sletting av bilder»:
 - Avkrysning «Slett bilder og posisjon etter 24 måneder», med Lagre-knapp som
   i varslingsskjemaet. Forklaring under: sjekkes hver morgen, og bilder fra
   leier som ikke er avsluttet, venter til leien er ferdig.
-- «Eldste bilde er fra 03.08.2026 og slettes tidligst 03.08.2028.» Eller
-  «Ingen bilder lagret.»
+- «Eldste bilde på en avsluttet leie er fra 03.08.2026, og det slettes ved
+  første kjøring etter 03.08.2028.» Står bryteren av, står bare datoen for
+  bildet. Uten bilder på avsluttede leier: «Ingen bilder på avsluttede leier
+  ennå.» Bilder på leier som pågår, telles ikke, siden de venter.
 - Står den av: «Bildene blir liggende til noen sletter dem, og personvernsida
   sier ikke lenger at de slettes automatisk.»
-- Er migrasjonen ikke kjørt, sier kortet det, så ingen tror bryteren virker.
+- Er migrasjonen ikke kjørt, sier kortet det og Lagre er låst, så ingen tror
+  bryteren virker.
 - `lagreBildesletting` i `innstillinger/actions.ts`: `krevAdmin`, lagrer
   bryteren, `revalidatePath` for innstillingene og `/personvern`.
 
@@ -128,13 +144,18 @@ Teksten bygger på 746f300 (PR #1, merget til `origin/main` 30.09.2026), der
   (`reservasjoner.kunde_epost`) og 0014 (`innstillinger.slett_gamle_bilder`).
   0012 og 0013 manglet.
 - `supabase/KJOR-DENNE.sql` lages på nytt med `scripts/lag-samlemigrasjon.mjs`.
+- 0012 lager `hm_offentleg_opptatt` bare når den ikke finnes. Etter 0013
+  (kolonnen `levert`) stoppet en ny kjøring av samlefila på 0012 med «cannot
+  drop columns from view», før 0014 var kjørt – og sjekkskriptet ber nettopp
+  om å kjøre samlefila, «trygg å kjøre flere ganger». Endres visningen igjen
+  senere, må 0013 få samme vern.
 
 ## Utrulling
 
-`foresporsel` merges først, så denne. Thomas kjører 0014 i Supabase SQL
-Editor. Rekkefølgen mellom migrasjon og kode spiller ingen rolle. Neste
-morgen står `bilder: { rader: 0, foreldrelose: 0, filer: 0 }` i loggen for
-cron-kjøringen i Vercel.
+`foresporsel` merges først, så denne. Thomas kjører 0014 (eller samlefila) i
+Supabase SQL Editor. Rekkefølgen mellom migrasjon og kode spiller ingen
+rolle. Neste morgen står `rydd {… "bilder":{"rader":0,"foreldrelose":0,
+"filer":0} …}` i loggen for cron-kjøringen i Vercel.
 
 ## Utenfor – tas senere
 
@@ -155,13 +176,18 @@ cron-kjøringen i Vercel.
   - Gammelt bilde på aktiv leie og på leie som venter godkjenning blir stående.
   - Nytt bilde blir stående. Grensa: akkurat 24 måneder blir stående, ett
     sekund over slettes.
-  - Foreldreløs fil over 24 måneder kommer med, under 24 måneder og fil med
-    rad gjør det ikke.
+  - Foreldreløs fil over 24 måneder kommer med. Under 24 måneder, fil med
+    rad, fil i en annen bøtte og fil med annet navnemønster gjør det ikke.
   - Andre kjøring uten filsletting returnerer de samme filene som
     foreldreløse (retter seg selv), og skriver ingen nye hendelser.
+  - En sti som fortsatt står på en annen rad, returneres ikke før den siste
+    raden er utløpt – og da én gang.
+  - Et `tidspunkt` fram i tid sletter ikke mer enn det som er utløpt i dag.
   - `maks` begrenser antallet.
   - anon og authenticated kan ikke kjøre funksjonen, service_role kan.
-  - Migrasjonen kan kjøres to ganger.
+  - Storage-kontrollen stopper migrasjonen for en rolle uten bypassrls.
+  - Migrasjonen kan kjøres to ganger, og samlefila også.
+  - `leggTilManeder` gir samme tidspunkt som Postgres.
 - eslint og tsc med binærene fra hovedsjekkouten, `npm test`,
   `npm run build` med plassholdere for miljøet.
 - Nettleseren: ikke mot produksjon. Fanen og personvernsida ses over etter

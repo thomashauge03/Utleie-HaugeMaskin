@@ -4,10 +4,11 @@ import { notFound } from 'next/navigation'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
-import { dato } from '@/lib/dato'
+import { dato, osloDag } from '@/lib/dato'
 import { LEIE_STATUS_TEKST, MASKIN_STATUS_TEKST, type LeieRad, type Maskin } from '@/lib/types'
 import { LEIETAKER_FELT, leietaker, leietakerLinje } from '@/lib/leietaker'
 import { Kort, KortTittel, Merke } from '@/components/ui'
+import { ReservasjonRad, type ReservasjonVisning } from '../../kalender/reservasjon-rad'
 import { KopierLenke } from '../kopier-lenke'
 import { RedigerSkjema } from './rediger-skjema'
 import { aktiverMaskin } from './actions'
@@ -31,21 +32,35 @@ export default async function MaskinDetaljSide(props: PageProps<'/admin/maskiner
   if (!data) notFound()
   const maskin = data as Maskin
 
-  const [{ data: kategoriRader }, { data: leieRader }, { count: antallLeier }] =
-    await Promise.all([
-      supabase.from('kategorier').select('navn').order('navn'),
-      supabase
-        .from('leier')
-        .select(`*, ${LEIETAKER_FELT}`)
-        .eq('maskin_id', maskin.id)
-        .order('start_tid', { ascending: false })
-        .limit(10),
-      // Egen telling, siden lista over er begrenset til ti.
-      supabase
-        .from('leier')
-        .select('id', { count: 'exact', head: true })
-        .eq('maskin_id', maskin.id),
-    ])
+  const [
+    { data: kategoriRader },
+    { data: leieRader },
+    { count: antallLeier },
+    { data: resRader, error: resFeil },
+  ] = await Promise.all([
+    supabase.from('kategorier').select('navn').order('navn'),
+    supabase
+      .from('leier')
+      .select(`*, ${LEIETAKER_FELT}`)
+      .eq('maskin_id', maskin.id)
+      .order('start_tid', { ascending: false })
+      .limit(10),
+    // Egen telling, siden lista over er begrenset til ti.
+    supabase
+      .from('leier')
+      .select('id', { count: 'exact', head: true })
+      .eq('maskin_id', maskin.id),
+    // Kommende reservasjoner. Feiler den (f.eks. før migrasjon 0012), står
+    // kortet med lenke til kalenderen i stedet for en feilside.
+    supabase
+      .from('reservasjoner')
+      .select('id, maskin_id, fra_dato, til_dato, kunde_navn, kunde_telefon, notat, status')
+      .eq('maskin_id', maskin.id)
+      .eq('status', 'aktiv')
+      .gte('til_dato', osloDag(new Date()))
+      .order('fra_dato'),
+  ])
+  const reservasjoner = resFeil ? [] : ((resRader ?? []) as ReservasjonVisning[])
 
   // Underkategorier som allerede er i bruk, som forslag i skjemaet.
   const { data: typeRader } = await supabase
@@ -136,6 +151,24 @@ export default async function MaskinDetaljSide(props: PageProps<'/admin/maskiner
             <KopierLenke url={url} etikett="Kopier" />
           </div>
         </div>
+      </Kort>
+
+      <Kort>
+        <KortTittel>Reservasjoner</KortTittel>
+        {reservasjoner.length === 0 ? (
+          <p className="p-5 text-sm text-[var(--blekk-svak)]">
+            Ingen kommende reservasjoner.{' '}
+            <Link href="/admin/kalender" className="font-semibold underline underline-offset-4">
+              Legg inn i kalenderen
+            </Link>
+          </p>
+        ) : (
+          <ol className="space-y-3 p-4">
+            {reservasjoner.map((r) => (
+              <ReservasjonRad key={r.id} r={r} visMaskin={false} />
+            ))}
+          </ol>
+        )}
       </Kort>
 
       <Kort>

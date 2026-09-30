@@ -7,11 +7,17 @@ import { datoKort, osloDag } from '@/lib/dato'
 import { LEIE_STATUS_TEKST, erForfalt, type Leie, type LeieRad } from '@/lib/types'
 import { LEIETAKER_FELT, leietaker, leietakerLinje, leietakerTekst } from '@/lib/leietaker'
 import { Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
+import { kortDag } from '@/lib/reservasjon'
+import { NyReservasjon, type ReservasjonMaskin } from './ny-reservasjon'
+import { ReservasjonRad, type ReservasjonVisning } from './reservasjon-rad'
 
 export const metadata: Metadata = { title: 'Kalender – HM Utleie' }
 export const dynamic = 'force-dynamic'
 
 type Rad = LeieRad
+
+/** «Tabellen finnes ikke» – migrasjon 0012 er ikke kjørt. */
+const FINNES_IKKE = ['PGRST205', '42P01']
 
 const MND = [
   'januar', 'februar', 'mars', 'april', 'mai', 'juni',
@@ -88,6 +94,28 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
 
   const leier = ((data ?? []) as Rad[]).filter((l) => sluttFor(l, nå) >= førsteIMnd)
 
+  // Reservasjoner som berører måneden, og maskinene skjemaet kan velge.
+  // Mangler tabellen, står det en beskjed der skjemaet ellers hadde stått.
+  const [{ data: resData, error: resFeil }, { data: maskinData }] = await Promise.all([
+    supabase
+      .from('reservasjoner')
+      .select(
+        'id, maskin_id, fra_dato, til_dato, kunde_navn, kunde_telefon, notat, status, maskiner(navn)',
+      )
+      .eq('status', 'aktiv')
+      .lte('fra_dato', celleDag(new Date(år, måned + 1, 0)))
+      .gte('til_dato', celleDag(førsteIMnd))
+      .order('fra_dato'),
+    supabase
+      .from('maskiner')
+      .select('id, navn, internnummer')
+      .eq('aktiv', true)
+      .neq('status', 'utrangert')
+      .order('navn'),
+  ])
+  const reservasjonerPå = !(resFeil && FINNES_IKKE.includes(resFeil.code))
+  const reservasjoner = (resData ?? []) as unknown as ReservasjonVisning[]
+
   /*
    * Rutenettet starter på mandagen i uka der den 1. faller, og fylles
    * ut til hele uker. Da får hver kolonne alltid samme ukedag.
@@ -108,8 +136,9 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
       // ISO-datoer kan sammenlignes som tekst.
       return dag >= fra && dag <= til
     })
+    const reservert = reservasjoner.filter((r) => dag >= r.fra_dato && dag <= r.til_dato)
 
-    return { dato: d, dag, iMåneden, leier: påDagen }
+    return { dato: d, dag, iMåneden, leier: påDagen, reservert }
   })
   const forrige = new Date(år, måned - 1, 1)
   const neste = new Date(år, måned + 1, 1)
@@ -144,6 +173,16 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
         </div>
       </div>
 
+      {reservasjonerPå ? (
+        <NyReservasjon maskiner={(maskinData ?? []) as ReservasjonMaskin[]} iDag={iDag} />
+      ) : (
+        <p className="border-l-4 border-hm-amber bg-[var(--flate-opp)] p-4 text-sm">
+          Reservasjoner er ikke slått på ennå. Kjør{' '}
+          <code className="font-mono text-xs">supabase/migrations/0012_reservasjoner.sql</code> i
+          Supabase SQL Editor.
+        </p>
+      )}
+
       {/* ── Månedsrutenett ────────────────────────────────── */}
       <div className="overflow-x-auto">
         <div className="min-w-[900px]">
@@ -157,7 +196,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
               </div>
             ))}
 
-            {ruter.map(({ dato, dag, iMåneden, leier: påDagen }, i) => {
+            {ruter.map(({ dato, dag, iMåneden, leier: påDagen, reservert }, i) => {
               const erIDag = dag === iDag
               const helg = ukedagIndeks(dato) >= 5
 
@@ -182,14 +221,31 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
                     >
                       {dato.getDate()}
                     </span>
-                    {påDagen.length > 0 && (
+                    {påDagen.length + reservert.length > 0 && (
                       <span className="hm-tall text-[10px] font-bold text-[var(--blekk-svak)]">
-                        {påDagen.length}
+                        {påDagen.length + reservert.length}
                       </span>
                     )}
                   </div>
 
                   <ul className="space-y-1">
+                    {/* Reservasjonene først: det er de som ikke har skjedd ennå. */}
+                    {reservert.slice(0, 2).map((r) => (
+                      <li key={r.id}>
+                        <span
+                          title={`${r.maskiner?.navn} · reservert for ${r.kunde_navn} · ${kortDag(r.fra_dato)}–${kortDag(r.til_dato)}`}
+                          className="block truncate border border-dashed border-hm-amber bg-[var(--flate-opp)] px-1.5 py-1 text-[11px] leading-tight font-bold"
+                        >
+                          {r.maskiner?.navn ?? 'Reservert'}
+                        </span>
+                      </li>
+                    ))}
+                    {reservert.length > 2 && (
+                      <li className="px-1 text-[10px] font-bold text-[var(--blekk-svak)]">
+                        +{reservert.length - 2} reservert
+                      </li>
+                    )}
+
                     {påDagen.slice(0, 3).map((l) => {
                       // Er dagen etter avtalt levering, står maskinen på overtid.
                       const påOvertid =
@@ -229,7 +285,26 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
         <Prikk farge="bg-hm-red" tekst="Forfalt · ⚠ = dag på overtid" />
         <Prikk farge="bg-hm-amber" tekst="Venter godkjenning" />
         <Prikk farge="bg-hm-500" tekst="Avsluttet" />
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block size-3 border border-dashed border-hm-amber bg-[var(--flate-opp)]" />
+          Reservert
+        </span>
       </div>
+
+      {reservasjoner.length > 0 && (
+        <div>
+          <h2 className="hm-display mb-1 text-2xl">Reservasjoner i {MND[måned]}</h2>
+          <p className="mb-4 text-sm text-[var(--blekk-svak)]">
+            Kunden kjennes igjen på mobilnummeret når den henter, og da blir
+            reservasjonen en leie.
+          </p>
+          <ol className="space-y-3">
+            {reservasjoner.map((r) => (
+              <ReservasjonRad key={r.id} r={r} visMaskin />
+            ))}
+          </ol>
+        </div>
+      )}
 
       {/* ── Én og én, med datoene skrevet ut ──────────────── */}
       {leier.length === 0 ? (

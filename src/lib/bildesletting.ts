@@ -5,9 +5,10 @@ import 'server-only'
 export const BILDE_MANEDER = 24
 
 /**
- * Resultatet av én kjøring. `rader` er bilder som hadde passert 24
- * måneder, `foreldrelose` filer i bøtta uten rad, og `filer` hvor mange
- * Storage faktisk fjernet.
+ * Resultatet av én kjøring. `rader` er filer etter bilderader som ble
+ * slettet (en fil som en annen rad fortsatt bruker, kommer først når den
+ * raden også er borte), `foreldrelose` filer i bøtta uten rad, og `filer`
+ * hvor mange Storage faktisk fjernet.
  */
 export type Bildesletting =
   | 'av'

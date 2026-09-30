@@ -55,7 +55,7 @@ begin
       select o.name, true
         from storage.objects o
        where o.bucket_id = 'bilder'
-         and o.name ~ '^\d{4}-\d{2}/(henting|levering)-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jpg$'
+         and o.name ~ '^[0-9]{4}-[0-9]{2}/(henting|levering)-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[.]jpg$'
          and o.created_at < grense
          and not exists (select 1 from public.bilder b where b.fil_sti = o.name)
        order by o.created_at
@@ -134,29 +134,36 @@ end $$;
 
 
 -- ── Kontroll: Storage ──────────────────────────────────────
--- Funksjonen kjører som den som lager den (postgres i SQL-editoren).
--- Kommer ikke den rollen forbi radsikkerheten på storage.objects, gir
--- søket etter foreldreløse filer bare tomt svar – ingen feil, og ingen
--- ville merket det før i 2028. Da er det bedre å stoppe her.
+-- Funksjonen kjører som eieren sin (postgres, når den lages i SQL-
+-- editoren). Kommer ikke eieren forbi radsikkerheten på storage.objects,
+-- gir søket etter foreldreløse filer bare tomt svar – ingen feil, og
+-- ingen ville merket det før i 2028. Da er det bedre å stoppe her.
+-- Samme regel som Postgres: eieren av tabellen (eller et medlem av den
+-- rollen) slipper unna så lenge radsikkerheten ikke er tvunget, og
+-- superbrukere og roller med bypassrls slipper alltid.
 do $$
 declare
+  eier_fn oid;
   rls     boolean;
   tvunget boolean;
-  eier    text;
+  eier    oid;
 begin
-  select c.relrowsecurity, c.relforcerowsecurity, pg_get_userbyid(c.relowner)
+  select p.proowner into eier_fn
+    from pg_proc p
+   where p.oid = to_regprocedure('public.slett_utlopte_bilder(timestamptz, integer)');
+
+  select c.relrowsecurity, c.relforcerowsecurity, c.relowner
     into rls, tvunget, eier
     from pg_class c
    where c.oid = to_regclass('storage.objects');
 
   if rls
-     and (eier <> current_user or tvunget)
+     and (tvunget or not pg_has_role(eier_fn, eier, 'USAGE'))
      and not exists (
-       select 1 from pg_roles
-        where rolname = current_user and (rolsuper or rolbypassrls)
+       select 1 from pg_roles where oid = eier_fn and (rolsuper or rolbypassrls)
      )
   then
-    raise exception 'Rollen % kommer ikke forbi radsikkerheten på storage.objects, så foreldreløse filer ville aldri blitt funnet. Kjør migrasjonen som postgres i Supabase SQL Editor.',
-      current_user;
+    raise exception 'Rollen % eier slett_utlopte_bilder, men kommer ikke forbi radsikkerheten på storage.objects, så foreldreløse filer ville aldri blitt funnet. Kjør migrasjonen som postgres i Supabase SQL Editor.',
+      eier_fn::regrole;
   end if;
 end $$;

@@ -41,7 +41,7 @@ export function BildeslettingSkjema({
       <p className="text-sm text-[var(--blekk-svak)]">
         {!eldste
           ? 'Ingen bilder på avsluttede leier ennå.'
-          : slettGamle
+          : migrasjonKjort && slettGamle
             ? `Eldste bilde på en avsluttet leie er fra ${eldste.dato}, og det slettes ved første kjøring etter ${eldste.frist}.`
             : `Eldste bilde på en avsluttet leie er fra ${eldste.dato}.`}
       </p>

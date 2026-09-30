@@ -4,6 +4,7 @@ import 'server-only'
 
 export type Varseltype =
   | 'ny_leie_admin'
+  | 'ny_foresporsel_admin'
   | 'kvittering_start'
   | 'retur_admin'
   | 'kvittering_retur'

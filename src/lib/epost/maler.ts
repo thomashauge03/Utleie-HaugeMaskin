@@ -170,6 +170,52 @@ ${url}`,
   }
 }
 
+/* ── Til admin: ny forespørsel fra nettsida ─────────────── */
+
+/** yyyy-mm-dd → 14.10.2026. Klokka 12 UTC, så ingen tidssone flytter dagen. */
+const dag = (ymd: string) => dato(`${ymd}T12:00:00Z`)
+
+export function nyForesporselAdmin(s: {
+  maskin: string
+  navn: string
+  telefon: string
+  epost: string | null
+  fra: string
+  til: string
+  melding: string | null
+  firmanavn: string
+  nettadresse: string
+}): Mal {
+  const url = `${s.nettadresse}/admin/kalender`
+  const periode = `${dag(s.fra)} – ${dag(s.til)}`
+
+  return {
+    emne: `Ny forespørsel: ${s.maskin} ${periode} – ${s.navn}`,
+    html: ramme(
+      'Ny forespørsel',
+      h1('Ny forespørsel fra nettsida') +
+        p('Dagene er ikke sperret før du godkjenner. Ring kunden for å bekrefte.') +
+        fakta([
+          ['Maskin', s.maskin],
+          ['Periode', periode],
+          ['Kunde', s.navn],
+          ['Mobil', visTelefon(s.telefon)],
+          ['E-post', s.epost ?? '–'],
+        ]) +
+        (s.melding ? p(`<em>«${esc(s.melding)}»</em>`) : '') +
+        knapp(url, 'Godkjenn eller avslå'),
+      s.firmanavn,
+    ),
+    tekst: `Ny forespørsel fra nettsida.
+
+Maskin: ${s.maskin}
+Periode: ${periode}
+Kunde: ${s.navn} (${visTelefon(s.telefon)})
+${s.melding ? `«${s.melding}»\n` : ''}
+Godkjenn eller avslå: ${url}`,
+  }
+}
+
 /* ── Til admin: innlevering venter ──────────────────────── */
 
 export function returAdmin(s: Sammenheng): Mal {

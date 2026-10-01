@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { slettLeierMedFiler } from '@/lib/slett'
+import { filerIgjenTekst } from '@/lib/slett-leier'
 import { avsluttInternLeie } from '@/lib/intern-leie'
 
 export type GodkjennTilstand = { feil?: string; ok?: string }
@@ -176,15 +177,27 @@ export async function sendTilbake(leieId: string, grunn: string) {
   revalidatePath(`/admin/leier/${leieId}`)
 }
 
+export type SlettTilstand = { feil?: string }
+
 /**
- * Sletter leien for godt, med bilder, hendelser og e-postlogg.
+ * Sletter leien for godt, med bilder, hendelser, e-postlogg og en
+ * hentet reservasjon.
  *
  * Frigjør samtidig maskinen hvis leien var pågående – ellers ville
- * maskinen blitt stående som «utleid» til en leie som ikke finnes.
+ * maskinen blitt stående som «utleid» til en leie som ikke finnes. Det
+ * skjer først når leien faktisk er borte. Nekter databasen, skal verken
+ * maskinen eller loggen si noe annet enn at leien står der den sto.
  */
-export async function slettLeie(leieId: string) {
+export async function slettLeie(
+  leieId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kreves av useActionState sin signatur
+  _forrige: SlettTilstand,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kreves av useActionState sin signatur
+  _formData: FormData,
+): Promise<SlettTilstand> {
   const admin = await krevAdmin()
   const supabase = await lagServerKlient()
+  const borte = 'Fant ikke leien. Den kan allerede være slettet.'
 
   const { data: leie } = await supabase
     .from('leier')
@@ -192,7 +205,12 @@ export async function slettLeie(leieId: string) {
     .eq('id', leieId)
     .maybeSingle()
 
-  if (!leie) return
+  if (!leie) return { feil: borte }
+
+  const resultat = await slettLeierMedFiler([leieId])
+  if ('feil' in resultat) return { feil: `Leien ble ikke slettet. ${resultat.feil}` }
+  // Ingen rad slettet: noen andre rakk det, og de har logget det.
+  if (resultat.slettet === 0) return { feil: borte }
 
   if (leie.status === 'aktiv' || leie.status === 'venter_godkjenning') {
     await supabase
@@ -201,14 +219,12 @@ export async function slettLeie(leieId: string) {
       .eq('id', leie.maskin_id)
   }
 
-  await slettLeierMedFiler([leieId])
-
   // Hendelsesloggen for leien forsvinner med den, så vi noterer det på
   // et sted som overlever: en hendelse uten leiekobling.
   await supabase.from('hendelser').insert({
     leie_id: null,
     type: 'leie_slettet',
-    beskrivelse: `Leie ${leie.referanse} ble slettet permanent`,
+    beskrivelse: `Leie ${leie.referanse} ble slettet permanent${filerIgjenTekst(resultat.filerIgjen)}`,
     aktor: `admin:${admin.epost}`,
   })
 

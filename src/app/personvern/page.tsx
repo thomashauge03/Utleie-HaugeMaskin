@@ -92,8 +92,13 @@ export default async function PersonvernSide() {
         <Avsnitt tittel="Hvor lenge vi lagrer">
           Bilder og posisjonsdata slettes{automatisk && ' automatisk'} etter 24
           måneder. Opplysninger som inngår i fakturagrunnlaget, oppbevares i fem
-          år etter utløpet av regnskapsåret, slik bokføringsloven krever, og
-          anonymiseres deretter.
+          år etter utløpet av regnskapsåret, slik bokføringsloven krever. Andre
+          opplysninger om deg og leiene dine – for eksempel kommentarer,
+          merknader, reservasjoner og loggen over e-poster vi har sendt –
+          beholder vi i fem år etter siste leie eller forespørsel. En
+          reservasjon som ikke blir til leie, slettes 30 dager etter at perioden
+          er over. Når fristene er ute, slettes eller anonymiseres
+          opplysningene.
         </Avsnitt>
 
         <Avsnitt tittel="Hvem har tilgang">

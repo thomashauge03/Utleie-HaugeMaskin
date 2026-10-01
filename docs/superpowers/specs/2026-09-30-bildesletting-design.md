@@ -133,7 +133,19 @@ som før. Hendelsen står også i leiens logg.
 «Bilder og posisjonsdata slettes automatisk etter 24 måneder» når bryteren er
 på, ellers uten «automatisk». Bryteren leses i en egen spørring som tåler at
 kolonnen mangler, så resten av sida ikke faller bort før migrasjonen er
-kjørt. Setningen om fem år røres ikke.
+kjørt.
+
+Resten av avsnittet «Hvor lenge vi lagrer» er skrevet om etter avklaring med
+Thomas 30.09.2026. Personvernforordningen art. 13 nr. 2 bokstav a krever en
+periode eller et kriterium for alt som lagres. Avsnittet sier nå:
+
+- Fakturagrunnlaget: fem år etter utløpet av regnskapsåret (bokføringsloven).
+- Andre opplysninger om kunden og leiene – kommentarer, merknader,
+  reservasjoner, e-postloggen: fem år etter siste leie eller forespørsel.
+- En reservasjon som ikke blir til leie: 30 dager etter perioden, slik
+  `/api/rydd` fra `foresporsel` gjør.
+- Når fristene er ute, «slettes eller anonymiseres» opplysningene. Metoden
+  velges når femårsdelen bygges; før stod det bare «anonymiseres».
 
 Teksten bygger på 746f300 (PR #1, merget til `origin/main` 30.09.2026), der
 «automatisk» ble fjernet fordi ingenting slettet. Denne greina har den inne.
@@ -159,12 +171,14 @@ rolle. Neste morgen står `rydd {… "bilder":{"rader":0,"foreldrelose":0,
 
 ## Utenfor – tas senere
 
-- Femårsdelen. `leier.fakturert` er bare ja/nei, så fristen trenger et
-  tidspunkt (`fakturert_tid`; hendelsesloggen har det for gamle leier). Det
-  gjelder også kundens navn i `hendelser.beskrivelse` og `epost_logg.emne`,
-  `kunde:<enhets-id>` i `hendelser.aktor`, hentede reservasjoner, og kunder
-  uten leie. Personvernsida sier «anonymiseres deretter», og det må stemme
-  med det som velges da.
+- Femårsdelen, som personvernsida nå lover. Den må være bygd før første
+  frist: rundt august 2031 for «andre opplysninger» (fem år etter den første
+  leien, 2026-08) og 1.1.2032 for fakturagrunnlaget. `leier.fakturert` er
+  bare ja/nei, så fristen trenger et tidspunkt (`fakturert_tid`;
+  hendelsesloggen har det for gamle leier). Den må også ta kundens navn i
+  `hendelser.beskrivelse` og `epost_logg.emne`, `kunde:<enhets-id>` i
+  `hendelser.aktor`, hentede reservasjoner, kunder uten leie, og e-postlogg
+  for forespørsler (uten `leie_id`). Sletting eller anonymisering velges da.
 - Kunder kan ikke slettes fra adminpanelet.
 - `bilder.ip` skrives aldri og kunne vært fjernet.
 

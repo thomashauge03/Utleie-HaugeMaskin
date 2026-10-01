@@ -5,13 +5,17 @@ export const metadata: Metadata = { title: 'Personvern – HM Utleie' }
 export const dynamic = 'force-dynamic'
 
 export default async function PersonvernSide() {
-  const { data } = await supabaseAdmin
-    .from('innstillinger')
-    .select('firmanavn, varsel_epost')
-    .maybeSingle()
+  const [{ data }, { data: sletting }] = await Promise.all([
+    supabaseAdmin.from('innstillinger').select('firmanavn, varsel_epost').maybeSingle(),
+    // Egen spørring: før migrasjon 0014 finnes ikke kolonnen, og da skal
+    // bare «automatisk» falle bort – ikke firmanavnet og kontaktadressen.
+    supabaseAdmin.from('innstillinger').select('slett_gamle_bilder').maybeSingle(),
+  ])
 
   const firma = data?.firmanavn?.trim() || 'Hauge Maskin'
   const kontakt = data?.varsel_epost?.trim()
+  // Står bryteren av, sletter ingenting av seg selv, og da skal sida ikke si det.
+  const automatisk = sletting?.slett_gamle_bilder === true
 
   return (
     <main className="mx-auto w-full max-w-2xl px-5 py-10">
@@ -86,9 +90,14 @@ export default async function PersonvernSide() {
         </Avsnitt>
 
         <Avsnitt tittel="Hvor lenge vi lagrer">
-          Bilder og posisjonsdata slettes etter 24 måneder. Opplysninger som
-          inngår i fakturagrunnlaget, oppbevares i fem år etter utløpet av
-          regnskapsåret, slik bokføringsloven krever, og anonymiseres deretter.
+          Bilder og posisjonsdata slettes{automatisk && ' automatisk'} etter 24
+          måneder. Opplysninger som inngår i fakturagrunnlaget, oppbevares i fem
+          år etter utløpet av regnskapsåret, slik bokføringsloven krever. Andre
+          opplysninger om deg og leiene dine – for eksempel kommentarer,
+          merknader, reservasjoner og loggen over e-poster vi har sendt –
+          beholder vi i fem år etter siste leie eller forespørsel. Etter fem år
+          anonymiseres opplysningene. En reservasjon som ikke blir til leie,
+          slettes 30 dager etter at perioden er over.
         </Avsnitt>
 
         <Avsnitt tittel="Hvem har tilgang">

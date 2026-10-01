@@ -19,7 +19,7 @@ export type Varsling = {
   purring_forfalt: boolean
 }
 
-function Bryter({
+export function Bryter({
   navn,
   tittel,
   beskrivelse,

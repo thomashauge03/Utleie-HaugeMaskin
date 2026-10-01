@@ -81,6 +81,57 @@ export async function varsleNyLeie(leieId: string) {
   }
 }
 
+/**
+ * Ny forespørsel fra haugemaskin.no. Samme bryter som ny leie – begge
+ * betyr at noen vil ha en maskin – og hoppes stille over når e-post ikke
+ * er satt opp. Forespørselen står i kalenderen uansett.
+ */
+export async function varsleNyForesporsel(reservasjonId: string) {
+  try {
+    const innst = await hentVarselInnstillinger()
+    if (!innst?.varsle_ny_leie) return
+
+    const { data } = await supabaseAdmin
+      .from('reservasjoner')
+      .select('fra_dato, til_dato, kunde_navn, kunde_telefon, kunde_epost, notat, maskiner(navn)')
+      .eq('id', reservasjonId)
+      .maybeSingle()
+    if (!data) return
+    const r = data as unknown as {
+      fra_dato: string
+      til_dato: string
+      kunde_navn: string
+      kunde_telefon: string
+      kunde_epost: string | null
+      notat: string | null
+      maskiner: { navn: string } | null
+    }
+
+    const m = maler.nyForesporselAdmin({
+      maskin: r.maskiner?.navn ?? 'Ukjent maskin',
+      navn: r.kunde_navn,
+      telefon: r.kunde_telefon,
+      epost: r.kunde_epost,
+      fra: r.fra_dato,
+      til: r.til_dato,
+      melding: r.notat,
+      firmanavn: innst.firmanavn ?? '',
+      nettadresse: env.NEXT_PUBLIC_SITE_URL,
+    })
+    await sendEpost({
+      type: 'ny_foresporsel_admin',
+      til: adresser(innst.varsel_epost),
+      kopi: adresser(innst.varsel_kopi),
+      emne: m.emne,
+      html: m.html,
+      tekst: m.tekst,
+      avsenderNavn: innst.avsender_navn,
+    })
+  } catch {
+    // Varsling skal aldri velte forespørselen.
+  }
+}
+
 export async function varsleRetur(leieId: string) {
   try {
     const k = await hentSammenheng(leieId)

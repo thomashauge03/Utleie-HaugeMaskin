@@ -102,3 +102,46 @@ export async function avlysReservasjon(id: string): Promise<void> {
   await supabase.from('reservasjoner').update({ status: 'avlyst' }).eq('id', id).eq('status', 'aktiv')
   oppdater()
 }
+
+export type ForesporselTilstand = { feil?: string }
+
+/**
+ * Godkjenner en forespørsel fra nettsida: den blir en vanlig reservasjon og
+ * sperrer dagene. Har noen andre fått dagene i mellomtiden, stopper
+ * databasen det (reservasjoner_uten_overlapp), og forespørselen står.
+ * Brukes med .bind(null, id) og useActionState, så feilen kan vises.
+ */
+export async function godkjennForesporsel(id: string): Promise<ForesporselTilstand> {
+  await krevAdmin()
+  if (!z.uuid().safeParse(id).success) return { feil: 'Fant ikke forespørselen.' }
+
+  // opprettet_av står tom: den viser at reservasjonen kom fra nettsida.
+  const supabase = await lagServerKlient()
+  const { data, error } = await supabase
+    .from('reservasjoner')
+    .update({ status: 'aktiv' })
+    .eq('id', id)
+    .eq('status', 'forespurt')
+    .select('id')
+
+  if (error?.code === '23P01') return { feil: 'Dagene er tatt i mellomtiden.' }
+  if (error) return { feil: `Kunne ikke godkjenne: ${error.message}` }
+  if (!data?.length) return { feil: 'Den er allerede behandlet.' }
+
+  oppdater()
+  return {}
+}
+
+/** Avslår en forespørsel. Brukes med .bind(null, id) i et skjema. */
+export async function avslaForesporsel(id: string): Promise<void> {
+  await krevAdmin()
+  if (!z.uuid().safeParse(id).success) return
+
+  const supabase = await lagServerKlient()
+  await supabase
+    .from('reservasjoner')
+    .update({ status: 'avlyst' })
+    .eq('id', id)
+    .eq('status', 'forespurt')
+  oppdater()
+}

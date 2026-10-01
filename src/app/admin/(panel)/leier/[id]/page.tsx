@@ -60,6 +60,9 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
     .eq('leie_id', leie.id)
     .order('tid', { ascending: false })
 
+  // Jobben i /api/rydd legger igjen en hendelse når den sletter bildene.
+  const bilderSlettet = (hendelser ?? []).some((h) => h.type === 'bilder_slettet')
+
   const enhet = prisEnhet(leie.maskiner?.pris_enhet)
   // Samme regel som når en ansatt leverer – se beregnPris.
   const { antall: foreslattDogn, belop: foreslattBelop } = beregnPris(
@@ -120,7 +123,9 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
         <KortTittel>Bilder</KortTittel>
         <div className="p-5">
           {medUrl.length === 0 ? (
-            <p className="text-sm text-[var(--blekk-svak)]">Ingen bilder ennå.</p>
+            <p className="text-sm text-[var(--blekk-svak)]">
+              {bilderSlettet ? 'Bildene er slettet etter 24 måneder.' : 'Ingen bilder ennå.'}
+            </p>
           ) : (
             <div className="grid gap-5 sm:grid-cols-2">
               {medUrl.map((b) => (

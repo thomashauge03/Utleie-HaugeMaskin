@@ -259,6 +259,39 @@ export async function lagreVarsling(
   return { ok: 'Varslingsinnstillingene er lagret.' }
 }
 
+/* ═══ Personvern ═══════════════════════════════════════════ */
+
+/**
+ * Slår den daglige slettingen av bilder eldre enn 24 måneder av og på
+ * (/api/rydd). Personvernsida leser samme bryter og sier «slettes
+ * automatisk» bare når den står på.
+ */
+export async function lagreBildesletting(
+  _forrige: Tilstand,
+  formData: FormData,
+): Promise<Tilstand> {
+  await krevAdmin()
+
+  const felt = av.safeParse(formData.get('slett_gamle_bilder'))
+  if (!felt.success) return { feil: felt.error.issues[0].message }
+
+  const supabase = await lagServerKlient()
+  const { error } = await supabase
+    .from('innstillinger')
+    .update({ slett_gamle_bilder: felt.data, oppdatert: new Date().toISOString() })
+    .eq('id', true)
+
+  if (error) return { feil: `Kunne ikke lagre: ${error.message}` }
+
+  revalidatePath('/admin/innstillinger')
+  revalidatePath('/personvern')
+  return {
+    ok: felt.data
+      ? 'Lagret. Bilder eldre enn 24 måneder slettes hver morgen.'
+      : 'Lagret. Bildene slettes ikke automatisk lenger.',
+  }
+}
+
 /**
  * Lager nytt iCal-token. Den gamle abonnementslenka slutter da å virke –
  * som er hele poenget dersom den har kommet på avveie.

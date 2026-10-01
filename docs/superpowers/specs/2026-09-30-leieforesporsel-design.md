@@ -23,7 +23,7 @@ Endepunktet avviser, med norsk feilmelding:
 | Sjekk | Svar |
 |---|---|
 | mer enn 5 forsøk i timen fra samme IP | 429 |
-| skjult felt `nettside` er fylt ut, eller under 3 s fra skjemaet ble vist | 400, generisk |
+| skjult felt `nettside` er fylt ut, eller skjemaet var åpent under 3 s (`brukt_ms`, målt i nettleseren) | 400, generisk |
 | ugyldig maskin, dato, navn (2–100), mobil (åtte siffer), e-post, melding (≤ 500) | 400 |
 | `fra` før i dag, `til` før `fra`, mer enn 60 dager, eller `til` over ett år fram | 400 |
 | maskinen finnes ikke eller er ikke aktiv | 404 |
@@ -40,7 +40,13 @@ stille over når e-postvarsling ikke er satt opp – som de andre varslene.
 ## Migrasjon 0013
 
 `alter table reservasjoner add column if not exists kunde_epost text` –
-valgfri, fra skjemaet. Ingenting annet endres.
+valgfri, fra skjemaet.
+
+`hm_offentleg_opptatt` får kolonnen `levert` bakerst: sann for en leie som
+venter på godkjenning. Nettsida viser datoen en maskin skulle vært levert
+når den er på overtid, og uten flagget ville en levert maskin som ikke er
+godkjent ennå sett ut som den var på overtid. Nettsida leser visningen med
+`select=*`, så rekkefølgen på utrulling og migrasjon spiller ingen rolle.
 
 ## Admin
 
@@ -66,17 +72,25 @@ valgfri, fra skjemaet. Ingenting annet endres.
 - Adressen til endepunktet er `UTLEIE_APP_URL`, overstyrbar med
   `VITE_UTLEIE_APP_URL` så utvikling aldri skriver til produksjon.
 - Telefon og e-post står fortsatt som alternativ.
+- Er maskinen ute uten kjent slutt, står en tydelig melding over
+  kalenderen: «Ute nå – skulle vært levert 12. september» når den er på
+  overtid, ellers «Ute nå», og telefonnummeret. Levert, men ikke godkjent,
+  gir ingen melding.
 
 ## Personvern og sletting
 
 - Personvernsida på haugemaskin.no får skjemaet: navn, mobil, valgfri
   e-post og melding, maskin og datoer; formål å svare på forespørselen og
   eventuelt inngå leieavtale (grunnlag: avtale, art. 6 (1) b); lagres i
-  utleiesystemet hos Supabase (Frankfurt); slettes 30 dager etter at
-  perioden er over hvis det ikke blir leie.
-- Daglig jobb `GET /api/rydd` (Vercel cron, `CRON_SECRET` som
-  `/api/varsler/forfalt`) sletter reservasjoner med status `forespurt` eller
-  `avlyst` der `til_dato` er mer enn 30 dager tilbake.
+  utleiesystemet hos Supabase (Irland – AWS eu-west-1, ikke Frankfurt som
+  først antatt; serveren kjører i Frankfurt, fra1); varselet til admin går
+  gjennom Resend, som behandler e-post i USA (standardklausuler og EU–US
+  Data Privacy Framework); slettes 30 dager etter at perioden er over hvis
+  det ikke blir leie.
+- Daglig jobb `GET /api/rydd` (Vercel cron kl. 07:30, `CRON_SECRET` som
+  `/api/varsler/forfalt`) sletter reservasjoner som ikke ble leie – status
+  `forespurt`, `avlyst`, eller `aktiv` men aldri hentet – der `til_dato` er
+  mer enn 30 dager tilbake. `hentet` blir stående; de hører til en leie.
 
 ## Utenfor
 

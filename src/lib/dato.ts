@@ -52,6 +52,22 @@ export function tidKort(iso: string): string {
   })
 }
 
+/**
+ * Legger til hele måneder slik Postgres gjør med `+ interval 'N months'`:
+ * finnes ikke dagen i målmåneden, blir det siste dag i den
+ * (29.02.2024 + 24 måneder = 28.02.2026). Viser når et bilde slettes, og
+ * må gi samme dag som databasen, som regner i UTC.
+ */
+export function leggTilManeder(iso: string, maneder: number): string {
+  const d = new Date(iso)
+  const dag = d.getUTCDate()
+  d.setUTCDate(1)
+  d.setUTCMonth(d.getUTCMonth() + maneder)
+  const sisteDag = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate()
+  d.setUTCDate(Math.min(dag, sisteDag))
+  return d.toISOString()
+}
+
 /** yyyy-mm-dd i norsk tid – for å sammenligne kalenderdager. */
 export function osloDag(d: Date | string): string {
   const dato = typeof d === 'string' ? new Date(d) : d

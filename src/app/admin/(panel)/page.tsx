@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { visTelefon } from '@/lib/telefon'
-import { dagerTil, returDato, tidKort } from '@/lib/dato'
+import { dagerTil, osloDag, returDato, tidKort } from '@/lib/dato'
 import { antallTekst, prisEnhet } from '@/lib/pris'
 import { erForfalt, type LeieRad } from '@/lib/types'
 import { LEIETAKER_FELT, leietaker, leietakerLinje, leietakerTekst } from '@/lib/leietaker'
@@ -24,6 +24,7 @@ export default async function OversiktSide() {
     { data: ufakturertData },
     ledige,
     { data: hendelser },
+    forespurte,
   ] = await Promise.all([
     supabase
       .from('leier')
@@ -50,6 +51,13 @@ export default async function OversiktSide() {
       .eq('aktiv', true)
       .eq('status', 'ledig'),
     supabase.from('hendelser').select('*').order('tid', { ascending: false }).limit(8),
+    // Åpne forespørsler fra nettsida. Feiler den (før migrasjon 0012),
+    // står flisen på 0.
+    supabase
+      .from('reservasjoner')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'forespurt')
+      .gte('til_dato', osloDag(new Date())),
   ])
 
   const aktive = (aktiveData ?? []) as Rad[]
@@ -62,6 +70,7 @@ export default async function OversiktSide() {
   const kort = [
     { tall: aktive.length, tekst: 'Utleid nå', href: '/admin/leier?status=aktiv', tone: 'nøytral' },
     { tall: venter.length, tekst: 'Venter godkjenning', href: '/admin/leier?status=venter_godkjenning', tone: 'gul' },
+    { tall: forespurte.count ?? 0, tekst: 'Nye forespørsler', href: '/admin/kalender#foresporsler', tone: 'gul' },
     { tall: forfalt.length, tekst: 'Forfalt', href: '/admin/leier?status=forfalt', tone: 'rød' },
     { tall: ledige.count ?? 0, tekst: 'Ledige maskiner', href: '/admin/maskiner', tone: 'nøytral' },
   ] as const
@@ -70,7 +79,7 @@ export default async function OversiktSide() {
     <div className="space-y-8">
       <Seksjonstittel under={`Innlogget som ${admin.navn}`}>Oversikt</Seksjonstittel>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {kort.map((k, i) => {
           const varsler = k.tall > 0 && k.tone !== 'nøytral'
           return (

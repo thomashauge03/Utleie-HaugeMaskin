@@ -419,8 +419,8 @@ Systemet behandler personopplysninger: navn, mobilnummer, GPS-posisjon og bilder
 - **Behandlingsgrunnlag:** avtale (leieforholdet) – ikke samtykke, siden opplysningene er nødvendige for å gjennomføre leien
 - **GPS må være valgfritt.** Kunden kan avslå, og leien må fungere likevel. Å tvinge fram posisjon er ikke lov når det ikke er strengt nødvendig
 - **Sletterutine:**
-  - Bilder og GPS: slettes automatisk etter **24 måneder**
-  - Leiedata som er fakturagrunnlag: beholdes **5 år** (bokføringsloven), deretter anonymiseres kundedata
+  - Bilder og GPS: slettes automatisk etter **24 måneder** – daglig jobb i `/api/rydd` (migrasjon 0014), bryter under Innstillinger → Personvern
+  - Leiedata som er fakturagrunnlag: beholdes **5 år** (bokføringsloven), deretter anonymiseres kundedata – ikke bygget ennå
 - **Innsyn og sletting:** admin må kunne eksportere og slette all data om én kunde fra `/admin/kunder`
 
 ---

@@ -21,6 +21,7 @@ export function RedigerSkjema({
   utleid,
   harHistorikk,
   antallLeier,
+  antallReservasjoner,
 }: {
   maskin: Maskin
   kategorier: string[]
@@ -29,6 +30,8 @@ export function RedigerSkjema({
   utleid: boolean
   harHistorikk: boolean
   antallLeier: number
+  /** Kommende aktive reservasjoner. De slettes med maskinen. */
+  antallReservasjoner: number
 }) {
   const [tilstand, handling, venter] = useActionState(lagreMaskin, start)
 
@@ -206,6 +209,7 @@ export function RedigerSkjema({
           utleid={utleid}
           harHistorikk={harHistorikk}
           antallLeier={antallLeier}
+          antallReservasjoner={antallReservasjoner}
         />
       </div>
     </>
@@ -216,7 +220,8 @@ export function RedigerSkjema({
  * Fjerner en maskin – enten mildt (ut av bruk) eller for godt.
  *
  * Sletting tar med seg leiehistorikken, fordi fremmednøkkelen fra leier
- * ellers blokkerer. Derfor navngir bekreftelsen hvor mange leier som
+ * ellers blokkerer, og reservasjonene, som følger maskinen. Derfor
+ * navngir bekreftelsen hvor mange leier og kommende reservasjoner som
  * ryker, slik at omfanget er synlig før man trykker og ikke etterpå.
  */
 function FjernMaskin({
@@ -224,13 +229,17 @@ function FjernMaskin({
   utleid,
   harHistorikk,
   antallLeier,
+  antallReservasjoner,
 }: {
   maskinId: string
   utleid: boolean
   harHistorikk: boolean
   antallLeier: number
+  antallReservasjoner: number
 }) {
   const [bekrefter, settBekrefter] = useState(false)
+  // Går slettingen, sendes admin til lista. Feiler den, står svaret her.
+  const [tilstand, handling, venter] = useActionState(slettMaskin.bind(null, maskinId), start)
 
   if (utleid) {
     return (
@@ -245,15 +254,19 @@ function FjernMaskin({
       <div className="ml-auto flex flex-wrap items-center gap-3">
         <span className="text-xs text-[var(--blekk-svak)]">
           {harHistorikk
-            ? `Sletter maskinen og ${antallLeier} ${antallLeier === 1 ? 'leie' : 'leier'} med bilder. Kan ikke angres.`
-            : 'Slettes for godt. Kan ikke angres.'}
+            ? `Sletter maskinen og ${antallLeier} ${antallLeier === 1 ? 'leie' : 'leier'} med bilder.`
+            : 'Slettes for godt.'}
+          {antallReservasjoner > 0 &&
+            ` ${antallReservasjoner} kommende ${antallReservasjoner === 1 ? 'reservasjon' : 'reservasjoner'} slettes også.`}
+          {' Kan ikke angres.'}
         </span>
-        <form action={slettMaskin.bind(null, maskinId)}>
+        <form action={handling}>
           <button
             type="submit"
-            className="hm-trykk inline-flex min-h-[2.25rem] items-center border-2 border-hm-red bg-hm-red px-3 text-xs font-bold tracking-wider text-white uppercase"
+            disabled={venter}
+            className="hm-trykk inline-flex min-h-[2.25rem] items-center border-2 border-hm-red bg-hm-red px-3 text-xs font-bold tracking-wider text-white uppercase disabled:opacity-50"
           >
-            Bekreft sletting
+            {venter ? 'Sletter …' : 'Bekreft sletting'}
           </button>
         </form>
         <button
@@ -263,6 +276,14 @@ function FjernMaskin({
         >
           Avbryt
         </button>
+        {tilstand.feil && (
+          <p
+            role="alert"
+            className="w-full border-l-4 border-hm-red bg-hm-red/10 p-3 text-sm font-semibold text-hm-red-ink"
+          >
+            {tilstand.feil}
+          </p>
+        )}
       </div>
     )
   }

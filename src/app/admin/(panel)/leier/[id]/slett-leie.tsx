@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { slettLeie } from './actions'
+import { useActionState, useState } from 'react'
+import { slettLeie, type SlettTilstand } from './actions'
+
+const start: SlettTilstand = {}
 
 /**
  * Permanent sletting av en leie.
@@ -21,6 +23,8 @@ export function SlettLeie({
   fakturert: boolean
 }) {
   const [bekrefter, settBekrefter] = useState(false)
+  // Går slettingen, sendes admin til lista. Feiler den, står svaret her.
+  const [tilstand, handling, venter] = useActionState(slettLeie.bind(null, leieId), start)
 
   return (
     <section className="border-2 border-[var(--kant)] p-5">
@@ -39,12 +43,13 @@ export function SlettLeie({
 
       {bekrefter ? (
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <form action={slettLeie.bind(null, leieId)}>
+          <form action={handling}>
             <button
               type="submit"
-              className="hm-trykk inline-flex min-h-[2.75rem] items-center border-2 border-hm-red bg-hm-red px-4 text-xs font-bold tracking-wider text-white uppercase"
+              disabled={venter}
+              className="hm-trykk inline-flex min-h-[2.75rem] items-center border-2 border-hm-red bg-hm-red px-4 text-xs font-bold tracking-wider text-white uppercase disabled:opacity-50"
             >
-              Ja, slett {referanse} permanent
+              {venter ? 'Sletter …' : `Ja, slett ${referanse} permanent`}
             </button>
           </form>
           <button
@@ -63,6 +68,15 @@ export function SlettLeie({
         >
           Slett leien
         </button>
+      )}
+
+      {tilstand.feil && (
+        <p
+          role="alert"
+          className="mt-3 border-l-4 border-hm-red bg-hm-red/10 p-3 text-sm font-semibold text-hm-red-ink"
+        >
+          {tilstand.feil}
+        </p>
       )}
     </section>
   )

@@ -5,7 +5,9 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
+import { osloDag } from '@/lib/dato'
 import { slettLeierMedFiler } from '@/lib/slett'
+import { filerIgjenTekst, slettefeil } from '@/lib/slett-leier'
 
 export type MaskinTilstand = { feil?: string; ok?: string }
 
@@ -121,42 +123,97 @@ export async function deaktiverMaskin(maskinId: string) {
 }
 
 /**
- * Sletter maskinen for godt.
+ * Sletter maskinen for godt, med leiene og reservasjonene.
  *
- * Kun mulig når maskinen aldri har vært utleid. Har den historikk, ville
- * sletting gjort fakturagrunnlaget på gamle leier verdiløst – databasen
- * nekter det uansett via fremmednøkkelen, men vi sjekker her for å kunne
- * gi en forklaring i stedet for en teknisk feilmelding.
+ * Fremmednøkkelen fra leier hindrer sletting så lenge det finnes
+ * historikk, så leiene ryddes først. Bilder, hendelser, e-postlogg og
+ * reservasjoner følger med via cascade; filene tas av hjelperen.
+ * Bekreftelsen har allerede sagt hvor mange leier og reservasjoner som
+ * ryker.
  */
-export async function slettMaskin(maskinId: string) {
+export async function slettMaskin(
+  maskinId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kreves av useActionState sin signatur
+  _forrige: MaskinTilstand,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kreves av useActionState sin signatur
+  _formData: FormData,
+): Promise<MaskinTilstand> {
   const admin = await krevAdmin()
   const supabase = await lagServerKlient()
 
-  // Fremmednøkkelen fra leier hindrer sletting så lenge det finnes
-  // historikk, så leiene må ryddes først. Bilder, hendelser og
-  // e-postlogg følger med via cascade; filene tas av hjelperen.
-  const { data: leier } = await supabase
-    .from('leier')
-    .select('id')
-    .eq('maskin_id', maskinId)
-
-  const leieIder = (leier ?? []).map((l) => l.id as string)
-  const antall = await slettLeierMedFiler(leieIder)
+  // Knappen er skjult mens maskinen er utleid, men siden kan være gammel.
+  // Uten denne ville en leie som startet i mellomtiden, blitt slettet mens
+  // kunden står med maskinen.
+  if (await harAktivLeie(supabase, maskinId)) {
+    return {
+      feil: 'Maskinen er ute på leie nå. Den kan ikke slettes før innleveringen er godkjent.',
+    }
+  }
 
   const { data: maskin } = await supabase
     .from('maskiner')
     .select('navn, qr_kode')
     .eq('id', maskinId)
     .maybeSingle()
+  if (!maskin) return { feil: 'Fant ikke maskinen. Den kan allerede være slettet.' }
+  const navn = `${maskin.navn} (${maskin.qr_kode})`
 
-  await supabase.from('maskiner').delete().eq('id', maskinId)
+  const { data: leier, error: leieFeil } = await supabase
+    .from('leier')
+    .select('id')
+    .eq('maskin_id', maskinId)
+  if (leieFeil) return { feil: `Ingenting er slettet. ${slettefeil(leieFeil)}` }
+
+  // Telles før slettingen, for loggen – etterpå er de borte. Før migrasjon
+  // 0012 finnes ikke tabellen; da er antallet null, og ingen nevnes.
+  const { count: reservasjoner } = await supabase
+    .from('reservasjoner')
+    .select('id', { count: 'exact', head: true })
+    .eq('maskin_id', maskinId)
+    .eq('status', 'aktiv')
+    .gte('til_dato', osloDag(new Date()))
+
+  const leiene = await slettLeierMedFiler((leier ?? []).map((l) => l.id as string))
+  if ('feil' in leiene) return { feil: `Ingenting er slettet. ${leiene.feil}` }
+
+  const n = leiene.slettet
+  const antallLeier = `${n} ${n === 1 ? 'leie' : 'leier'}`
+  const filer = filerIgjenTekst(leiene.filerIgjen)
+
+  const { data: slettet, error } = await supabase
+    .from('maskiner')
+    .delete()
+    .eq('id', maskinId)
+    .select('id')
+
+  if (error || !slettet?.length) {
+    const årsak = error ? slettefeil(error) : 'Fant den ikke lenger.'
+    if (n === 0) return { feil: `Maskinen ble ikke slettet. ${årsak}` }
+
+    // Leiene kommer ikke tilbake, så de skal stå i loggen selv om
+    // maskinen ble stående.
+    await supabase.from('hendelser').insert({
+      leie_id: null,
+      type: 'leie_slettet',
+      beskrivelse: `${antallLeier} på maskin ${navn} ble slettet permanent, men maskinen ble stående${filer}`,
+      aktor: `admin:${admin.epost}`,
+    })
+    revalidatePath(`/admin/maskiner/${maskinId}`)
+    return { feil: `${antallLeier} er slettet, men maskinen ble stående. ${årsak}` }
+  }
+
+  const r = reservasjoner ?? 0
+  const med = [
+    n > 0 && antallLeier,
+    r > 0 && `${r} kommende ${r === 1 ? 'reservasjon' : 'reservasjoner'}`,
+  ]
+    .filter(Boolean)
+    .join(' og ')
 
   await supabase.from('hendelser').insert({
     leie_id: null,
     type: 'maskin_slettet',
-    beskrivelse: maskin
-      ? `Maskin ${maskin.navn} (${maskin.qr_kode}) slettet permanent${antall ? `, med ${antall} leier` : ''}`
-      : 'Maskin slettet permanent',
+    beskrivelse: `Maskin ${navn} slettet permanent${med ? `, med ${med}` : ''}${filer}`,
     aktor: `admin:${admin.epost}`,
   })
 

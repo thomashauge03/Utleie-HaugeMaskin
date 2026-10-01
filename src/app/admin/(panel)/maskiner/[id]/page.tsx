@@ -134,6 +134,7 @@ export default async function MaskinDetaljSide(props: PageProps<'/admin/maskiner
           utleid={utleid}
           harHistorikk={(antallLeier ?? 0) > 0}
           antallLeier={antallLeier ?? 0}
+          antallReservasjoner={reservasjoner.length}
         />
       </Kort>
 

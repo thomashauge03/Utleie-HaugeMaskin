@@ -95,10 +95,9 @@ export default async function PersonvernSide() {
           år etter utløpet av regnskapsåret, slik bokføringsloven krever. Andre
           opplysninger om deg og leiene dine – for eksempel kommentarer,
           merknader, reservasjoner og loggen over e-poster vi har sendt –
-          beholder vi i fem år etter siste leie eller forespørsel. En
-          reservasjon som ikke blir til leie, slettes 30 dager etter at perioden
-          er over. Når fristene er ute, slettes eller anonymiseres
-          opplysningene.
+          beholder vi i fem år etter siste leie eller forespørsel. Etter fem år
+          anonymiseres opplysningene. En reservasjon som ikke blir til leie,
+          slettes 30 dager etter at perioden er over.
         </Avsnitt>
 
         <Avsnitt tittel="Hvem har tilgang">

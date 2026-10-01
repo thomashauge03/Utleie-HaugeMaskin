@@ -144,8 +144,9 @@ periode eller et kriterium for alt som lagres. Avsnittet sier nå:
   reservasjoner, e-postloggen: fem år etter siste leie eller forespørsel.
 - En reservasjon som ikke blir til leie: 30 dager etter perioden, slik
   `/api/rydd` fra `foresporsel` gjør.
-- Når fristene er ute, «slettes eller anonymiseres» opplysningene. Metoden
-  velges når femårsdelen bygges; før stod det bare «anonymiseres».
+- Etter fem år «anonymiseres» opplysningene. Thomas valgte først «slettes
+  eller anonymiseres», men landet på «anonymiseres» (30.09.2026).
+  Femårsdelen skal altså anonymisere, ikke slette.
 
 Teksten bygger på 746f300 (PR #1, merget til `origin/main` 30.09.2026), der
 «automatisk» ble fjernet fordi ingenting slettet. Denne greina har den inne.
@@ -178,7 +179,8 @@ rolle. Neste morgen står `rydd {… "bilder":{"rader":0,"foreldrelose":0,
   hendelsesloggen har det for gamle leier). Den må også ta kundens navn i
   `hendelser.beskrivelse` og `epost_logg.emne`, `kunde:<enhets-id>` i
   `hendelser.aktor`, hentede reservasjoner, kunder uten leie, og e-postlogg
-  for forespørsler (uten `leie_id`). Sletting eller anonymisering velges da.
+  for forespørsler (uten `leie_id`). Metoden er anonymisering. Ingen jobb
+  finnes ennå, så sida sier ikke «automatisk» om den.
 - Kunder kan ikke slettes fra adminpanelet.
 - `bilder.ip` skrives aldri og kunne vært fjernet.
 

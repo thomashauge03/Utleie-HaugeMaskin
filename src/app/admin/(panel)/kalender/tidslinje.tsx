@@ -113,7 +113,9 @@ export function Tidslinje({
                 className="sticky left-0 z-10 flex min-w-0 flex-col justify-center border-r border-[var(--kant)] bg-[var(--flate-opp)] px-3 py-1"
                 style={{ gridColumn: 1, gridRow: '1 / -1' }}
               >
-                <span className="truncate text-sm font-bold">{rad.navn}</span>
+                {/* To linjer: på mobil er kolonnen smal, og «Minigraver Ku…» to
+                    ganger sier ingenting. */}
+                <span className="line-clamp-2 text-sm leading-tight font-bold">{rad.navn}</span>
                 {rad.internnummer && (
                   <span className="truncate text-[11px] text-[var(--blekk-svak)]">
                     {rad.internnummer}
@@ -142,12 +144,18 @@ export function Tidslinje({
   )
 }
 
+/**
+ * overflow-clip, ikke -hidden: hidden ville gjort stolpen til en egen
+ * rulleboks, og da kunne ikke teksten være sticky mot tidslinja. Nå blir
+ * teksten stående rett ved maskinkolonnen når stolpens start er rullet
+ * ut av syne på mobil.
+ */
 function StolpeVisning({ s, bane }: { s: Stolpe; bane: number }) {
   const stil = { gridColumn: `${s.fraKol + 1} / ${s.tilKol + 2}`, gridRow: bane + 1 }
-  const klasse = `relative z-[1] mx-px flex h-6 min-w-0 items-center gap-1.5 self-center overflow-hidden px-1.5 text-[11px] leading-none font-bold ${s.klasse}`
+  const klasse = `relative z-[1] mx-px flex h-6 min-w-0 items-center gap-1.5 self-center overflow-clip px-1.5 text-[11px] leading-none font-bold ${s.klasse}`
   const innhold = (
     <>
-      <span className="min-w-0 truncate">
+      <span className="sticky left-[calc(var(--maskinkol)+0.375rem)] min-w-0 truncate">
         {s.førMåneden && '◂ '}
         {s.tekst}
       </span>

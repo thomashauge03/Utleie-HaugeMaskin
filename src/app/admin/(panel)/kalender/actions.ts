@@ -80,7 +80,7 @@ export async function nyReservasjon(
   let varsel: string | undefined
   if (leie) {
     const retur = leie.planlagt_slutt ? osloDag(leie.planlagt_slutt) : null
-    if (retur === null) varsel = 'Obs: maskinen er ute til videre på et prosjekt.'
+    if (retur === null) varsel = 'Obs: maskinen er ute på et prosjekt på ubestemt tid.'
     else if (retur >= fra_dato) {
       varsel = `Obs: maskinen er utleid til ${kortDag(retur)}, etter at reservasjonen starter.`
     }

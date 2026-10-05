@@ -71,13 +71,14 @@ export function dagerTil(iso: string): number {
 }
 
 /**
- * Avtalt levering, eller «til videre» for internleier uten dato.
+ * Avtalt levering, eller «ubestemt tid» for internleier uten dato.
+ * Står som verdi bak en etikett: «Forventet levering: ubestemt tid».
  *
  * Kundeleier har alltid dato – databasen krever det – så for dem er
  * dette det samme som dato().
  */
 export function returDato(iso: string | null): string {
-  return iso ? dato(iso) : 'til videre'
+  return iso ? dato(iso) : 'ubestemt tid'
 }
 
 /**

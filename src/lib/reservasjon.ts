@@ -68,7 +68,7 @@ export function reservasjonTekst(r: Reservasjon, iDag: string): string {
 
 /**
  * Varsel etter et uttak, bare når returen går inn i reservasjonen.
- * `sluttDag` null er «til videre», som alltid gjør det.
+ * `sluttDag` null er «på ubestemt tid», som alltid gjør det.
  */
 export function ansattVarsel(
   liste: Reservasjon[],

@@ -176,7 +176,7 @@ export default async function OversiktSide() {
           ) : (
             <ul className="divide-y-2 divide-[var(--kant)]">
               {aktive.slice(0, 8).map((l) => {
-                // Internleier uten dato står ute «til videre» – ingen nedtelling.
+                // Internleier uten dato står ute på ubestemt tid – ingen nedtelling.
                 const dager = l.planlagt_slutt ? dagerTil(l.planlagt_slutt) : null
                 const t = leietaker(l)
                 return (

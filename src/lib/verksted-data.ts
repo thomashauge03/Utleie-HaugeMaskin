@@ -11,7 +11,7 @@ export type VerkstedMaskin = Maskin & {
   verksted_status: string | null
   deler: Record<string, string>
   delMal: Record<string, string>
-  /** Satt når maskinen er ute nå. Uten dato står den ute «til videre». */
+  /** Satt når maskinen er ute nå. Uten dato står den ute på ubestemt tid. */
   utleie: { kunde: string | null; ventetTilbake: string | null } | null
 }
 

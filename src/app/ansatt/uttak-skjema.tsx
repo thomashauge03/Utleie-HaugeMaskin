@@ -222,7 +222,7 @@ function Felter({
         </span>
         <input type="date" name="planlagt_slutt" min={iDag} className={FELT} />
         <span className="mt-1.5 block text-xs text-[var(--blekk-svak)]">
-          Tomt betyr til videre
+          Tomt betyr på ubestemt tid
         </span>
       </label>
 

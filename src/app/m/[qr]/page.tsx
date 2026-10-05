@@ -167,7 +167,9 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
             <div className="space-y-5">
               <Beskjed tittel={prosjekt ? `Du har denne på ${prosjekt}` : 'Du har denne'}>
                 Tatt ut {dato(aktiv.start_tid)}.
-                {aktiv.planlagt_slutt && ` Ventet tilbake ${dato(aktiv.planlagt_slutt)}.`}
+                {aktiv.planlagt_slutt
+                  ? ` Ventet tilbake ${dato(aktiv.planlagt_slutt)}.`
+                  : ' På ubestemt tid.'}
               </Beskjed>
               <LeverKnapp leieId={aktiv.id} />
             </div>
@@ -176,13 +178,13 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
               {prosjekt ? `Står på ${prosjekt}. ` : ''}
               {aktiv.planlagt_slutt
                 ? `Ventet tilbake ${dato(aktiv.planlagt_slutt)}.`
-                : 'Ute til videre.'}
+                : 'Ute på ubestemt tid.'}
             </Beskjed>
           ) : aktiv ? (
             <Beskjed tittel="Maskinen er utleid">
               {aktiv.planlagt_slutt
                 ? `Den er ventet tilbake ${dato(aktiv.planlagt_slutt)}. Ta kontakt med utleier hvis du trenger den før det.`
-                : 'Ta kontakt med utleier hvis du trenger den.'}
+                : 'Den er utleid på ubestemt tid. Ta kontakt med utleier hvis du trenger den.'}
             </Beskjed>
           ) : bruker?.maByttePassord ? (
             <Beskjed tittel="Bytt passord først">

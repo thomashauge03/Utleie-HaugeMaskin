@@ -69,7 +69,9 @@ export default async function AnsattSide() {
                           </span>
                           <span className="mt-1 block text-sm">
                             Ute siden {dato(l.startTid)}
-                            {l.planlagtSlutt && ` · ventet tilbake ${dato(l.planlagtSlutt)}`}
+                            {l.planlagtSlutt
+                              ? ` · ventet tilbake ${dato(l.planlagtSlutt)}`
+                              : ' · på ubestemt tid'}
                           </span>
                         </div>
                         <LeverKnapp leieId={l.id} />

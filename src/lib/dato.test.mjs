@@ -23,7 +23,7 @@ test('feil format gir null', () => {
   assert.equal(norskSluttAvDag(''), null)
 })
 
-test('uten dato står det «til videre»', () => {
-  assert.equal(returDato(null), 'til videre')
+test('uten dato står det «ubestemt tid»', () => {
+  assert.equal(returDato(null), 'ubestemt tid')
   assert.equal(returDato('2026-07-15T21:59:59.000Z'), '15.07.2026')
 })

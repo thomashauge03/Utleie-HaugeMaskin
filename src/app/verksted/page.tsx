@@ -238,7 +238,7 @@ export default async function VerkstedSide(props: PageProps<'/verksted'>) {
                                 </span>
                               </>
                             ) : (
-                              ' · til videre'
+                              ' · på ubestemt tid'
                             )}
                           </p>
                         )}

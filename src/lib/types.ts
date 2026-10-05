@@ -56,7 +56,7 @@ export type Leie = {
   prosjekt_id: string | null
   enhets_id: string | null
   status: LeieStatus
-  /** Null bare på internleier uten dato – «til videre». */
+  /** Null bare på internleier uten dato – «på ubestemt tid». */
   planlagt_slutt: string | null
   start_tid: string
   slutt_tid: string | null
@@ -136,7 +136,7 @@ export const LEIE_MERKE: Record<LeieStatus, 'grønn' | 'gul' | 'nøytral' | 'rø
 
 /**
  * En aktiv leie hvis avtalte leveringsdato er passert. En internleie
- * uten dato står ute «til videre» og blir aldri forfalt.
+ * uten dato står ute på ubestemt tid og blir aldri forfalt.
  */
 export function erForfalt(leie: Pick<Leie, 'status' | 'planlagt_slutt'>): boolean {
   return (
@@ -144,4 +144,12 @@ export function erForfalt(leie: Pick<Leie, 'status' | 'planlagt_slutt'>): boolea
     leie.planlagt_slutt !== null &&
     new Date(leie.planlagt_slutt).getTime() < Date.now()
   )
+}
+
+/**
+ * En internleie uten dato som ikke er levert: utstyret står ute på et
+ * prosjekt på ubestemt tid. Kundeleier har alltid dato.
+ */
+export function påUbestemtTid(leie: Pick<Leie, 'status' | 'planlagt_slutt'>): boolean {
+  return leie.status === 'aktiv' && leie.planlagt_slutt === null
 }

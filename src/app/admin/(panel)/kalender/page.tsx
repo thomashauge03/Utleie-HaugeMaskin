@@ -4,7 +4,7 @@ import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { visTelefon } from '@/lib/telefon'
 import { datoKort, osloDag } from '@/lib/dato'
-import { LEIE_STATUS_TEKST, erForfalt, type Leie, type LeieRad } from '@/lib/types'
+import { LEIE_STATUS_TEKST, erForfalt, påUbestemtTid, type Leie, type LeieRad } from '@/lib/types'
 import { LEIETAKER_FELT, leietaker, leietakerLinje, leietakerTekst } from '@/lib/leietaker'
 import { Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
 import { kortDag } from '@/lib/reservasjon'
@@ -18,6 +18,12 @@ type Rad = LeieRad
 
 /** «Tabellen finnes ikke» – migrasjon 0012 er ikke kjørt. */
 const FINNES_IKKE = ['PGRST205', '42P01']
+
+/**
+ * Leier som får plass i én rute før resten blir «+N til». Leier på
+ * ubestemt tid står på hver dag framover, så rutene fylles fortere enn før.
+ */
+const LEIER_PER_RUTE = 5
 
 const MND = [
   'januar', 'februar', 'mars', 'april', 'mai', 'juni',
@@ -47,26 +53,27 @@ function farge(l: Leie) {
 }
 
 /**
- * Siste dag leien skal tegnes på.
+ * Siste dag leien skal tegnes på, eller null når den ikke har noen.
  *
  * En aktiv leie står ute til den faktisk leveres. Stoppet vi på avtalt
  * dato, ville nettopp de dagene maskinen er på overtid mangle i
- * kalenderen – som er de dagene man trenger å se. Internleier uten dato
- * står ute «til videre», og tegnes også fram til i dag.
+ * kalenderen – som er de dagene man trenger å se. En internleie uten
+ * dato står ute på ubestemt tid og tegnes på hver dag framover, også i
+ * månedene som kommer. Stoppet den på i dag, så maskinen ledig ut i
+ * morgen.
  */
-function sluttFor(l: Leie, nå: Date): Date {
-  if (l.status === 'aktiv') {
-    return l.planlagt_slutt
-      ? new Date(Math.max(new Date(l.planlagt_slutt).getTime(), nå.getTime()))
-      : nå
+function sluttFor(l: Leie, nå: Date): Date | null {
+  if (påUbestemtTid(l)) return null
+  if (l.status === 'aktiv' && l.planlagt_slutt) {
+    return new Date(Math.max(new Date(l.planlagt_slutt).getTime(), nå.getTime()))
   }
   return new Date(l.slutt_tid ?? l.planlagt_slutt ?? nå)
 }
 
-/** Sluttdatoen slik den skrives ut: levert, avtalt, eller «til videre». */
+/** Sluttdatoen slik den skrives ut: levert, avtalt, eller «på ubestemt tid». */
 function tilTekst(l: Leie): string {
   if (l.slutt_tid) return datoKort(l.slutt_tid)
-  return l.planlagt_slutt ? datoKort(l.planlagt_slutt) : 'til videre'
+  return l.planlagt_slutt ? datoKort(l.planlagt_slutt) : 'på ubestemt tid'
 }
 
 export default async function KalenderSide(props: PageProps<'/admin/kalender'>) {
@@ -92,7 +99,11 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
     .lte('start_tid', new Date(år, måned + 1, 0, 23, 59, 59).toISOString())
     .order('start_tid')
 
-  const leier = ((data ?? []) as Rad[]).filter((l) => sluttFor(l, nå) >= førsteIMnd)
+  // En leie på ubestemt tid hører med i hver måned fra den startet.
+  const leier = ((data ?? []) as Rad[]).filter((l) => {
+    const slutt = sluttFor(l, nå)
+    return slutt === null || slutt >= førsteIMnd
+  })
 
   // Reservasjoner som berører måneden, og maskinene skjemaet kan velge.
   // Mangler tabellen, står det en beskjed der skjemaet ellers hadde stått.
@@ -132,9 +143,9 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
 
     const påDagen = leier.filter((l) => {
       const fra = osloDag(l.start_tid)
-      const til = osloDag(sluttFor(l, nå))
+      const slutt = sluttFor(l, nå)
       // ISO-datoer kan sammenlignes som tekst.
-      return dag >= fra && dag <= til
+      return dag >= fra && (slutt === null || dag <= osloDag(slutt))
     })
     const reservert = reservasjoner.filter((r) => dag >= r.fra_dato && dag <= r.til_dato)
 
@@ -246,7 +257,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
                       </li>
                     )}
 
-                    {påDagen.slice(0, 3).map((l) => {
+                    {påDagen.slice(0, LEIER_PER_RUTE).map((l) => {
                       // Er dagen etter avtalt levering, står maskinen på overtid.
                       const påOvertid =
                         l.status === 'aktiv' &&
@@ -257,19 +268,27 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
                         <li key={l.id}>
                           <Link
                             href={`/admin/leier/${l.id}`}
-                            title={`${l.maskiner?.navn} · ${leietakerTekst(l)} · ${datoKort(l.start_tid)}–${tilTekst(l)}`}
-                            className={`block truncate border border-[var(--kant-sterk)] px-1.5 py-1 text-[11px] leading-tight font-bold ${farge(l)}`}
+                            title={`${l.maskiner?.navn} · ${leietakerTekst(l)} · ${datoKort(l.start_tid)} → ${tilTekst(l)}`}
+                            className={`block border border-[var(--kant-sterk)] px-1.5 py-1 text-[11px] leading-tight font-bold ${farge(l)}`}
                           >
-                            {påOvertid && '⚠ '}
-                            {l.maskiner?.navn ?? l.referanse}
+                            <span className="block truncate">
+                              {påOvertid && '⚠ '}
+                              {l.maskiner?.navn ?? l.referanse}
+                            </span>
+                            {/* I hver rute, ikke bare i tooltipen – den ser ingen på mobil. */}
+                            {påUbestemtTid(l) && (
+                              <span className="mt-0.5 block truncate text-[9px] font-semibold tracking-wide uppercase">
+                                På ubestemt tid
+                              </span>
+                            )}
                           </Link>
                         </li>
                       )
                     })}
 
-                    {påDagen.length > 3 && (
+                    {påDagen.length > LEIER_PER_RUTE && (
                       <li className="px-1 text-[10px] font-bold text-[var(--blekk-svak)]">
-                        +{påDagen.length - 3} til
+                        +{påDagen.length - LEIER_PER_RUTE} til
                       </li>
                     )}
                   </ul>
@@ -337,7 +356,10 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
                         {erForfalt(l) && ' ⚠'}
                       </span>
 
-                      <span className="min-w-0 flex-1">
+                      {/* min-w-40: ved siden av «→ på ubestemt tid» er det for
+                          trangt på mobil – da bryter navnet til egen linje
+                          i stedet for å kappes. */}
+                      <span className="min-w-40 flex-1">
                         <span className="hm-display block truncate text-lg">
                           {l.maskiner?.navn ?? 'Ukjent maskin'}
                         </span>

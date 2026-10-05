@@ -36,7 +36,7 @@ export async function taUt(
   })
   if (!felter.success) return { feil: felter.error.issues[0].message }
 
-  // Tom dato betyr «til videre». Satt dato gjelder slutten av dagen i
+  // Tom dato betyr «på ubestemt tid». Satt dato gjelder slutten av dagen i
   // norsk tid – se norskSluttAvDag.
   let slutt: Date | null = null
   if (felter.data.planlagt_slutt) {

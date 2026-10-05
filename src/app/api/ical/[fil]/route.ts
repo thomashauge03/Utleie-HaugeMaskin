@@ -1,7 +1,7 @@
 import { createEvents, type EventAttributes } from 'ics'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { visTelefon } from '@/lib/telefon'
-import { erForfalt, type LeieRad } from '@/lib/types'
+import { erForfalt, påUbestemtTid, type LeieRad } from '@/lib/types'
 import { LEIETAKER_FELT, leietaker, leietakerTekst } from '@/lib/leietaker'
 
 export const dynamic = 'force-dynamic'
@@ -71,9 +71,11 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/ical/[fil]'
   const leier = (data ?? []) as Rad[]
 
   const hendelser: EventAttributes[] = leier.map((l) => {
-    // Internleier uten dato står ute til de leveres – vis dem fram til nå.
+    // Internleier uten dato står ute på ubestemt tid, til de leveres. De
+    // vises fram til nå, og tittelen sier hvorfor de ikke har noen slutt.
     const slutt = l.slutt_tid ?? l.planlagt_slutt ?? new Date().toISOString()
     const forfalt = erForfalt(l)
+    const ubestemt = påUbestemtTid(l)
 
     const t = leietaker(l)
     const beskrivelse = [
@@ -84,6 +86,7 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/ical/[fil]'
       `Referanse: ${l.referanse}`,
       l.status === 'venter_godkjenning' ? 'Venter på godkjenning' : null,
       forfalt ? 'FORFALT – ikke levert til avtalt tid' : null,
+      ubestemt ? 'På ubestemt tid – ingen returdato' : null,
       l.kommentar_start ? `Kommentar: ${l.kommentar_start}` : null,
     ]
       .filter(Boolean)
@@ -91,7 +94,7 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/ical/[fil]'
 
     return {
       uid: `${l.id}@utleie`,
-      title: `${forfalt ? '⚠ ' : ''}${l.maskiner?.navn ?? 'Maskin'} – ${leietakerTekst(l)}`,
+      title: `${forfalt ? '⚠ ' : ''}${l.maskiner?.navn ?? 'Maskin'} – ${leietakerTekst(l)}${ubestemt ? ' · på ubestemt tid' : ''}`,
       start: tilDatoArray(l.start_tid),
       startInputType: 'utc',
       end: tilDatoArray(slutt),

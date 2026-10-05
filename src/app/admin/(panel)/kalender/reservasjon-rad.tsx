@@ -5,7 +5,7 @@ import { avlysReservasjon } from './actions'
 
 export type ReservasjonVisning = Reservasjon & {
   notat: string | null
-  maskiner?: { navn: string } | null
+  maskiner?: { navn: string; kategori?: string | null; internnummer?: string | null } | null
 }
 
 /**

@@ -8,8 +8,10 @@ import { LEIE_STATUS_TEKST, erForfalt, påUbestemtTid, type Leie, type LeieRad }
 import { LEIETAKER_FELT, leietaker, leietakerLinje, leietakerTekst } from '@/lib/leietaker'
 import { Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
 import { kortDag } from '@/lib/reservasjon'
+import { baner, plasser } from '@/lib/tidslinje'
 import { NyReservasjon, type ReservasjonMaskin } from './ny-reservasjon'
 import { ReservasjonRad, type ReservasjonVisning } from './reservasjon-rad'
+import { Tidslinje, type Stolpe, type TidslinjeRad } from './tidslinje'
 
 export const metadata: Metadata = { title: 'Kalender – HM Utleie' }
 export const dynamic = 'force-dynamic'
@@ -19,32 +21,24 @@ type Rad = LeieRad
 /** «Tabellen finnes ikke» – migrasjon 0012 er ikke kjørt. */
 const FINNES_IKKE = ['PGRST205', '42P01']
 
-/**
- * Leier som får plass i én rute før resten blir «+N til». Leier på
- * ubestemt tid står på hver dag framover, så rutene fylles fortere enn før.
- */
-const LEIER_PER_RUTE = 5
-
 const MND = [
   'januar', 'februar', 'mars', 'april', 'mai', 'juni',
   'juli', 'august', 'september', 'oktober', 'november', 'desember',
 ]
-// Uka starter på mandag i Norge.
-const UKEDAGER = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag', 'Søndag']
 
 /** Date.getDay() har søndag som 0. Vi vil ha mandag som 0. */
 const ukedagIndeks = (d: Date) => (d.getDay() + 6) % 7
 
 /**
- * Civil dato yyyy-mm-dd for en rutenettcelle. Cellene bygges på
+ * Civil dato yyyy-mm-dd for en dag i måneden. Dagene bygges på
  * server-lokal midnatt, så samme lokale getter gir tallene tilbake
- * uansett tidssone. Leiene bøttes på Oslo-dato (osloDag), så de havner
+ * uansett tidssone. Leiene plasseres på Oslo-dato (osloDag), så de havner
  * på riktig dag også når serveren er UTC.
  */
 const celleDag = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
-/** Farge per status. Brukes både i rutenettet og i lista under. */
+/** Farge per status. Brukes både i tidslinja og i lista under. */
 function farge(l: Leie) {
   if (erForfalt(l)) return 'bg-hm-red text-white'
   if (l.status === 'venter_godkjenning') return 'bg-hm-amber text-white'
@@ -111,7 +105,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
     supabase
       .from('reservasjoner')
       .select(
-        'id, maskin_id, fra_dato, til_dato, kunde_navn, kunde_telefon, notat, status, maskiner(navn)',
+        'id, maskin_id, fra_dato, til_dato, kunde_navn, kunde_telefon, notat, status, maskiner(navn, kategori, internnummer)',
       )
       .eq('status', 'aktiv')
       .lte('fra_dato', celleDag(new Date(år, måned + 1, 0)))
@@ -127,30 +121,74 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
   const reservasjonerPå = !(resFeil && FINNES_IKKE.includes(resFeil.code))
   const reservasjoner = (resData ?? []) as unknown as ReservasjonVisning[]
 
-  /*
-   * Rutenettet starter på mandagen i uka der den 1. faller, og fylles
-   * ut til hele uker. Da får hver kolonne alltid samme ukedag.
-   */
-  const førFørste = ukedagIndeks(førsteIMnd)
-  const totaltRuter = Math.ceil((førFørste + antallDager) / 7) * 7
-
   const iDag = osloDag(nå)
 
-  const ruter = Array.from({ length: totaltRuter }, (_, i) => {
-    const d = new Date(år, måned, i - førFørste + 1)
-    const iMåneden = d.getMonth() === måned && d.getFullYear() === år
-    const dag = celleDag(d)
+  /*
+   * Tidslinja: én rad per maskin med leie eller reservasjon i måneden.
+   * Leiene strekkes som før (sluttFor); en leie på ubestemt tid har ingen
+   * slutt og går ut til høyre kant.
+   */
+  const førsteDag = celleDag(førsteIMnd)
+  const sisteDag = celleDag(new Date(år, måned + 1, 0))
+  type Maskininfo = { navn: string; kategori?: string | null; internnummer?: string | null }
+  const perMaskin = new Map<string, { info: Omit<TidslinjeRad, 'baner'>; stolper: Stolpe[] }>()
+  const leggTil = (maskinId: string, maskin: Maskininfo | null | undefined, stolpe: Stolpe) => {
+    const m = perMaskin.get(maskinId) ?? {
+      info: {
+        id: maskinId,
+        navn: maskin?.navn ?? 'Ukjent maskin',
+        kategori: maskin?.kategori ?? null,
+        internnummer: maskin?.internnummer ?? null,
+      },
+      stolper: [],
+    }
+    m.stolper.push(stolpe)
+    perMaskin.set(maskinId, m)
+  }
 
-    const påDagen = leier.filter((l) => {
-      const fra = osloDag(l.start_tid)
-      const slutt = sluttFor(l, nå)
-      // ISO-datoer kan sammenlignes som tekst.
-      return dag >= fra && (slutt === null || dag <= osloDag(slutt))
+  for (const l of leier) {
+    const slutt = sluttFor(l, nå)
+    const plass = plasser(
+      { fra: osloDag(l.start_tid), til: slutt && osloDag(slutt) },
+      førsteDag,
+      sisteDag,
+    )
+    if (!plass) continue
+    leggTil(l.maskin_id, l.maskiner, {
+      ...plass,
+      id: l.id,
+      tekst: `${erForfalt(l) ? '⚠ ' : ''}${leietakerTekst(l)}`,
+      tittel: `${l.maskiner?.navn ?? l.referanse} · ${leietakerTekst(l)} · ${datoKort(l.start_tid)} → ${tilTekst(l)}`,
+      href: `/admin/leier/${l.id}`,
+      klasse: `border border-[var(--kant-sterk)] ${farge(l)}`,
+      ubestemt: påUbestemtTid(l),
     })
-    const reservert = reservasjoner.filter((r) => dag >= r.fra_dato && dag <= r.til_dato)
-
-    return { dato: d, dag, iMåneden, leier: påDagen, reservert }
-  })
+  }
+  for (const r of reservasjoner) {
+    const plass = plasser({ fra: r.fra_dato, til: r.til_dato }, førsteDag, sisteDag)
+    if (!plass) continue
+    // Forespørsler fra nettsida (reservasjoner del 3) er grå og sperrer ingenting.
+    const forespurt = r.status === 'forespurt'
+    leggTil(r.maskin_id, r.maskiner, {
+      ...plass,
+      id: r.id,
+      tekst: `${forespurt ? '? Forespurt' : 'Reservert'} · ${r.kunde_navn}`,
+      tittel: `${r.maskiner?.navn ?? 'Maskin'} · ${forespurt ? 'forespurt av' : 'reservert for'} ${r.kunde_navn} · ${kortDag(r.fra_dato)}–${kortDag(r.til_dato)}`,
+      klasse: forespurt
+        ? 'border border-dashed border-[var(--blekk-svak)] bg-[var(--flate-opp)] text-[var(--blekk-svak)]'
+        : 'border border-dashed border-hm-amber bg-[var(--flate-opp)]',
+    })
+  }
+  // Kategoriene alfabetisk og uten kategori sist; maskinene på navn.
+  const rader: TidslinjeRad[] = [...perMaskin.values()]
+    .map(({ info, stolper }) => ({ ...info, baner: baner(stolper) }))
+    .sort(
+      (a, b) =>
+        Number(a.kategori === null) - Number(b.kategori === null) ||
+        (a.kategori ?? '').localeCompare(b.kategori ?? '', 'nb') ||
+        a.navn.localeCompare(b.navn, 'nb'),
+    )
+  const dagIDag = iDag.slice(0, 7) === førsteDag.slice(0, 7) ? Number(iDag.slice(8, 10)) : null
   const forrige = new Date(år, måned - 1, 1)
   const neste = new Date(år, måned + 1, 1)
 
@@ -194,120 +232,25 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
         </p>
       )}
 
-      {/* ── Månedsrutenett ────────────────────────────────── */}
-      <div className="overflow-x-auto">
-        <div className="min-w-[900px]">
-          <div className="grid grid-cols-7 gap-px border-2 border-[var(--kant-sterk)] bg-[var(--kant-sterk)]">
-            {UKEDAGER.map((d) => (
-              <div
-                key={d}
-                className="bg-hm-black px-2 py-2 text-center text-[11px] font-bold tracking-widest text-white uppercase"
-              >
-                {d}
-              </div>
-            ))}
-
-            {ruter.map(({ dato, dag, iMåneden, leier: påDagen, reservert }, i) => {
-              const erIDag = dag === iDag
-              const helg = ukedagIndeks(dato) >= 5
-
-              return (
-                <div
-                  key={i}
-                  className={`min-h-[7.5rem] p-1.5 ${
-                    !iMåneden
-                      ? 'bg-[var(--flate-2)] opacity-45'
-                      : erIDag
-                        ? 'bg-hm-red/10'
-                        : helg
-                          ? 'bg-[var(--flate-2)]'
-                          : 'bg-[var(--flate-opp)]'
-                  }`}
-                >
-                  <div className="mb-1.5 flex items-center justify-between">
-                    <span
-                      className={`hm-tall inline-flex size-6 items-center justify-center text-sm font-bold ${
-                        erIDag ? 'bg-hm-red text-white' : ''
-                      }`}
-                    >
-                      {dato.getDate()}
-                    </span>
-                    {påDagen.length + reservert.length > 0 && (
-                      <span className="hm-tall text-[10px] font-bold text-[var(--blekk-svak)]">
-                        {påDagen.length + reservert.length}
-                      </span>
-                    )}
-                  </div>
-
-                  <ul className="space-y-1">
-                    {/* Reservasjonene først: det er de som ikke har skjedd ennå. */}
-                    {reservert.slice(0, 2).map((r) => (
-                      <li key={r.id}>
-                        <span
-                          title={`${r.maskiner?.navn} · reservert for ${r.kunde_navn} · ${kortDag(r.fra_dato)}–${kortDag(r.til_dato)}`}
-                          className="block truncate border border-dashed border-hm-amber bg-[var(--flate-opp)] px-1.5 py-1 text-[11px] leading-tight font-bold"
-                        >
-                          {r.maskiner?.navn ?? 'Reservert'}
-                        </span>
-                      </li>
-                    ))}
-                    {reservert.length > 2 && (
-                      <li className="px-1 text-[10px] font-bold text-[var(--blekk-svak)]">
-                        +{reservert.length - 2} reservert
-                      </li>
-                    )}
-
-                    {påDagen.slice(0, LEIER_PER_RUTE).map((l) => {
-                      // Er dagen etter avtalt levering, står maskinen på overtid.
-                      const påOvertid =
-                        l.status === 'aktiv' &&
-                        l.planlagt_slutt !== null &&
-                        dag > osloDag(l.planlagt_slutt)
-
-                      return (
-                        <li key={l.id}>
-                          <Link
-                            href={`/admin/leier/${l.id}`}
-                            title={`${l.maskiner?.navn} · ${leietakerTekst(l)} · ${datoKort(l.start_tid)} → ${tilTekst(l)}`}
-                            className={`block border border-[var(--kant-sterk)] px-1.5 py-1 text-[11px] leading-tight font-bold ${farge(l)}`}
-                          >
-                            <span className="block truncate">
-                              {påOvertid && '⚠ '}
-                              {l.maskiner?.navn ?? l.referanse}
-                            </span>
-                            {/* I hver rute, ikke bare i tooltipen – den ser ingen på mobil. */}
-                            {påUbestemtTid(l) && (
-                              <span className="mt-0.5 block truncate text-[9px] font-semibold tracking-wide uppercase">
-                                På ubestemt tid
-                              </span>
-                            )}
-                          </Link>
-                        </li>
-                      )
-                    })}
-
-                    {påDagen.length > LEIER_PER_RUTE && (
-                      <li className="px-1 text-[10px] font-bold text-[var(--blekk-svak)]">
-                        +{påDagen.length - LEIER_PER_RUTE} til
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
+      {/* ── Tidslinje: én rad per maskin ──────────────────── */}
+      <Tidslinje
+        rader={rader}
+        antallDager={antallDager}
+        førsteUkedag={ukedagIndeks(førsteIMnd)}
+        iDag={dagIDag}
+        tomTekst={`Ingen leier eller reservasjoner i ${MND[måned]}.`}
+      />
 
       <div className="flex flex-wrap items-center gap-4 text-xs font-bold tracking-wider text-[var(--blekk-svak)] uppercase">
         <Prikk farge="bg-hm-green" tekst="Utleid" />
-        <Prikk farge="bg-hm-red" tekst="Forfalt · ⚠ = dag på overtid" />
+        <Prikk farge="bg-hm-red" tekst="Forfalt ⚠" />
         <Prikk farge="bg-hm-amber" tekst="Venter godkjenning" />
         <Prikk farge="bg-hm-500" tekst="Avsluttet" />
         <span className="flex items-center gap-1.5">
           <span className="inline-block size-3 border border-dashed border-hm-amber bg-[var(--flate-opp)]" />
           Reservert
         </span>
+        <span>◂ ▸ fortsetter fra forrige / til neste måned</span>
       </div>
 
       {reservasjoner.length > 0 && (
@@ -334,7 +277,7 @@ export default async function KalenderSide(props: PageProps<'/admin/kalender'>) 
         <div>
           <h2 className="hm-display mb-1 text-2xl">Leier i {MND[måned]}</h2>
           <p className="mb-4 text-sm text-[var(--blekk-svak)]">
-            Samme utleie som i rutenettet, med datoene skrevet ut.
+            Samme utleie som i tidslinja, med datoene skrevet ut.
           </p>
 
           <ol className="space-y-3">

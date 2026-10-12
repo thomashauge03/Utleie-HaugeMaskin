@@ -3,7 +3,12 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { varsleMerknadIntern } from '@/lib/epost/varsler'
 import { beregnPris, prisEnhet } from '@/lib/pris'
 import { kanLeiesUt } from '@/lib/verksted'
-import { opptattGrunn, prosjektNavn } from '@/lib/leietaker'
+import {
+  opptattGrunn,
+  prosjektNavn,
+  prosjektValgtekst,
+  sammenlignProsjekter,
+} from '@/lib/leietaker'
 import { osloDag } from '@/lib/dato'
 import {
   ansattVarsel,
@@ -113,7 +118,7 @@ export async function hentProsjektvalg(brukerId: string): Promise<{
   sistProsjektId: string | null
 } | null> {
   const [{ data: prosjekter, error }, { data: siste }] = await Promise.all([
-    supabaseAdmin.from('prosjekter').select('id, navn, nummer').eq('aktiv', true).order('navn'),
+    supabaseAdmin.from('prosjekter').select('id, navn, nummer').eq('aktiv', true),
     supabaseAdmin
       .from('leier')
       .select('prosjekt_id')
@@ -128,10 +133,11 @@ export async function hentProsjektvalg(brukerId: string): Promise<{
     throw new Error(`Kunne ikke hente prosjekter: ${error.message}`)
   }
 
-  const valg = ((prosjekter ?? []) as (ProsjektInnbygd & { id: string })[]).map((p) => ({
-    id: p.id,
-    navn: prosjektNavn(p),
-  }))
+  // Sorteres her og ikke i spørringen: nummeret er tekst i databasen, og
+  // der ville «100» kommet før «99».
+  const valg = ((prosjekter ?? []) as (ProsjektInnbygd & { id: string })[])
+    .sort(sammenlignProsjekter)
+    .map((p) => ({ id: p.id, navn: prosjektValgtekst(p) }))
 
   // Et avsluttet prosjekt står ikke i lista, og kan ikke forhåndsvelges.
   const sistId = (siste as { prosjekt_id: string | null } | null)?.prosjekt_id ?? null

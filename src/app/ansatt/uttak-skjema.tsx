@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useId, useState } from 'react'
 import { ETIKETT, FELT, KNAPP_PRIMÆR } from '@/components/ui'
 import type { ProsjektValg, UttakMaskin } from '@/lib/intern-leie'
 import { tolkKode } from '@/lib/skannet-kode'
@@ -189,32 +189,84 @@ export function UttakEnkel({ maskinId, prosjekter, sistProsjektId, iDag }: Felle
   )
 }
 
+// Under dette er nedtrekkslista kort nok til å bla i, og søkefeltet
+// bare står i veien.
+const SØK_FRA = 12
+
 function Felter({
   prosjekter,
   sistProsjektId,
   iDag,
   venter,
 }: Felles & { venter: boolean }) {
+  const [valgt, settValgt] = useState(sistProsjektId ?? '')
+  const [søk, settSøk] = useState('')
+  const listeId = useId()
+
+  const treff = (tekst: string) => {
+    const n = tekst.toLowerCase().replace(/\s/g, '')
+    return n ? prosjekter.filter((p) => p.navn.toLowerCase().replace(/\s/g, '').includes(n)) : null
+  }
+
+  // Det valgte prosjektet blir stående selv om det ikke passer søket.
+  // Forsvinner valget fra lista, velger nettleseren et annet på egen hånd,
+  // og utstyret kunne blitt ført på feil prosjekt uten at noen så det.
+  const passer = treff(søk)
+  const valgtProsjekt = prosjekter.find((p) => p.id === valgt)
+  const synlige =
+    passer === null
+      ? prosjekter
+      : valgtProsjekt && !passer.includes(valgtProsjekt)
+        ? [valgtProsjekt, ...passer]
+        : passer
+
+  function vedSøk(tekst: string) {
+    settSøk(tekst)
+    // Ett treff er nesten alltid det man lette etter, så det velges med
+    // en gang i stedet for at man må åpne lista etterpå.
+    const nye = treff(tekst)
+    if (nye?.length === 1) settValgt(nye[0].id)
+  }
+
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <label className="block">
-        <span className={ETIKETT}>Prosjekt</span>
+      <div className="block">
+        <label htmlFor={listeId} className={ETIKETT}>
+          Prosjekt
+        </label>
+        {prosjekter.length >= SØK_FRA && (
+          <input
+            type="search"
+            value={søk}
+            onChange={(e) => vedSøk(e.target.value)}
+            // Enter i søkefeltet skal ikke sende skjemaet og ta ut utstyret.
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.preventDefault()
+            }}
+            placeholder="Søk på nummer eller navn"
+            aria-label="Søk etter prosjekt"
+            autoComplete="off"
+            className={`${FELT} mb-2`}
+          />
+        )}
         <select
+          id={listeId}
           name="prosjekt_id"
           required
-          defaultValue={sistProsjektId ?? ''}
+          value={valgt}
+          onChange={(e) => settValgt(e.target.value)}
           className={FELT}
         >
           <option value="" disabled>
-            Velg prosjekt
+            {passer?.length === 0 ? 'Ingen prosjekter passer søket' : 'Velg prosjekt'}
           </option>
-          {prosjekter.map((p) => (
+          {synlige.map((p) => (
             <option key={p.id} value={p.id}>
               {p.navn}
             </option>
           ))}
         </select>
-      </label>
+      </div>
 
       <label className="block">
         <span className={ETIKETT}>
@@ -262,13 +314,13 @@ function Svar({ tilstand }: { tilstand: UttakTilstand }) {
   )
 }
 
-// Står også når prosjektene finnes, men alle er avsluttet – og vises for
-// admin, som selv kan gjøre noe med det.
+// Står også når prosjektene finnes, men alle er avsluttet. Lista styres
+// fra SmartDok, så det er der, og ikke i denne appen, det kan rettes.
 function IngenProsjekter() {
   return (
     <p className="border-l-4 border-hm-amber bg-[var(--flate-2)] p-3 text-sm">
-      Ingen prosjekter er åpne for uttak nå. En admin kan opprette et nytt,
-      eller åpne et avsluttet, under Prosjekter.
+      Ingen prosjekter er åpne for uttak nå. Prosjektene hentes fra SmartDok,
+      så et nytt prosjekt må opprettes der eller i adminbordet.
     </p>
   )
 }

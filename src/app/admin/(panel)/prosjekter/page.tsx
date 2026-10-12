@@ -3,12 +3,19 @@ import Link from 'next/link'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { internleieRad, kroner, summerInternleie, type InternleieRad } from '@/lib/pris'
+import { sammenlignProsjekter } from '@/lib/leietaker'
 import type { Prosjekt } from '@/lib/types'
 import { Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
-import { NyttProsjekt } from './nytt-prosjekt'
+import { Søkefelt } from '@/components/sokefelt'
+import { SmartDokBeskjed } from './smartdok-beskjed'
 
 export const metadata: Metadata = { title: 'Prosjekter – HM Utleie' }
 export const dynamic = 'force-dynamic'
+
+const FILTRE = [
+  { verdi: 'aktive', tekst: 'Aktive' },
+  { verdi: 'alle', tekst: 'Vis avsluttede' },
+] as const
 
 type Rad = {
   prosjekt_id: string
@@ -18,17 +25,17 @@ type Rad = {
   maskiner: { dogn_pris: number | null; pris_enhet: string | null } | null
 }
 
-export default async function ProsjekterSide() {
+export default async function ProsjekterSide(props: PageProps<'/admin/prosjekter'>) {
   await krevAdmin()
+  const sp = await props.searchParams
+  const visAlle = sp.vis === 'alle'
+  const søk = typeof sp.q === 'string' ? sp.q.trim() : ''
+
   const supabase = await lagServerKlient()
   const nå = new Date().toISOString()
 
   const [{ data: prosjektRader }, { data: leieRader }] = await Promise.all([
-    supabase
-      .from('prosjekter')
-      .select('*')
-      .order('aktiv', { ascending: false })
-      .order('navn'),
+    supabase.from('prosjekter').select('*'),
     supabase
       .from('leier')
       .select('prosjekt_id, status, start_tid, belop, maskiner(dogn_pris, pris_enhet)')
@@ -36,7 +43,7 @@ export default async function ProsjekterSide() {
       .in('status', ['aktiv', 'avsluttet']),
   ])
 
-  const prosjekter = (prosjektRader ?? []) as Prosjekt[]
+  const alle = (prosjektRader ?? []) as Prosjekt[]
 
   const perProsjekt = new Map<string, InternleieRad[]>()
   for (const l of (leieRader ?? []) as unknown as Rad[]) {
@@ -44,24 +51,81 @@ export default async function ProsjekterSide() {
     liste.push(internleieRad(l))
     perProsjekt.set(l.prosjekt_id, liste)
   }
+  const sum = (p: Prosjekt) => summerInternleie(perProsjekt.get(p.id) ?? [], nå)
+
+  // Et prosjekt kan avsluttes i SmartDok mens utstyr fortsatt står ute
+  // på det. Det skal ikke forsvinne fra lista før utstyret er levert.
+  let prosjekter = visAlle ? alle : alle.filter((p) => p.aktiv || sum(p).ute > 0)
+
+  if (søk) {
+    const n = søk.toLowerCase().replace(/\s/g, '')
+    prosjekter = prosjekter.filter((p) =>
+      [p.nummer, p.navn]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().replace(/\s/g, '').includes(n)),
+    )
+  }
+
+  prosjekter.sort((a, b) => Number(b.aktiv) - Number(a.aktiv) || sammenlignProsjekter(a, b))
+
+  const lenke = (vis: string) => {
+    const p = new URLSearchParams()
+    if (vis === 'alle') p.set('vis', 'alle')
+    if (søk) p.set('q', søk)
+    const s = p.toString()
+    return s ? `/admin/prosjekter?${s}` : '/admin/prosjekter'
+  }
+
+  const antallAktive = alle.filter((p) => p.aktiv).length
 
   return (
-    <div className="space-y-7">
-      <Seksjonstittel under="Internleie føres på prosjektet når noen tar ut utstyr til det.">
+    <div className="space-y-6">
+      <Seksjonstittel
+        under={
+          søk
+            ? `${prosjekter.length} treff på «${søk}»`
+            : `${antallAktive} aktive av ${alle.length} · internleie føres på prosjektet når noen tar ut utstyr til det`
+        }
+      >
         Prosjekter
       </Seksjonstittel>
 
-      <NyttProsjekt />
+      <SmartDokBeskjed />
+
+      <Søkefelt verdi={søk} plassholder="Søk på nummer eller navn" />
+
+      <div className="flex flex-wrap gap-2">
+        {FILTRE.map((f) => {
+          const aktiv = (f.verdi === 'alle') === visAlle
+          return (
+            <Link
+              key={f.verdi}
+              href={lenke(f.verdi)}
+              aria-current={aktiv ? 'true' : undefined}
+              className={`inline-flex min-h-[2.75rem] items-center border-2 px-4 text-xs font-bold tracking-wider uppercase transition-colors ${
+                aktiv
+                  ? 'border-[var(--kant-sterk)] bg-hm-black text-white'
+                  : 'border-[var(--kant)] bg-[var(--flate-opp)] hover:border-[var(--kant-sterk)]'
+              }`}
+            >
+              {f.tekst}
+            </Link>
+          )
+        })}
+      </div>
 
       {prosjekter.length === 0 ? (
-        <TomTilstand tittel="Ingen prosjekter ennå">
-          Legg inn det første, så kan de ansatte ta ut utstyr til det.
+        <TomTilstand tittel={søk ? 'Ingen treff' : 'Ingen prosjekter her'}>
+          {søk
+            ? `Fant ingen prosjekt som matcher «${søk}».${visAlle ? '' : ' Søk blant de avsluttede også med «Vis avsluttede».'}`
+            : 'Prosjektene dukker opp her når adminbordet har hentet dem fra SmartDok.'}
         </TomTilstand>
       ) : (
         <div className="overflow-x-auto border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)]">
           <table className="w-full text-sm">
             <thead className="bg-hm-black text-white">
               <tr>
+                <Th>Nummer</Th>
                 <Th>Prosjekt</Th>
                 <Th>Ute nå</Th>
                 <Th>Internleie hittil</Th>
@@ -70,12 +134,13 @@ export default async function ProsjekterSide() {
             </thead>
             <tbody>
               {prosjekter.map((p) => {
-                const s = summerInternleie(perProsjekt.get(p.id) ?? [], nå)
+                const s = sum(p)
                 return (
                   <tr
                     key={p.id}
                     className="border-b-2 border-[var(--kant)] transition-colors last:border-0 hover:bg-[var(--flate-2)]"
                   >
+                    <td className="hm-tall px-4 py-3 whitespace-nowrap">{p.nummer ?? '–'}</td>
                     <td className="px-4 py-3">
                       <Link
                         href={`/admin/prosjekter/${p.id}`}
@@ -83,9 +148,6 @@ export default async function ProsjekterSide() {
                       >
                         {p.navn}
                       </Link>
-                      {p.nummer && (
-                        <div className="hm-tall text-xs text-[var(--blekk-svak)]">{p.nummer}</div>
-                      )}
                     </td>
                     <td className="hm-tall px-4 py-3">{s.ute}</td>
                     <td className="hm-tall px-4 py-3 whitespace-nowrap">

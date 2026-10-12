@@ -7,10 +7,7 @@ import { antallTekst, beregnPris, internleieRad, kroner, prisEnhet, summerIntern
 import { dato } from '@/lib/dato'
 import type { Prosjekt } from '@/lib/types'
 import { Kort, KortTittel, Merke, TomTilstand } from '@/components/ui'
-import { BekreftKnapp } from '@/components/bekreft-knapp'
-import { settProsjektAktiv } from '../actions'
-import { RedigerProsjekt } from './rediger-prosjekt'
-import { SlettProsjekt } from './slett-prosjekt'
+import { SmartDokBeskjed } from '../smartdok-beskjed'
 
 export const metadata: Metadata = { title: 'Prosjekt – HM Utleie' }
 export const dynamic = 'force-dynamic'
@@ -148,28 +145,14 @@ export default async function ProsjektSide(props: PageProps<'/admin/prosjekter/[
         </div>
       </Kort>
 
-      <Kort>
-        <KortTittel>Navn og nummer</KortTittel>
-        <RedigerProsjekt id={prosjekt.id} navn={prosjekt.navn} nummer={prosjekt.nummer} />
-      </Kort>
+      {!prosjekt.aktiv && sum.ute > 0 && (
+        <p className="border-l-4 border-hm-amber bg-[var(--flate-2)] p-3 text-sm">
+          Prosjektet er avsluttet, men {sum.ute} ting står fortsatt ute på det.
+          De blir stående til de leveres, men ingen kan ta ut mer til prosjektet.
+        </p>
+      )}
 
-      <div className="space-y-3">
-        {prosjekt.aktiv && sum.ute > 0 && (
-          <p className="border-l-4 border-hm-amber bg-[var(--flate-2)] p-3 text-sm">
-            {sum.ute} ting står fortsatt ute på prosjektet. Avslutter du det, blir
-            de stående til de leveres – men ingen kan ta ut mer til det.
-          </p>
-        )}
-        <div className="flex flex-wrap gap-3">
-          <form action={settProsjektAktiv.bind(null, prosjekt.id, !prosjekt.aktiv)}>
-            <BekreftKnapp
-              etikett={prosjekt.aktiv ? 'Avslutt prosjektet' : 'Åpne prosjektet igjen'}
-              bekreft={prosjekt.aktiv ? 'Ja, avslutt' : 'Ja, åpne'}
-            />
-          </form>
-          {leier.length === 0 && <SlettProsjekt id={prosjekt.id} />}
-        </div>
-      </div>
+      <SmartDokBeskjed />
     </div>
   )
 }

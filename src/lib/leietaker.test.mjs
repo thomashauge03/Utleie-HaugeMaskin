@@ -1,6 +1,14 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { leietaker, leietakerLinje, leietakerTekst, opptattGrunn, prosjektNavn } from './leietaker.ts'
+import {
+  leietaker,
+  leietakerLinje,
+  leietakerTekst,
+  opptattGrunn,
+  prosjektNavn,
+  prosjektValgtekst,
+  sammenlignProsjekter,
+} from './leietaker.ts'
 
 const ola = { navn: 'Ola Nordmann', telefon: null }
 const kvamsøy = { navn: 'Kvamsøy bru', nummer: 'P-2317' }
@@ -23,6 +31,24 @@ test('internleie viser ansatt og prosjekt med nummer', () => {
 
 test('prosjekt uten nummer er bare navnet', () => {
   assert.equal(prosjektNavn({ navn: 'Lager', nummer: null }), 'Lager')
+})
+
+test('prosjektvalget viser nummeret først', () => {
+  assert.equal(prosjektValgtekst({ navn: 'Kvamsøy bru', nummer: '2317' }), '2317 Kvamsøy bru')
+  assert.equal(prosjektValgtekst({ navn: 'Lager', nummer: null }), 'Lager')
+})
+
+test('prosjekter sorteres som tall, og de uten nummer til slutt', () => {
+  const liste = [
+    { navn: 'Lager', nummer: null },
+    { navn: 'Bru', nummer: '100' },
+    { navn: 'Verksted', nummer: null },
+    { navn: 'Vei', nummer: '99' },
+  ]
+  assert.deepEqual(
+    liste.sort(sammenlignProsjekter).map((p) => p.navn),
+    ['Vei', 'Bru', 'Lager', 'Verksted'],
+  )
 })
 
 test('manglende innbygde rader velter ingenting', () => {

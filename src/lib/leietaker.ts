@@ -24,6 +24,29 @@ export function prosjektNavn(p: ProsjektInnbygd): string {
   return p.nummer ? `${p.navn} (${p.nummer})` : p.navn
 }
 
+/**
+ * «2317 Kvamsøy bru»: nummeret først, der de ansatte velger prosjekt.
+ * Lista kommer fra SmartDok, og det er nummeret folk kjenner igjen og
+ * søker på når det står over sytti å velge mellom.
+ */
+export function prosjektValgtekst(p: ProsjektInnbygd): string {
+  return p.nummer ? `${p.nummer} ${p.navn}` : p.navn
+}
+
+/**
+ * Stigende etter prosjektnummer, med tallsortering så «99» kommer før
+ * «100». Prosjekter uten nummer havner til slutt, sortert på navn.
+ */
+export function sammenlignProsjekter(a: ProsjektInnbygd, b: ProsjektInnbygd): number {
+  if (a.nummer && b.nummer) {
+    const n = a.nummer.localeCompare(b.nummer, 'nb', { numeric: true })
+    if (n !== 0) return n
+  } else if (a.nummer || b.nummer) {
+    return a.nummer ? -1 : 1
+  }
+  return a.navn.localeCompare(b.navn, 'nb')
+}
+
 export type LeietakerKilde = {
   ansatt_id?: string | null
   kunder?: { navn: string; telefon: string } | null

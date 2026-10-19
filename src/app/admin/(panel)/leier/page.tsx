@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { krevAdmin } from '@/lib/auth'
 import { lagServerKlient } from '@/lib/supabase/server'
 import { visTelefon } from '@/lib/telefon'
-import { returDato } from '@/lib/dato'
+import { nyligLevert, returDato } from '@/lib/dato'
 import { LEIE_MERKE, LEIE_STATUS_TEKST, erForfalt, type LeieRad } from '@/lib/types'
 import { LEIETAKER_FELT, leietaker } from '@/lib/leietaker'
 import { Merke, Seksjonstittel, TomTilstand } from '@/components/ui'
@@ -144,51 +144,60 @@ export default async function LeierSide(props: PageProps<'/admin/leier'>) {
               </tr>
             </thead>
             <tbody>
-              {leier.map((l) => (
-                <tr
-                  key={l.id}
-                  className="border-b-2 border-[var(--kant)] transition-colors last:border-0 hover:bg-[var(--flate-2)]"
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/leier/${l.id}`}
-                      className="hm-tall inline-flex min-h-[2.75rem] items-center font-mono text-xs font-bold underline underline-offset-4"
-                    >
-                      {l.referanse}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 font-semibold">{l.maskiner?.navn ?? '–'}</td>
-                  <td className="px-4 py-3">
-                    <Leietaker l={l} />
-                  </td>
-                  <td className="hm-tall px-4 py-3 whitespace-nowrap">
-                    {returDato(l.planlagt_slutt)}
-                    {erForfalt(l) && (
-                      <span className="ml-2 inline-block bg-hm-red px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
-                        Forfalt
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Merke type={LEIE_MERKE[l.status]}>
-                        {LEIE_STATUS_TEKST[l.status]}
-                      </Merke>
-                      {l.status === 'avsluttet' &&
-                        !l.ansatt_id &&
-                        (l.fakturert ? (
-                          <span className="text-[10px] font-bold tracking-wider text-hm-green uppercase">
-                            ✓ Fakturert
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold tracking-wider text-hm-amber uppercase">
-                            Ikke fakturert
-                          </span>
-                        ))}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {leier.map((l) => {
+                // slutt_tid settes bare når maskinen er levert.
+                const nylig = l.slutt_tid ? nyligLevert(l.slutt_tid) : null
+                return (
+                  <tr
+                    key={l.id}
+                    className="border-b-2 border-[var(--kant)] transition-colors last:border-0 hover:bg-[var(--flate-2)]"
+                  >
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/admin/leier/${l.id}`}
+                        className="hm-tall inline-flex min-h-[2.75rem] items-center font-mono text-xs font-bold underline underline-offset-4"
+                      >
+                        {l.referanse}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 font-semibold">{l.maskiner?.navn ?? '–'}</td>
+                    <td className="px-4 py-3">
+                      <Leietaker l={l} />
+                    </td>
+                    <td className="hm-tall px-4 py-3 whitespace-nowrap">
+                      {returDato(l.planlagt_slutt)}
+                      {erForfalt(l) && (
+                        <span className="ml-2 inline-block bg-hm-red px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
+                          Forfalt
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Merke type={LEIE_MERKE[l.status]}>
+                          {LEIE_STATUS_TEKST[l.status]}
+                        </Merke>
+                        {l.status === 'avsluttet' &&
+                          !l.ansatt_id &&
+                          (l.fakturert ? (
+                            <span className="text-[10px] font-bold tracking-wider text-hm-green uppercase">
+                              ✓ Fakturert
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold tracking-wider text-hm-amber uppercase">
+                              Ikke fakturert
+                            </span>
+                          ))}
+                      </div>
+                      {nylig && (
+                        <div className="mt-1 text-[10px] font-bold tracking-wider uppercase">
+                          {nylig}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

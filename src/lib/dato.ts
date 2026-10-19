@@ -71,6 +71,19 @@ export function dagerTil(iso: string): number {
 }
 
 /**
+ * «Levert i dag», «Levert i går», «Levert for 2 dager siden» – eller
+ * null når leveringen er eldre enn `innen` dager. Regnet på norske
+ * kalenderdager, så «i går» er i går uansett klokkeslett.
+ */
+export function nyligLevert(iso: string, innen = 3): string | null {
+  const dager = -dagerTil(iso)
+  if (dager < 0 || dager > innen) return null
+  if (dager === 0) return 'Levert i dag'
+  if (dager === 1) return 'Levert i går'
+  return `Levert for ${dager} dager siden`
+}
+
+/**
  * Avtalt levering, eller «ubestemt tid» for internleier uten dato.
  * Står som verdi bak en etikett: «Forventet levering: ubestemt tid».
  *

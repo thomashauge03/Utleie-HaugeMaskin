@@ -10,9 +10,10 @@ export const erLedig = (m: Maskin) => m.status === 'ledig' && kanLeiesUt(m.verks
 
 /**
  * Maskinene i en liste der kunden velger selv. Ledige går videre til den
- * vanlige leieflyten på /m/[qr], så ingenting er duplisert.
+ * vanlige leieflyten på /m/[qr], så ingenting er duplisert. Med `kunde`
+ * får /m/[qr] kundeskjemaet også når enheten er logget inn som ansatt.
  */
-export function MaskinListe({ maskiner }: { maskiner: Maskin[] }) {
+export function MaskinListe({ maskiner, kunde = false }: { maskiner: Maskin[]; kunde?: boolean }) {
   return (
     <ul className="space-y-3">
       {maskiner.map((m) => {
@@ -21,7 +22,7 @@ export function MaskinListe({ maskiner }: { maskiner: Maskin[] }) {
           <li key={m.id}>
             {ledig ? (
               <Link
-                href={`/m/${m.qr_kode}`}
+                href={kunde ? `/m/${m.qr_kode}?kunde` : `/m/${m.qr_kode}`}
                 className="hm-trykk hm-kant-skygge-sm block border-2 border-[var(--kant-sterk)] bg-[var(--flate-opp)] p-4"
               >
                 <Rad maskin={m} ledig />

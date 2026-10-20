@@ -74,7 +74,7 @@ export default async function MaskinerSide() {
                     <span className="hm-skrastrek !h-1 !w-5" aria-hidden="true" />
                     <h2 className="hm-display text-lg">{kategori}</h2>
                   </div>
-                  <MaskinListe maskiner={liste} />
+                  <MaskinListe maskiner={liste} kunde />
                 </section>
               ))}
             </div>

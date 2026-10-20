@@ -41,6 +41,9 @@ export async function generateMetadata(
 
 export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
   const { qr } = await props.params
+  // Fra «Lei uten QR-kode»: kunden skal få kundeskjemaet selv om enheten
+  // de låner er logget inn som ansatt.
+  const kundevisning = (await props.searchParams).kunde !== undefined
 
   const { data } = await supabaseAdmin
     .from('maskiner')
@@ -60,7 +63,7 @@ export default async function MaskinSide(props: PageProps<'/m/[qr]'>) {
       .in('status', ['aktiv', 'venter_godkjenning'])
       .maybeSingle(),
     hentEnhetsId(),
-    hentAdmin(),
+    kundevisning ? null : hentAdmin(),
     hentReservasjoner([maskin.id]),
   ])
 

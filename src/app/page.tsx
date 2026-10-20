@@ -11,6 +11,8 @@ const HOVEDSIDE_URL = 'https://haugemaskin.vercel.app'
 // hvit tekst på hvit flate her, så denne har faste farger.
 const KNAPP_PÅ_SVART =
   'hm-trykk inline-flex min-h-[2.75rem] items-center justify-center gap-2 border-2 border-white bg-white px-4 text-sm font-semibold text-hm-black shadow-[3px_3px_0_0_var(--color-hm-red)] hover:bg-white/90'
+const KNAPP_RØD_PÅ_SVART =
+  'hm-trykk inline-flex min-h-[2.75rem] items-center justify-center gap-2 border-2 border-white bg-hm-red px-4 text-sm font-semibold text-white shadow-[3px_3px_0_0_var(--color-white)] hover:bg-hm-red-hover'
 
 const steg = [
   { n: '01', tittel: 'Skann', tekst: 'Hold kameraet mot QR-koden på maskinen.' },
@@ -56,11 +58,19 @@ export default function Forside() {
 
             {/* hm-inn på en egen div: animasjonen fyller transform: none og
                 ville ellers slukt trykkeffekten fra hm-trykk. */}
-            <div className="hm-inn mt-8" style={{ animationDelay: '180ms' }}>
+            <div
+              className="hm-inn mt-8 flex flex-wrap gap-4"
+              style={{ animationDelay: '180ms' }}
+            >
               <a href={`${HOVEDSIDE_URL}/utleie`} className={KNAPP_PÅ_SVART}>
                 Se alle maskiner og hva som er ledig
                 <span aria-hidden="true">→</span>
               </a>
+              {/* For kunder som ikke står ved maskinen. */}
+              <Link href="/maskiner" className={KNAPP_RØD_PÅ_SVART}>
+                Lei uten QR-kode
+                <span aria-hidden="true">→</span>
+              </Link>
             </div>
           </div>
         </section>

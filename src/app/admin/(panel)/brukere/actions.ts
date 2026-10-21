@@ -153,10 +153,18 @@ export async function settPassord(
 
   // Også dette er et midlertidig passord: admin kjenner det, så
   // brukeren må sette sitt eget ved neste innlogging.
-  await supabaseAdmin
+  const { error: flaggFeil } = await supabaseAdmin
     .from('admin_brukere')
     .update({ ma_bytte_passord: true })
     .eq('id', brukerId)
+
+  // Passordet er alt byttet. Feiler merkingen, må admin vite at
+  // brukeren ikke blir tvunget til å velge sitt eget.
+  if (flaggFeil) {
+    return {
+      feil: `Passordet er satt, men brukeren blir ikke bedt om å bytte det: ${flaggFeil.message}`,
+    }
+  }
 
   revalidatePath('/admin/brukere')
   return {

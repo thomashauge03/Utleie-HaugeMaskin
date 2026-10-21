@@ -210,14 +210,15 @@ export function RedigerBruker({
             type="text"
             required
             minLength={8}
-            placeholder="Nytt passord, minst 8 tegn"
+            placeholder="Midlertidig passord, minst 8 tegn"
             className={`${FELT} min-w-[12rem] flex-1`}
           />
           <button type="submit" className={KNAPP_LITEN}>
-            Sett passord
+            Sett midlertidig passord
           </button>
           <span className="w-full text-xs text-[var(--blekk-svak)]">
-            Vises i klartekst fordi du må gi det videre selv.
+            Brukeren må velge sitt eget passord ved neste innlogging. Vises i
+            klartekst fordi du må gi det videre selv.
           </span>
           {passordFeil && (
             <p

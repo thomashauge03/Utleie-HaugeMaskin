@@ -2,6 +2,7 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { KNAPP_PRIMÆR, KNAPP_SEKUNDÆR } from '@/components/ui'
+import { videresendingsId } from '@/lib/skannet-kode'
 import {
   VIDEO,
   bedreIPhoneKamera,
@@ -68,6 +69,18 @@ async function lagLeser(): Promise<Leser> {
   }
 }
 
+/** Hvor en etikett fra QR-admin peker – se /api/qr/[id]. */
+async function slåOpp(id: string): Promise<{ url: string } | { feil: string }> {
+  try {
+    const r = await fetch(`/api/qr/${id}`)
+    if (!r.ok) return { feil: 'Fikk ikke slått opp koden i QR-admin. Prøv igjen.' }
+    const { url } = (await r.json()) as { url: string | null }
+    return url ? { url } : { feil: 'Koden fra QR-admin peker ikke til noe.' }
+  } catch {
+    return { feil: 'Fikk ikke slått opp koden. Sjekk at telefonen har nett.' }
+  }
+}
+
 // Dialogen gir fokus tilbake til Skann-knappen når den lukkes. Målet tar
 // det over etterpå, så skjermleseren også havner der.
 function lukkOgGåTil(dialog: HTMLDialogElement | null, id: string) {
@@ -124,7 +137,20 @@ export function Skanner({
   const [zoom, settValgtZoom] = useState(1)
   const [ring, settRing] = useState<{ x: number; y: number; n: number } | null>(null)
 
-  function svarPå(tekst: string) {
+  // Etiketter fra QR-admin har bare en videresending. Den slås opp, og
+  // lenka den peker til tolkes som om den sto i koden.
+  async function svarPå(rå: string) {
+    let tekst = rå
+    const id = videresendingsId(rå)
+    if (id) {
+      settSvar({ tone: 'info', tekst: 'Slår opp koden …' })
+      const mål = await slåOpp(id)
+      if ('feil' in mål) {
+        settSvar({ tone: 'feil', tekst: mål.feil })
+        return
+      }
+      tekst = mål.url
+    }
     const s = onKode(tekst)
     settSvar(s)
     if (s.tone === 'ok') navigator.vibrate?.(60)
@@ -242,7 +268,7 @@ export function Skanner({
     if (fil) {
       settSvar({ tone: 'info', tekst: 'Leser bildet …' })
       const tekst = await lesBilde(fil).catch(() => null)
-      if (tekst) svarPå(tekst)
+      if (tekst) await svarPå(tekst)
       else settSvar({ tone: 'feil', tekst: 'Fant ingen QR-kode i bildet. Prøv igjen, med koden midt i.' })
     }
     settPause(false)

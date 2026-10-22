@@ -16,6 +16,35 @@ export type SkannetKode =
 
 const UKJENT: SkannetKode = { type: 'ukjent' }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Id-en i små bokstaver, eller null om den ikke er en rad-id fra QR-admin. */
+export function kodeId(id: string): string | null {
+  const t = id.trim()
+  return UUID.test(t) ? t.toLowerCase() : null
+}
+
+/**
+ * Etikettene fra QR-admin har ikke lenka selv, men en videresending:
+ * https://qr-admin-fawn.vercel.app/q?k=<id>. Telefonens kamera åpner den,
+ * og QR-admin sender videre. Skanneren må slå opp id-en selv (se
+ * /api/qr/[id]) og tolke lenka den finner.
+ *
+ * Gir id-en, eller null når teksten ikke er en slik kode. Verten sjekkes
+ * ikke, som i tolkKode – og utleie-appen har ingen /q selv.
+ */
+export function videresendingsId(tekst: string): string | null {
+  let url: URL
+  try {
+    url = new URL(tekst.trim())
+  } catch {
+    return null
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null
+  if (url.pathname.replace(/\/$/, '') !== '/q') return null
+  return kodeId(url.searchParams.get('k') ?? '')
+}
+
 export function tolkKode(tekst: string): SkannetKode {
   let url: URL
   try {

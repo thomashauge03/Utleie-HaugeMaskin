@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Barlow_Condensed } from 'next/font/google'
 import './globals.css'
 import { Lukkar } from '@/components/Lukkar'
 import { Nokkelknapp } from '@/components/Nokkelknapp'
+import { Hjemlogo } from '@/components/Hjemlogo'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -54,6 +55,8 @@ export default function RootLayout({
         <Lukkar />
         {/* Rett etter lukkeren: nøkkelknappen må ligge i HTML-en serveren sender. */}
         <Nokkelknapp />
+        {/* Etter nøkkelknappen: HM-logoen tar deg tilbake til appen når appen åpnet sida. */}
+        <Hjemlogo />
         {children}
       </body>
     </html>

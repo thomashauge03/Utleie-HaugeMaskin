@@ -3,8 +3,11 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { KNAPP_PRIMÆR, KNAPP_SEKUNDÆR } from '@/components/ui'
 
-/** Svaret på én skannet kode, vist nederst i skanneren. */
-export type SkannSvar = { tone: 'ok' | 'info' | 'feil'; tekst: string }
+/**
+ * Svaret på én skannet kode, vist nederst i skanneren. Med `gåTil` lukkes
+ * skanneren, og siden rulles til elementet med den id-en.
+ */
+export type SkannSvar = { tone: 'ok' | 'info' | 'feil'; tekst: string; gåTil?: string }
 
 type Leser = (video: HTMLVideoElement) => Promise<string | null>
 
@@ -58,6 +61,17 @@ async function lagLeser(): Promise<Leser> {
   }
 }
 
+// Dialogen gir fokus tilbake til Skann-knappen når den lukkes. Målet tar
+// det over etterpå, så skjermleseren også havner der.
+function lukkOgGåTil(dialog: HTMLDialogElement | null, id: string) {
+  dialog?.close()
+  requestAnimationFrame(() => {
+    const mål = document.getElementById(id)
+    mål?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    mål?.focus({ preventScroll: true })
+  })
+}
+
 function kameraFeil(e: unknown): string {
   const navn = e instanceof DOMException ? e.name : ''
   if (navn === 'NotAllowedError' || navn === 'SecurityError') {
@@ -96,6 +110,7 @@ export function Skanner({
     const s = onKode(tekst)
     settSvar(s)
     if (s.tone === 'ok') navigator.vibrate?.(60)
+    if (s.gåTil) lukkOgGåTil(dialog.current, s.gåTil)
   })
   const vedFeil = useEffectEvent((tekst: string) => settSvar({ tone: 'feil', tekst }))
 

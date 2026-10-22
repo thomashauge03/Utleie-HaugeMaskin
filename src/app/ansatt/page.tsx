@@ -12,6 +12,9 @@ import { UttakListe } from './uttak-skjema'
 export const metadata: Metadata = { title: 'Utstyr – HM' }
 export const dynamic = 'force-dynamic'
 
+// Returkoden i skanneren, og /retur for innloggede, sender hit.
+const HOS_DEG_ID = 'hos-deg'
+
 /**
  * Egne folk tar ut utstyr til prosjekter her – uten kundeskjemaet. Hvem
  * de er, vet vi fra innloggingen.
@@ -50,7 +53,7 @@ export default async function AnsattSide() {
           </TomTilstand>
         ) : (
           <>
-            <section>
+            <section id={HOS_DEG_ID} tabIndex={-1} className="scroll-mt-4 outline-none">
               <Overskrift antall={side.mine.length}>Hos deg nå</Overskrift>
               <LevertRamme>
                 {side.mine.length === 0 ? (
@@ -89,6 +92,7 @@ export default async function AnsattSide() {
                 prosjekter={side.prosjekter}
                 sistProsjektId={side.sistProsjektId}
                 iDag={iDag}
+                returTil={side.mine.length > 0 ? HOS_DEG_ID : null}
               />
             </section>
           </>

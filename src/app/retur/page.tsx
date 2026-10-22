@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: 'Lever tilbake – HM Utleie' }
  */
 export default async function FellesReturSide() {
   // Egne folk leverer fra sin egen side, der alt de har ute står samlet.
-  if (await hentAdmin()) redirect('/ansatt')
+  if (await hentAdmin()) redirect('/ansatt#hos-deg')
 
   const enhetsId = await hentEnhetsId()
 

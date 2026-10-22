@@ -24,8 +24,10 @@ type Felles = {
  * for å fjerne dem. Et skjult felt sendes fortsatt med skjemaet, så en
  * avkrysning forsvinner ikke fordi man søkte etter noe annet.
  */
-export function UttakListe({ maskiner, prosjekter, sistProsjektId, iDag }: Felles & {
+export function UttakListe({ maskiner, prosjekter, sistProsjektId, iDag, returTil }: Felles & {
   maskiner: UttakMaskin[]
+  /** Id-en på «Hos deg nå», som returkoden sender til. Null når ingenting er ute. */
+  returTil: string | null
 }) {
   const [valgte, settValgte] = useState<Set<string>>(() => new Set())
   const [søk, settSøk] = useState('')
@@ -89,7 +91,9 @@ export function UttakListe({ maskiner, prosjekter, sistProsjektId, iDag }: Felle
       return { tone: 'info', tekst: `Viser ${navn} – kryss av i lista` }
     }
     if (kode.type === 'retur') {
-      return { tone: 'info', tekst: 'Dette er returkoden. Lever under «Hos deg nå».' }
+      return returTil
+        ? { tone: 'ok', tekst: 'Returkoden – lever under «Hos deg nå»', gåTil: returTil }
+        : { tone: 'info', tekst: 'Dette er returkoden, men du har ikke noe ute.' }
     }
     return { tone: 'feil', tekst: 'Ukjent kode' }
   }

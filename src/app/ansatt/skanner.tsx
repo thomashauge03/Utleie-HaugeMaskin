@@ -23,7 +23,9 @@ const PAUSE_MS = 200
 // Så lenge koden er i bildet, leses den ikke på nytt. Først når den har
 // vært ute av bildet så lenge, teller den som en ny skanning.
 const SAMME_KODE_MS = 2500
-const MAKS_BREDDE = 640
+// Sida på utsnittet jsQR leser. Nok til en liten kode på armlengdes
+// avstand, og fortsatt raskt nok på en eldre telefon.
+const MAKS_SIDE = 960
 
 const TONE: Record<SkannSvar['tone'], string> = {
   ok: 'border-hm-green',
@@ -46,19 +48,39 @@ async function lagLeser(): Promise<Leser> {
     }
   }
 
+  // Bare kvadratet midt i bildet leses, der søkeren står. Før ble hele
+  // bildet krympet til 640 punkter bredt, og koden ble for grovkornet.
   const { default: jsQR } = await import('jsqr')
   const lerret = document.createElement('canvas')
   const ktx = lerret.getContext('2d', { willReadFrequently: true })
   return async (video) => {
-    const skala = Math.min(1, MAKS_BREDDE / video.videoWidth)
-    const b = Math.round(video.videoWidth * skala)
-    const h = Math.round(video.videoHeight * skala)
-    if (!ktx || !b || !h) return null
-    lerret.width = b
-    lerret.height = h
-    ktx.drawImage(video, 0, 0, b, h)
-    return jsQR(ktx.getImageData(0, 0, b, h).data, b, h)?.data ?? null
+    const kilde = Math.min(video.videoWidth, video.videoHeight)
+    const side = Math.round(Math.min(kilde, MAKS_SIDE))
+    if (!ktx || !side) return null
+    const x = (video.videoWidth - kilde) / 2
+    const y = (video.videoHeight - kilde) / 2
+    lerret.width = side
+    lerret.height = side
+    ktx.drawImage(video, x, y, kilde, kilde, 0, 0, side, side)
+    // Printede koder er mørke på lyst. Å prøve invertert også dobler tida.
+    return (
+      jsQR(ktx.getImageData(0, 0, side, side).data, side, side, {
+        inversionAttempts: 'dontInvert',
+      })?.data ?? null
+    )
   }
+}
+
+// Mange Android-kameraer står på fast fokus i nettleseren til de blir
+// bedt om noe annet – da ble koden uskarp på nært hold. Tåles ikke
+// innstillingen, går det videre uten.
+async function skruPåAutofokus(strøm: MediaStream) {
+  const spor = strøm.getVideoTracks()[0]
+  const kan = spor?.getCapabilities?.() as { focusMode?: string[] } | undefined
+  if (!kan?.focusMode?.includes('continuous')) return
+  await spor
+    .applyConstraints({ advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet] })
+    .catch(() => {})
 }
 
 // Dialogen gir fokus tilbake til Skann-knappen når den lukkes. Målet tar
@@ -129,8 +151,16 @@ export function Skanner({
       }
       let s: MediaStream
       try {
+        // Uten ønsket oppløsning gir Chrome på Android 640×480: bildet
+        // ble kornete strukket over skjermen, og koden fikk få punkter.
+        // `ideal`, ikke `min` – et kamera som ikke klarer det, gir sitt
+        // beste i stedet for å feile.
         s = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
           audio: false,
         })
       } catch (e) {
@@ -143,6 +173,7 @@ export function Skanner({
         return
       }
       strøm = s
+      await skruPåAutofokus(s)
       v.srcObject = s
       await v.play().catch(() => {})
       const les = await lagLeser()

@@ -283,6 +283,27 @@ body {
     visibility: hidden;
   }
 }
+/* ── Fokusring i skanneren: der man trykket for å fokusere ──── */
+@keyframes hm-fokusring {
+  0% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.hm-fokusring {
+  animation: hm-fokusring 900ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
 /* Mobilappen har sin egen lukker, og da spiller den. */
 html[data-hm-lukkar] .hm-intro {
   display: none;

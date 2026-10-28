@@ -15,6 +15,8 @@ import { ManuellLevering } from './manuell-levering'
 import { SlettLeie } from './slett-leie'
 import { RettInternpris } from './rett-internpris'
 import { settFakturert } from './actions'
+import { TripletexOrdre } from './tripletex-ordre'
+import { erForlatt } from '@/lib/tripletex'
 
 export const metadata: Metadata = { title: 'Leie – HM Utleie' }
 export const dynamic = 'force-dynamic'
@@ -81,6 +83,8 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
   ]
     .filter((l) => l !== null && l !== undefined)
     .join('\n')
+
+  const tripletexForlatt = erForlatt(leie.tripletex_endret)
 
   return (
     <div className="space-y-6">
@@ -291,6 +295,18 @@ export default async function LeieDetaljSide(props: PageProps<'/admin/leier/[id]
                 {leie.fakturert ? '✓ Fakturert – angre' : 'Marker som fakturert'}
               </button>
             </form>
+
+            <TripletexOrdre
+              leieId={leie.id}
+              oppsatt={Boolean(process.env.TRIPLETEX_NOKKEL?.trim())}
+              status={leie.tripletex_status ?? null}
+              ordrenr={leie.tripletex_ordrenr ?? (leie.tripletex_ordre_id ? String(leie.tripletex_ordre_id) : null)}
+              kundenr={leie.tripletex_kundenr ?? leie.kunder?.tripletex_kundenr ?? null}
+              vedlegg={leie.tripletex_vedlegg ?? null}
+              lagretFeil={leie.tripletex_feil ?? null}
+              ordreForlatt={leie.tripletex_status === 'oppretter' && tripletexForlatt}
+              vedleggForlatt={leie.tripletex_vedlegg === 'laster_opp' && tripletexForlatt}
+            />
           </div>
         </Kort>
       )}

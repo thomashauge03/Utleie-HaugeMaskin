@@ -42,7 +42,13 @@ export type Kunde = {
   status: KundeStatus
   admin_notat: string | null
   opprettet: string
+  /** Mangler før migrasjon 0017. */
+  tripletex_kundenr?: number | null
 }
+
+/** Se 0017_tripletex.sql for hva ordene betyr. */
+export type TripletexStatus = 'oppretter' | 'opprettet' | 'ukjent' | 'feilet'
+export type TripletexVedlegg = 'laster_opp' | 'lagt_ved' | 'ukjent' | 'feilet'
 
 export type Leie = {
   id: string
@@ -71,6 +77,14 @@ export type Leie = {
   admin_notat: string | null
   avvik: string | null
   opprettet: string
+  /* Tripletex-ordren. Mangler før migrasjon 0017. */
+  tripletex_status?: TripletexStatus | null
+  tripletex_ordre_id?: number | null
+  tripletex_ordrenr?: string | null
+  tripletex_kundenr?: number | null
+  tripletex_vedlegg?: TripletexVedlegg | null
+  tripletex_feil?: string | null
+  tripletex_endret?: string | null
 }
 
 export type Prosjekt = {
